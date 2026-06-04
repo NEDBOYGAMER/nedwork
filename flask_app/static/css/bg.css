@@ -1,0 +1,54 @@
+
+html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow-x: hidden;
+}
+
+body {
+    background: linear-gradient(0deg, var(--bg-gradient-top) 0%, var(--bg-gradient-bottom) 100%);
+    background-attachment: fixed;
+    text-align: center;
+    font-family: 'Orbitron', sans-serif;
+    color: var(--text-color);
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+
+#cursor {
+    position: fixed;
+    width: 12px; height: 12px;
+    background: var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.08s, width 0.2s, height 0.2s, background 0.2s, opacity 0.2s;
+    mix-blend-mode: var(--cursor_mode);
+}
+
+#cursor-ring {
+    position: fixed;
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--cursor-ring);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: transform 0.18s ease-out, width 0.25s, height 0.25s, opacity 0.25s, border-color 0.2s;
+}
+
+#cursor.hovered { width: 20px; height: 20px; background: var(--cursor-hover); }
+#cursor-ring.hovered { width: 54px; height: 54px; border-color: var(--cursor-ring-hover); }
+#cursor.clicking { transform: translate(-50%, -50%) scale(0.7); }
+
+#bg-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: -10;
+    pointer-events: none;
+}

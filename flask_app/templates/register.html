@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>nedwork</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/colors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/basic.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bg.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
+    <script type="module" src="{{ url_for('static', filename='js/register.js') }}"></script>
+</head>
+<body>
+<!-- custom cursor -->
+
+
+<div id="main-box">
+    <h1 class="title" id="Welcome">Welcome</h1>
+    <h2 class="title" id="nedwork">to nedwork</h2>
+    <div id="pulse-bar"></div>
+</div>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<canvas id="bg-canvas"></canvas>
+
+
+<div id="login-box">
+    <h2 class="login-titel" id="Log-In">Register</h2>
+
+    <!-- USERNAME -->
+    <h3 class="login-text" id="username-label">Username</h3>
+    <input class="login_input" id="username" placeholder="Username" required>
+
+    <!-- EMAIL -->
+    <h3 class="login-text" id="email-label">E-Mail</h3>
+    <input class="login_input" id="email" placeholder="E-Mail" required>
+
+    <!-- PASSWORD -->
+    <h3 class="login-text" id="password-label">Password</h3>
+    <input class="login_input" type="password" id="password" placeholder="Password" required>
+
+    <!-- PASSWORD REPEAT -->
+    <h3 class="login-text" id="password-repeat-label">Repeat password</h3>
+    <input class="login_input" type="password" id="password-repeat" placeholder="Password" required>
+
+
+    <div id="buttons">
+        <button id="log-button">Login</button>
+        <button id="reg-button">REGISTER</button>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,76 @@
+:root {
+    /* Background */
+    --bg-gradient-top: #040a1f;
+    --bg-gradient-bottom: #04040a;
+
+    /* Text */
+    --text-color: whitesmoke;
+
+    /* Accent / main neon */
+    --accent: #515ada;
+
+    /* Dark UI surfaces */
+    --surface-dark: #18181856;
+    --surface-button-dark: #2e2e3679;
+
+    /* Glow / cursor ring */
+    --cursor_mode: lighten;
+    --cursor-hover: rgb(255, 255, 255);
+    --cursor-ring: rgba(81, 90, 218, 0.5);
+    --cursor-ring-hover: rgba(255, 255, 255, 0.3);
+
+    /* Glitch effect colors */
+    --glitch-red: red;
+    --glitch-cyan: cyan;
+
+    /* Pure white (used in hover states) */
+    --white: #ffffff;
+
+
+    /* Animated Background */
+    --glow1: rgba(81,90,218,0.07);
+    --glow2: rgba(0,0,0,0);
+
+    --dots: rgb(142, 146, 211);
+    --dot_fallof: 0.6;
+
+    --wrong: red;
+}
+
+
+[data-theme="light"] {
+    /* Background */
+    --bg-gradient-top: #a2acd4;
+    --bg-gradient-bottom: #a2a2b1;
+
+    /* Text */
+    --text-color: rgb(0, 0, 0);
+
+    /* Accent / main neon */
+    --accent: #4b51ad;
+
+    /* Dark UI surfaces */
+    --surface-dark: #a6b1c456;
+    --surface-button-dark: #9999b879;
+
+    /* Glow / cursor ring */
+    --cursor_mode: darken;
+    --cursor-hover: rgba(0, 0, 0, 1);
+    --cursor-ring: rgba(33, 35, 70, 0.568);
+    --cursor-ring-hover: rgba(88, 82, 82, 0.3);
+
+    /* Glitch effect colors */
+    --glitch-red: rgb(98, 0, 255);
+    --glitch-cyan: cyan;
+
+    /* Pure white (used in hover states) */
+    --white: #000000;
+
+    /* Animated Background */
+    --glow1: rgba(21, 23, 31, 0.105);
+    --glow2: rgba(0, 0, 0, 0);
+
+    --dots: rgb(24, 24, 32);
+    --dot_fallof: 1.1;
+
+}

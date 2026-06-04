@@ -1,0 +1,107 @@
+
+
+#Welcome {
+    font-size: 120px;
+    margin-top: 0;
+    padding-top: 60px;
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+
+#Welcome:hover {
+    animation: glitch 0.4s ease;
+}
+
+@keyframes glitch {
+    0%   { transform: translate(0, 0); text-shadow: 0 0 var(--glitch-red), 0 0 var(--glitch-cyan); }
+    28%  { transform: translate(-3px, 0); text-shadow: 3px 1px var(--glitch-red), -3px 1px var(--glitch-cyan); }
+    54%  { transform: translate(2px, 0); text-shadow: -2px -1px var(--glitch-red), 2px -1px var(--glitch-cyan); }
+    70%  { transform: translate(-2px, 0); text-shadow: 2px 1px var(--glitch-red), -2px 1px var(--glitch-cyan); }
+    100% { transform: translate(0, 0); text-shadow: 0 0 var(--glitch-red), 0 0 var(--glitch-cyan); }
+}
+
+#nedwork {
+    font-size: 40px;
+    font-stretch: expanded;
+    margin-top: 10px;
+    color: var(--text-color);
+}
+
+#nedwork:hover {
+    animation: glitch 0.4s ease;
+}
+
+#main-box {
+    margin-bottom: 10vh;
+}
+
+#login-box {
+    background-color: var(--surface-dark);
+    border-color: var(--text-color);
+    border-radius: 50px;
+    border-style: solid;
+    margin-left: 30vw;
+    margin-right: 30vw;
+}
+
+.login_input {
+    background-color: var(--surface-dark);
+    border-color: var(--text-color);
+    border-radius: 10px;
+    padding: 5px;
+    color: var(--text-color);
+    margin-bottom: 20px;
+    font-size: 20px;
+    width: 80%;
+}
+
+#buttons {
+    display: grid;
+    grid-template-columns: 40% 20% 40%;
+    width: 80%;
+    margin: auto;
+}
+
+#log-button {
+    background-color: color-mix(in srgb, var(--accent) 47%, transparent);
+    border-radius: 20px;
+    border-style: none;
+    margin-bottom: 10px;
+    font-size: x-large;
+    color: var(--text-color);
+}
+
+#reg-button {
+    grid-column: 3;
+    background-color: var(--surface-button-dark);
+    border-radius: 20px;
+    border-style: solid;
+    margin-bottom: 10px;
+    font-size: x-large;
+    color: var(--text-color);
+}
+
+* { cursor: none !important; }
+
+
+
+#bg-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: -10;
+    pointer-events: none;
+}
+
+
+#pulse-bar {
+    margin: auto;
+    width: 30vw;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: pulse 2s ease infinite;
+}
+
+@keyframes pulse {
+    50% { opacity: 20%; }
+    0%, 100% { opacity: 80%; }
+}
