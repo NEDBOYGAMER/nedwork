@@ -1,20 +1,114 @@
 #vp {
-    height: 100%;
     width: 100%;
+    height: 100%;
     padding: 40px;
     box-sizing: border-box;
+    overflow-y: auto;
 }
+
 #back-panel {
-    background-color: var(--surface-dark);
-    height: 100%;
     width: 100%;
-    border-radius: 50px;
+    min-height: 100%;
+
+    padding: 40px 50px;
+
+    background: var(--surface-dark);
+
+    border-radius: 40px;
+
+    backdrop-filter: blur(24px);
+
+    border: 1px solid var(--border-soft);
+
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        inset 0 1px rgba(255, 255, 255, 0.04);
+
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
+#back-panel h1 {
+    margin: 20px 0 10px;
 
-.divider{
+    font-family: Orbitron, sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+
+    letter-spacing: 2px;
+    text-transform: uppercase;
+
+    color: var(--text-color);
+}
+
+.setting-row {
+    min-height: 90px;
+
+    padding: 0 25px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    border-radius: 24px;
+
+    background: rgba(255, 255, 255, 0.02);
+
+    border: 1px solid transparent;
+
+    transition:
+        background 0.25s ease,
+        border-color 0.25s ease,
+        transform 0.25s ease;
+}
+
+.setting-row:hover {
+    background: var(--surface-hover);
+    border-color: var(--border-soft);
+    transform: translateY(-2px);
+}
+
+.setting-row h2 {
+    margin: 0;
+
+    color: var(--text-color);
+
+    font-size: 1rem;
+    font-weight: 600;
+
+    letter-spacing: 0.5px;
+}
+
+.divider {
     border: none;
     height: 1px;
-    background: #333;
-    margin: 20px;
+
+    margin: 0 0 10px;
+
+    background:
+    linear-gradient(
+        90deg,
+        transparent,
+        var(--border-soft),
+        transparent
+    );
+}
+
+@media (max-width: 900px) {
+    .setting-row {
+        flex-direction: column;
+        align-items: flex-start;
+
+        gap: 15px;
+
+        padding: 20px;
+    }
+
+    .ui-input,
+    .dropdown,
+    .nselect,
+    .toggle-box {
+        width: 100%;
+    }
 }

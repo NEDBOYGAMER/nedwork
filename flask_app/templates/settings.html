@@ -25,137 +25,120 @@
     <canvas id="bg-canvas"></canvas>
 
     <div id="vp">
-    <div id="back-panel">
+        <div id="back-panel">
 
+            <h1>General</h1>
+            <hr class="divider">
 
+            <div class="setting-row">
+                <h2>Language</h2>
 
+                <div class="dropdown">
+                    <input type="checkbox" id="drop">
 
-        <h1>General</h1>
-        <hr class="divider">
+                    <div class="dropdown-header">
+                        <label for="drop" class="dropdown-box">
+                            <span class="dropdown-selected">English</span>
+                            <span class="dropdown-arrow">▾</span>
+                        </label>
+                    </div>
 
-        <!-- LANGUAGE -->
-        <div class="dropdown">
-        <input type="checkbox" id="drop" />
+                    <div class="dropdown-menu">
+                        <span class="dropdown-option">English</span>
+                        <span class="dropdown-option">Deutsch</span>
+                        <span class="dropdown-option">Español</span>
+                    </div>
+                </div>
+            </div>
 
-        <div class="dropdown-header">
-            <h2>Language</h2>
+            <h1>Appearance</h1>
+            <hr class="divider">
 
-            <label for="drop" class="dropdown-box">
-            <span class="dropdown-selected">Select option</span>
-            <span class="dropdown-arrow">▾</span>
-            </label>
+            <div class="setting-row">
+                <h2>Theme</h2>
+
+                <input type="checkbox" id="switch">
+                <label for="switch" class="toggle-box">
+                    <span class="option left">Dark</span>
+                    <span class="option right">Light</span>
+                    <div class="slider"></div>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <h2>Color</h2>
+
+                <div class="nselect">
+                    <input type="radio" name="color" id="optviolet" checked>
+                    <input type="radio" name="color" id="optgreen">
+                    <input type="radio" name="color" id="optred">
+
+                    <label class="option" for="optviolet">Violet</label>
+                    <label class="option" for="optgreen">Green</label>
+                    <label class="option" for="optred">Red</label>
+
+                    <div class="nselect-slider"></div>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <h2>Background</h2>
+
+                <div class="nselect">
+                    <input type="radio" name="background" id="optgrid" checked>
+                    <input type="radio" name="background" id="optblobs">
+                    <input type="radio" name="background" id="optnone">
+
+                    <label class="option" for="optgrid">Grid</label>
+                    <label class="option" for="optblobs">Blobs</label>
+                    <label class="option" for="optnone">None</label>
+
+                    <div class="nselect-slider"></div>
+                </div>
+            </div>
+
+            <h1>Notifications</h1>
+            <hr class="divider">
+
+            <div class="setting-row">
+                <h2>Email</h2>
+                <input type="email" class="ui-input" placeholder="name@example.com">
+            </div>
+
+            <div class="setting-row">
+                <h2>Updates</h2>
+
+                <label class="switch">
+                    <input type="checkbox">
+                    <span class="switch-track">
+                        <span class="switch-knob"></span>
+                    </span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <h2>Messages</h2>
+
+                <label class="switch">
+                    <input type="checkbox">
+                    <span class="switch-track">
+                        <span class="switch-knob"></span>
+                    </span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <h2>Near Limit</h2>
+
+                <label class="switch">
+                    <input type="checkbox">
+                    <span class="switch-track">
+                        <span class="switch-knob"></span>
+                    </span>
+                </label>
+            </div>
+
         </div>
-
-        <div class="dropdown-menu">
-            <span class="dropdown-option">English</span>
-            <span class="dropdown-option">Deutsch</span>
-            <span class="dropdown-option">Español</span>
-        </div>
-        </div>
-
-
-
-
-
-
-
-
-
-        <h1>Appearence</h1>
-        <div class="toggle">
-            <h2>Theme</h2>
-            <input type="checkbox" id="switch" />
-            <label for="switch" class="toggle-box">
-                <span class="option left">Dark</span>
-                <span class="option right">Light</span>
-                <div class="slider"></div>
-            </label>
-        </div>
-
-
-        <div class="toggle">
-        <h2>Color</h2>
-        <div class="nselect">
-            <input type="radio" name="color" id="optviolet" checked>
-            <input type="radio" name="color" id="optgreen">
-            <input type="radio" name="color" id="optred">
-
-            <label class="option" for="optviolet">Violet</label>
-            <label class="option" for="optgreen">Green</label>
-            <label class="option" for="optred">Red</label>
-
-            <div class="nselect-slider"></div>
-        </div>
-        </div>
-
-
-        <div class="toggle">
-        <h2>Background</h2>
-        <div class="nselect">
-            <input type="radio" name="background" id="optgrid" checked>
-            <input type="radio" name="background" id="optblobs">
-            <input type="radio" name="background" id="optnone">
-
-            <label class="option" for="optgrid">Grid</label>
-            <label class="option" for="optblobs">Blobs</label>
-            <label class="option" for="optnone">none</label>
-
-            <div class="nselect-slider"></div>
-        </div>
-        </div>
-        <hr class="divider">
-
-
-
-
-
-
-        <h1>Notifications</h1>
-
-
-        <div class="input-group">
-            <h2>Email</h2>
-            <input type="email" class="ui-input" placeholder="name@example.com">
-        </div>
-
-
-        <!-- ON OFF SWITCH -->
-        <div class="toggle">
-        <h2>Updates</h2>
-        <label class="switch">
-            <input type="checkbox">
-            <span class="switch-track">
-            <span class="switch-knob"></span>
-            </span>
-        </label>
-        </div>
-
-        <!-- ON OFF SWITCH -->
-        <div class="toggle">
-        <h2>Messages</h2>
-        <label class="switch">
-            <input type="checkbox">
-            <span class="switch-track">
-            <span class="switch-knob"></span>
-            </span>
-        </label>
-        </div>
-
-        <!-- ON OFF SWITCH -->
-        <div class="toggle">
-        <h2>Near Limit</h2>
-        <label class="switch">
-            <input type="checkbox">
-            <span class="switch-track">
-            <span class="switch-knob"></span>
-            </span>
-        </label>
-        </div>
-
-
-
-
-    </div>
     </div>
 
 </body>
