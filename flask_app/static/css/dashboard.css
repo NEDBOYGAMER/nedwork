@@ -1,0 +1,148 @@
+#side-nav {
+    height: 100vh;
+    width: 120px;
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    background: var(--surface-strong);
+    border-right: 1px solid var(--border-soft);
+
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.nav-top {
+    padding: 10px 8px 18px 8px;
+}
+
+.logo {
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 2px;
+}
+
+.nav-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nav-section.grow {
+    flex: 1;
+}
+
+.nav-item {
+    width: 100%;
+    padding: 10px 12px;
+
+    border: none;
+    border-radius: 10px;
+
+    background: transparent;
+    color: var(--text-color);
+
+    text-align: left;
+    cursor: pointer;
+
+    transition: 0.2s;
+    font-family: inherit;
+}
+
+.nav-item:hover {
+    background: var(--surface-hover);
+}
+
+.nav-item.active {
+    background: var(--surface-hover);
+}
+
+.nav-item.danger {
+    color: var(--danger);
+}
+
+.icon-item {
+    width: 44px;
+    height: 44px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: transparent;
+    color: var(--text-color);
+
+    cursor: pointer;
+
+    font-size: 20px;
+
+    transition: 0.2s;
+}
+
+.icon-item:hover {
+    background: var(--surface-hover);
+}
+
+.nav-bottom {
+    margin-top: 10px;
+}
+
+#content {
+    margin-left: 220px;
+    height: 100vh;
+}
+
+#plus-button {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+
+    width: 52px;
+    height: 52px;
+
+    border-radius: 14px;
+    border: none;
+
+    background: var(--accent);
+    color: var(--accent-text);
+
+    font-size: 26px;
+    cursor: pointer;
+    box-shadow: 0 10px 30px var(--shadow);
+}
+
+
+
+
+/* OVERLAY */
+
+
+#overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.082);
+    backdrop-filter: blur(3px);
+    z-index: 999;
+}
+
+#add-window {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 400px;
+    padding: 20px; 
+
+    background: var(--surface-strong);
+    border: 1px solid var(--border-soft);
+    border-radius: 16px;
+
+    z-index: 1000;
+}
+
+.hidden {
+    display: none;
+}

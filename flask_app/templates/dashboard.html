@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/colors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/basic.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bg.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+    <script type="module" src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</head>
+
+<body>
+
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+    <canvas id="bg-canvas"></canvas>
+
+    <aside id="side-nav">
+
+        <div class="nav-top">
+            <div class="logo">Dash</div>
+        </div>
+
+        <div class="nav-section">
+            <button class="nav-item active">Home</button>
+        </div>
+
+        <div class="nav-section grow"></div>
+
+        <div class="nav-section">
+            <button class="icon-item" id="settings-btn" title="Settings">⚙</button>
+            <button class="icon-item" id="account-btn" title="Account">👤</button>
+        </div>
+
+        <div class="nav-bottom">
+            <button class="nav-item danger">Logout</button>
+        </div>
+
+    </aside>
+
+    <main id="content">
+        <!-- middle part untouched -->
+    </main>
+
+    <button id="plus-button">+</button>
+
+    <!-- overlay (initially hidden) -->
+    <div id="overlay" class="hidden"></div>
+
+    <!-- modal window (id matches CSS: #add-window) -->
+    <div id="add-window" class="hidden">
+        <h2>Create new</h2>
+        <p>Content goes here</p>
+        <button id="close-add-window">Close</button>
+    </div>
+
+</body>
+</html>

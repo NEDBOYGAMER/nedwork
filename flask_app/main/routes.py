@@ -12,5 +12,9 @@ def register():
     return render_template('register.html')
 
 @main_bp.route('/dashboard')
-def register():
-    return render_template('dahsboard.html')
+def dashboard():
+    return render_template('dashboard.html')
+
+@main_bp.route('/settings')
+def settings():
+    return render_template('settings.html')

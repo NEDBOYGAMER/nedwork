@@ -39,6 +39,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
+            if (data.success) {
+            window.location.href = '/dashboard';
+            }
+            else {
+                console.log("Invalid username or password");
+            }
             console.log(data);
         });
     }

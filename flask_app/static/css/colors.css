@@ -13,6 +13,8 @@
     --surface-dark: #18181856;
     --surface-button-dark: #2e2e3679;
 
+    --surface-opaque: #080b11;
+
     /* Glow / cursor ring */
     --cursor_mode: lighten;
     --cursor-hover: rgb(255, 255, 255);
@@ -35,6 +37,18 @@
     --dot_fallof: 0.6;
 
     --wrong: red;
+    --right: rgb(26, 192, 26);
+
+
+    --surface-strong: rgba(10, 12, 18, 0.92);
+    --surface-hover: rgba(255, 255, 255, 0.06);
+    --border-soft: rgba(255, 255, 255, 0.08);
+
+    --accent-text: #0b0d12;
+
+    --shadow: rgba(0, 0, 0, 0.4);
+
+    --danger: #ff4d4d;
 }
 
 
@@ -49,15 +63,16 @@
     /* Accent / main neon */
     --accent: #4b51ad;
 
-    /* Dark UI surfaces */
+    /* Light UI surfaces */
     --surface-dark: #a6b1c456;
     --surface-button-dark: #9999b879;
+    --surface-opaque: #b8c2da;
 
     /* Glow / cursor ring */
     --cursor_mode: darken;
     --cursor-hover: rgba(0, 0, 0, 1);
     --cursor-ring: rgba(33, 35, 70, 0.568);
-    --cursor-ring-hover: rgba(88, 82, 82, 0.3);
+    --cursor-ring-hover: rgba(165, 165, 165, 0.3);
 
     /* Glitch effect colors */
     --glitch-red: rgb(98, 0, 255);
@@ -72,5 +87,20 @@
 
     --dots: rgb(24, 24, 32);
     --dot_fallof: 1.1;
+
+
+
+
+
+
+    --surface-strong: rgba(240, 243, 255, 0.95);
+    --surface-hover: rgba(0, 0, 0, 0.05);
+    --border-soft: rgba(0, 0, 0, 0.08);
+
+    --accent-text: #ffffff;
+
+    --shadow: rgba(0, 0, 0, 0.15);
+
+    --danger: #d93030;
 
 }

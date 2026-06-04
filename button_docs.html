@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="flask_app/static/css/buttons.css">
+</head>
+
+<body>
+
+<!-- TOGGLE -->
+<div class="toggle">
+  <input type="checkbox" id="switch">
+  <label class="toggle-box" for="switch">
+    <span class="option left">Off</span>
+    <span class="option right">On</span>
+    <div class="slider"></div>
+  </label>
+</div>
+
+<!-- ON OFF SWITCH -->
+<div class="toggle">
+  <label class="switch">
+    <input type="checkbox">
+    <span class="switch-track">
+      <span class="switch-knob"></span>
+    </span>
+  </label>
+</div>
+
+<!-- N SELECTOR -->
+<div class="toggle">
+  <div class="nselect">
+    <input type="radio" name="n" id="opt1" checked>
+    <input type="radio" name="n" id="opt2">
+    <input type="radio" name="n" id="opt3">
+
+    <label class="option" for="opt1">Low</label>
+    <label class="option" for="opt2">Med</label>
+    <label class="option" for="opt3">High</label>
+
+    <div class="nselect-slider"></div>
+  </div>
+</div>
+
+<!-- RANGE -->
+<div class="range">
+  <input type="range" min="0" max="100" value="30">
+</div>
+
+</body>
+</html>
+
+
+
+<!-- DROPDOWN -->
+<div class="dropdown">
+  <input type="checkbox" id="drop" />
+
+  <label for="drop" class="dropdown-box">
+    <span class="dropdown-selected">Select option</span>
+    <span class="dropdown-arrow">▾</span>
+  </label>
+
+  <div class="dropdown-menu">
+    <label for="drop" data-value="Option 1">Option 1</label>
+    <label for="drop" data-value="Option 2">Option 2</label>
+    <label for="drop" data-value="Option 3">Option 3</label>
+  </div>
+</div>
