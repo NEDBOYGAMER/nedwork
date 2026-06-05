@@ -23,6 +23,7 @@
     <div id="cursor-ring"></div>
     <canvas id="bg-canvas"></canvas>
 
+    <!-- ── Sidebar ──────────────────────────────────────────────────── -->
     <aside id="side-nav">
 
         <div class="nav-top">
@@ -36,8 +37,9 @@
         <div class="nav-section grow"></div>
 
         <div class="nav-section">
+            <button class="icon-item" id="about-btn" title="Settings">ℹ️</button>
             <button class="icon-item" id="settings-btn" title="Settings">⚙</button>
-            <button class="icon-item" id="account-btn" title="Account">👤</button>
+            <button class="icon-item" id="account-btn"  title="Account">👤</button>
         </div>
 
         <div class="nav-bottom">
@@ -46,20 +48,35 @@
 
     </aside>
 
+    <!-- ── Main content ─────────────────────────────────────────────── -->
     <main id="content">
-        <!-- middle part untouched -->
+
+        <header class="dash-header">
+            <span class="dash-greeting" id="dash-greeting">Dashboard</span>
+            <span class="dash-date"     id="dash-date"></span>
+        </header>
+
+        <div id="card-grid">
+            <!-- Cards injected by dashboard.js -->
+        </div>
+
     </main>
 
-    <button id="plus-button">+</button>
+    <!-- ── Add-widget button ────────────────────────────────────────── -->
+    <button id="plus-button" title="Add widget">+</button>
 
-    <!-- overlay (initially hidden) -->
+    <!-- ── Overlay ──────────────────────────────────────────────────── -->
     <div id="overlay" class="hidden"></div>
 
-    <!-- modal window (id matches CSS: #add-window) -->
+    <!-- ── Widget picker modal ──────────────────────────────────────── -->
     <div id="add-window" class="hidden">
-        <h2>Create new</h2>
-        <p>Content goes here</p>
-        <button id="close-add-window">Close</button>
+        <div class="modal-header">
+            <span class="modal-title">Add Widget</span>
+            <button id="close-add-window" class="close-btn">✕</button>
+        </div>
+        <div id="widget-picker">
+            <!-- Populated by dashboard.js -->
+        </div>
     </div>
 
 </body>
