@@ -1,5 +1,5 @@
 // dashboard.js
-import { createBackground } from './background.js';
+import { createBackground } from '../components/background.js';
 
 
 // ═══════════════════════════════════════════════════════════════════════════

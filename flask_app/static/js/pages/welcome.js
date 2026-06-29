@@ -1,4 +1,4 @@
-import { createBackground } from './background.js';
+import { createBackground } from '../components/background.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const cursor = document.getElementById('cursor');

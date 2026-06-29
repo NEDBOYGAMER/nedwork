@@ -18,8 +18,3 @@ def dashboard():
 @main_bp.route('/settings')
 def settings():
     return render_template('settings.html')
-
-
-@main_bp.route('/about')
-def about():
-    return render_template('about.html')
