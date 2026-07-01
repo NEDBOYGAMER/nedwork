@@ -18,7 +18,6 @@ class User(db.Model):
 
     groups = db.relationship(
         "Group",
-        
         secondary=user_groups,
         back_populates="users"
     )
@@ -60,3 +59,4 @@ class Group(db.Model):
         secondary=user_groups,
         back_populates="groups"
     )
+    

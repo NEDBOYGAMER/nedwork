@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify
+from flask import Blueprint, render_template, jsonify, request
 from flask_app.models import *
 
 tests_bp = Blueprint('tests', __name__, static_folder='../static')
@@ -28,3 +28,21 @@ def get_test_users_api():
         
     # 3. Return JSON response
     return jsonify(user_list)
+
+@tests_bp.route('/api/v1/group_data/<group_name>', methods=['GET'])
+def get_group_data(group_name):
+    group = Group.query.filter_by(name = group_name).first()
+
+    if not group:
+        return jsonify({"error": "Group not found"}), 404
+    
+    user_list = []
+    for user in group.users:
+        user_list.append(user.username)
+
+    return jsonify({
+        "name": group.name,
+        "users": user_list,
+        "id": group.id
+    })
+
