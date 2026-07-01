@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/global/colors.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/basic.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/bg.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
 
     {% block head %}{% endblock %}
 
@@ -20,8 +21,6 @@
 <body>
     <div id="cursor"></div>
     <div id="cursor-ring"></div>
-    
-
     <canvas id="bg-canvas"></canvas>
     {% block content %}{% endblock %}
 </body>

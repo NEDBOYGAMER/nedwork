@@ -1,71 +1,146 @@
 # seed_db.py
 from flask_app import create_app, db
-from flask_app.models import User, Group, Dashboard, user_groups
+from flask_app.models import User, Group, Dashboard, UserGroup
+
 
 def seed_database():
     app = create_app()
-    
+
     with app.app_context():
         print("Starting database reset and seed...")
-        
+
         # 1. Clear existing entries to prevent UniqueConstraint errors
         try:
             print("Deleting old records...")
-            # Delete dashboards first because they hold foreign keys to users
+
+            # Delete dashboards first because they reference users
             db.session.query(Dashboard).delete()
-            # Clear the many-to-many relationship table
-            db.session.execute(user_groups.delete())
+
+            # Delete memberships
+            db.session.query(UserGroup).delete()
+
             # Delete users and groups
             db.session.query(User).delete()
             db.session.query(Group).delete()
+
             db.session.commit()
             print("Database cleared successfully.")
+
         except Exception as e:
             db.session.rollback()
             print(f"Error clearing database: {e}")
             return
 
         print("---")
-        
+
         # 2. Create Groups
         group_names = [
-            "Admin", "Tester", "Developer", "Project Manager", 
-            "Data Analyst", "Support", "Marketing"
+            "Admin",
+            "Tester",
+            "Developer",
+            "Project Manager",
+            "Data Analyst",
+            "Support",
+            "Marketing"
         ]
+
         groups = {}
+
         for name in group_names:
             group = Group(name=name)
             db.session.add(group)
             groups[name] = group
-            
+
         print(f"Created {len(groups)} groups.")
-        
-        # 3. Define Users data
+
+        # 3. Create Users
         users_data = [
-            {"username": "alice_dev", "email": "alice@example.com", "password": "SecurePass123!", "groups": ["Admin", "Developer"]},
-            {"username": "bob_tester", "email": "bob@example.com", "password": "Testing456!", "groups": ["Tester"]},
-            {"username": "charlie_pm", "email": "charlie@example.com", "password": "ManageProj789!", "groups": ["Project Manager"]},
-            {"username": "dana_data", "email": "dana@example.com", "password": "DataCrunch2026!", "groups": ["Data Analyst", "Developer"]},
-            {"username": "evan_support", "email": "evan@example.com", "password": "HelpDeskPassword!", "groups": ["Support"]},
-            {"username": "fiona_mkt", "email": "fiona@example.com", "password": "GrowthMetrics#1", "groups": ["Marketing", "Data Analyst"]},
-            {"username": "grace_lead", "email": "grace@example.com", "password": "LeadDevPass99!", "groups": ["Admin", "Developer", "Project Manager"]}
+            {
+                "username": "alice_dev",
+                "email": "alice@example.com",
+                "password": "SecurePass123!",
+                "groups": [
+                    ("Admin", "admin"),
+                    ("Developer", "member")
+                ]
+            },
+            {
+                "username": "bob_tester",
+                "email": "bob@example.com",
+                "password": "Testing456!",
+                "groups": [
+                    ("Tester", "member")
+                ]
+            },
+            {
+                "username": "charlie_pm",
+                "email": "charlie@example.com",
+                "password": "ManageProj789!",
+                "groups": [
+                    ("Project Manager", "organizer")
+                ]
+            },
+            {
+                "username": "dana_data",
+                "email": "dana@example.com",
+                "password": "DataCrunch2026!",
+                "groups": [
+                    ("Data Analyst", "member"),
+                    ("Developer", "member")
+                ]
+            },
+            {
+                "username": "evan_support",
+                "email": "evan@example.com",
+                "password": "HelpDeskPassword!",
+                "groups": [
+                    ("Support", "member")
+                ]
+            },
+            {
+                "username": "fiona_mkt",
+                "email": "fiona@example.com",
+                "password": "GrowthMetrics#1",
+                "groups": [
+                    ("Marketing", "admin"),
+                    ("Data Analyst", "member")
+                ]
+            },
+            {
+                "username": "grace_lead",
+                "email": "grace@example.com",
+                "password": "LeadDevPass99!",
+                "groups": [
+                    ("Admin", "admin"),
+                    ("Developer", "admin"),
+                    ("Project Manager", "organizer")
+                ]
+            }
         ]
-        
+
         users = {}
+
         for u_data in users_data:
-            user = User(username=u_data["username"], email=u_data["email"])
+            user = User(
+                username=u_data["username"],
+                email=u_data["email"]
+            )
             user.set_password(u_data["password"])
+
             db.session.add(user)
             users[u_data["username"]] = user
-            
-            # Associate users with groups (Many-to-Many)
-            for g_name in u_data["groups"]:
-                if g_name in groups:
-                    user.groups.append(groups[g_name])
-                    
-        print(f"Created {len(users)} users and mapped their group permissions.")
-        
-        # 4. Create Dashboards and assign to users (One-to-Many)
+
+            for group_name, role in u_data["groups"]:
+                membership = UserGroup(
+                    user=user,
+                    group=groups[group_name],
+                    role=role
+                )
+                db.session.add(membership)
+
+        print(f"Created {len(users)} users and assigned group roles.")
+
+        # 4. Create Dashboards
         dashboards_data = [
             {"name": "Main Analytics", "username": "alice_dev"},
             {"name": "Database Health", "username": "alice_dev"},
@@ -82,24 +157,28 @@ def seed_database():
             {"name": "System Architecture", "username": "grace_lead"},
             {"name": "Global Error Logs", "username": "grace_lead"}
         ]
-        
+
         for d_data in dashboards_data:
-            user_obj = users.get(d_data["username"])
-            if user_obj:
-                dashboard = Dashboard(name=d_data["name"], user=user_obj)
-                db.session.add(dashboard)
-                
-        print(f"Created {len(dashboards_data)} dashboards assigned to respective users.")
-        
-        # 5. Commit everything to the physical database
+            dashboard = Dashboard(
+                name=d_data["name"],
+                user=users[d_data["username"]]
+            )
+            db.session.add(dashboard)
+
+        print(f"Created {len(dashboards_data)} dashboards.")
+
+        # 5. Commit everything
         try:
             db.session.commit()
             print("---")
-            print("Database successfully wiped and seeded with expanded mock data!")
+            print("Database successfully wiped and seeded!")
+
         except Exception as e:
             db.session.rollback()
             print("---")
             print(f"Error during seeding: {e}")
 
+
 if __name__ == "__main__":
     seed_database()
+

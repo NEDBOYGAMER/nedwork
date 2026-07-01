@@ -5,17 +5,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
 let state = "table"
 
-async function loadTableData() {
+async function loadTableData(selected) {
     try {
         const response = await fetch('/tests/api/v1/test-users');
         if (!response.ok) throw new Error("Failed to fetch database data");
-        
         const users = await response.json();
         
-        const tbody = document.querySelector("#user-table tbody");
-        tbody.innerHTML = ""; 
+        const title = document.getElementById("title");
+        title.innerHTML = "Users";
+        
+        const table = document.getElementById("user-table");
+        table.innerHTML = ""; 
 
         users.forEach(user => {
+            if (selected && user.username !== selected){
+                return
+            }
             const row = document.createElement("tr");
 
             const dashboardSpans = user.dashboards.map(d => `<span class="clickable-item" data-type="dashboard" data-value="${d}">${d}</span>`).join(', ') || 'None';
@@ -28,10 +33,10 @@ async function loadTableData() {
                 <td>${dashboardSpans}</td>
                 <td>${groupSpans}</td>
             `;
-            tbody.appendChild(row);
+            table.appendChild(row);
         });
 
-        tbody.addEventListener('click', (event) => {
+        table.addEventListener('click', (event) => {
             if (event.target.classList.contains('clickable-item')) {
                 const type = event.target.getAttribute('data-type'); 
                 const value = event.target.getAttribute('data-value'); 
@@ -48,46 +53,44 @@ async function loadTableData() {
 
 async function loadGroupData(groupName) {
     try {
-        const old_list = document.getElementById("user-table");
-        if (old_list) {
-            old_list.remove();
-        }
+        const response = await fetch(`/tests/api/v1/group/${(groupName)}`);
+        if (!response.ok) throw new Error("Failed to fetch group data");
 
-        const old_ul = document.getElementById("user-list");
-        if (old_ul) {
-            old_ul.remove();
-        }
-
-        const response = await fetch(`/tests/api/v1/group_data/${groupName}`);
         const data = await response.json();
 
-        const ul = document.createElement("ul");
-        ul.id = "user-list";
+        const table = document.getElementById("user-table");
+        if (!table) return;
 
-        if (data && Array.isArray(data.users)) {
-            data.users.forEach(username => {
-                const li = document.createElement("li");
-                li.textContent = username; 
-                ul.appendChild(li);
-            });
-        } else {
-            console.warn("No users found in the response data.");
-        }
+        table.innerHTML = "";
 
-        ul.addEventListener('click', (event) => { 
-            if (event.target.tagName === 'LI') {
-                console.log(`Clicked on user: ${event.target.textContent}`);
-            }
+        const title = document.getElementById("title");
+        title.innerHTML = groupName;
+
+
+        (data.users || []).forEach(user => {
+            const row = document.createElement("tr");
+
+            const userSpans = `<span class="clickable-item" data-type="dashboard" data-value="${user.name}">${user.name}</span>`
+
+
+            row.innerHTML = `
+            <td>${userSpans}</td>
+            <td>${user.role}</td>
+            `;
+            table.appendChild(row);
         });
 
-        let p = document.getElementById("container")
-        if (p) {
-            p.appendChild(ul);
-        } else {
-            console.error("Could not find element with id 'container' in the DOM.");
-        }
+            table.addEventListener('click', (event) => {
+            if (event.target.classList.contains('clickable-item')) {
+                const type = event.target.getAttribute('data-type'); 
+                const value = event.target.getAttribute('data-value'); 
+                
+                console.log(`Clicked on ${type}: ${value}`);
+                loadTableData(value)
+            }
+        })
 
     } catch (error) {
-        console.error("Error loading data:", error);
+        console.error("Error loading group data:", error);
     }
 }

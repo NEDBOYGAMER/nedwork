@@ -1,33 +1,20 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>nedwork</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-    <!--BASIC-->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/global/colors.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/basic.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/bg.css') }}">
-    <!--PAGE-->
+{% extends "base.html" %}
+
+{% block title %}nedwork{% endblock %}
+
+{% block head %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/login.css') }}">
     <script type="module" src="{{ url_for('static', filename='js/pages/login.js') }}"></script>
-</head>
-<body>
+{% endblock %}
 <!-- custom cursor -->
 
 
+{% block content %}
 <div id="main-box">
     <h1 class="title" id="Welcome">Welcome</h1>
     <h2 class="title" id="nedwork">to nedwork</h2>
     <div id="pulse-bar"></div>
 </div>
-
-<div id="cursor"></div>
-<div id="cursor-ring"></div>
-<canvas id="bg-canvas"></canvas>
 
 
 <div id="login-box">
@@ -42,6 +29,4 @@
         <button id="reg-button" data-url="{{ url_for('auth.register_page') }}">Register </button>
     </div>
 </div>
-</body>
-
-</html>
+{% endblock %}

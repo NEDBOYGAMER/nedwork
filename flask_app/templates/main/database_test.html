@@ -3,28 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/database_test.css') }}">
-    <script type="module" src="{{ url_for('static', filename='js/pages/database_test.js') }}"></script>
-
-    <title>Document</title>
+    <title>nedwork</title>
+    <link rel="stylesheet" href="static/css/pages/database_test.css">
+    <script type="module" src="static/js/pages/database_test.js"></script>
 </head>
 <body>
+
     <div class="table-container" id="container">
-        <h2>Database User List</h2>
-        <table id="user-table">
-            <thead>
+        <h2 id="title" >Database User List</h2>
+        <table>
+            <tbody id="user-table">
                 <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Dashboards</th>
-                    <th>Groups</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="4">Loading data...</td>
+                    <td colspan="5">Loading data...</td>
                 </tr>
             </tbody>
         </table>

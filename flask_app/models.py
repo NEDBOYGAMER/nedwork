@@ -1,12 +1,19 @@
 from werkzeug.security import generate_password_hash, check_password_hash
+
 from . import db
 
 
-user_groups = db.Table(
-    "user_groups",
-    db.Column("user_id", db.Integer, db.ForeignKey("users.id"), primary_key=True),
-    db.Column("group_id", db.Integer, db.ForeignKey("groups.id"), primary_key=True)
-)
+class UserGroup(db.Model):
+    __tablename__ = "user_groups"
+
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), primary_key=True)
+    group_id = db.Column(db.Integer, db.ForeignKey("groups.id"), primary_key=True)
+
+    role = db.Column(db.String(20), nullable=False, default="member")
+
+    user = db.relationship("User", back_populates="group_memberships")
+    group = db.relationship("Group", back_populates="user_memberships")
+
 
 class User(db.Model):
     __tablename__ = "users"
@@ -16,10 +23,9 @@ class User(db.Model):
     email = db.Column(db.String(40), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
 
-    groups = db.relationship(
-        "Group",
-        secondary=user_groups,
-        back_populates="users"
+    group_memberships = db.relationship(
+        "UserGroup",
+        back_populates="user"
     )
 
     dashboards = db.relationship(
@@ -48,15 +54,14 @@ class Dashboard(db.Model):
 
     user = db.relationship("User", back_populates="dashboards")
 
+
 class Group(db.Model):
     __tablename__ = "groups"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(20), unique=True, nullable=False)
 
-    users = db.relationship(
-        "User",
-        secondary=user_groups,
-        back_populates="groups"
+    user_memberships = db.relationship(
+        "UserGroup",
+        back_populates="group"
     )
-    
