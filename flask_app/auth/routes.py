@@ -1,10 +1,21 @@
-from flask import request, Blueprint, jsonify
+from flask import request, Blueprint, jsonify, render_template
 from ..models import User
 from .. import db
 
-auth_bp = Blueprint("auth", __name__)
+auth_bp = Blueprint("auth", __name__, static_folder='../static')
 
-@auth_bp.route("/register", methods=["POST"])
+
+@auth_bp.route("/login", methods=["GET"])
+def login_page():
+    return render_template('auth/login.html')
+
+@auth_bp.route("/register", methods=["GET"])
+def register_page():
+    return render_template('auth/register.html')
+
+
+
+@auth_bp.route("/api/register", methods=["POST"])
 def register():
     data = request.get_json() or request.form
     username = data.get("username")
@@ -31,7 +42,7 @@ def register():
     return jsonify({"success": True})
 
 
-@auth_bp.route("/login", methods=["POST"])
+@auth_bp.route("/api/login", methods=["POST"])
 def login():
     data = request.get_json(silent=True)
     if not data or 'username' not in data or 'password' not in data:

@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const response = await fetch("/auth/register", {
+                const response = await fetch("/auth/api/register", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -71,7 +71,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const logButton = document.getElementById('log-button');
     if (logButton) {
         logButton.addEventListener('click', () => {
-            window.location.href = '/';
+            const targetUrl = logButton.dataset.url;
+            window.location.href = targetUrl;
         });
     }
 });

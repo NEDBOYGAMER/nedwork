@@ -12,8 +12,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/basic.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/bg.css') }}">
     <!--PAGE-->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/welcome.css') }}">
-    <script type="module" src="{{ url_for('static', filename='js/pages/welcome.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/login.css') }}">
+    <script type="module" src="{{ url_for('static', filename='js/pages/login.js') }}"></script>
 </head>
 <body>
 <!-- custom cursor -->
@@ -27,7 +27,7 @@
 
 <div id="cursor"></div>
 <div id="cursor-ring"></div>
-
+s
 <canvas id="bg-canvas"></canvas>
 
 
@@ -40,7 +40,7 @@
     <input class="login_input" type="password" id="password" placeholder="Password" required>
     <div id="buttons">
         <button id="log-button">LOGIN</button>
-        <button id="reg-button">Register</button>
+        <button id="reg-button" data-url="{{ url_for('auth.register_page') }}">Register </button>
     </div>
 </div>
 </body>

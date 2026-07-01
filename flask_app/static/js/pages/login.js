@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logButton) {
         logButton.addEventListener('click', async () => {
             //login
-            const response = await fetch("/auth/login", {
+            const response = await fetch("/auth/api/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -53,7 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const regButton = document.getElementById('reg-button');
     if (regButton) {
         regButton.addEventListener('click', () => {
-            window.location.href = '/register';
+            const targetUrl = regButton.dataset.url;
+            window.location.href = targetUrl;
         });
     }
 });

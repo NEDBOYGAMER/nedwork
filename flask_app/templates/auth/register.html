@@ -8,9 +8,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <!--BASIC-->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/colors.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/basic.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/bg.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global/colors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/basic.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/bg.css') }}">
     <!--PAGE-->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/register.css') }}">
     <script type="module" src="{{ url_for('static', filename='js/pages/register.js') }}"></script>
@@ -53,7 +53,7 @@
 
     <div id="buttons">
         <button id="log-button">Login</button>
-        <button id="reg-button">REGISTER</button>
+        <button id="reg-button" data-url="{{ url_for('auth.login_page') }}">REGISTER</button>
     </div>
 </div>
 </body>
