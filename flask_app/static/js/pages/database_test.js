@@ -23,6 +23,7 @@ async function loadTableData() {
                 <td>${user.id}</td>
                 <td>${user.username}</td>
                 <td>${user.email}</td>
+                <td>${user.dashboards.join(', ') || 'None'}</td>
                 <td>${user.groups.join(', ') || 'None'}</td>
             `;
             tbody.appendChild(row);

@@ -13,6 +13,7 @@ def tests():
 def get_test_users_api():
     # 1. Fetch data from database
     users = User.query.all()
+    dashboards = Dashboard.query.all()
     
     # 2. Serialize into a list of dicts (Industry Standard)
     user_list = []
@@ -21,7 +22,8 @@ def get_test_users_api():
             "id": user.id,
             "username": user.username,
             "email": user.email,
-            "groups": [group.name for group in user.groups] # Grabs relation data
+            "groups": [group.name for group in user.groups], # Grabs relation data
+            "dashboards": [dashboard.name for dashboard in dashboards if dashboard.user_id == user.id]
         })
         
     # 3. Return JSON response
