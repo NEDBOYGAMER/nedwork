@@ -18,6 +18,7 @@ def create_app():
     from flask_app.main.routes import main_bp
     from flask_app.auth.routes import auth_bp
     from flask_app.settings.routes import settings_bp
+    from flask_app._00_tests.routes import tests_bp
     from flask_app.dashboard.routes import dashboard_bp
     from flask_app.event_manager.routes import event_manager_bp
 
@@ -25,6 +26,7 @@ def create_app():
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(settings_bp, url_prefix='/settings')
+    app.register_blueprint(tests_bp, url_prefix='/tests')
     app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
     app.register_blueprint(event_manager_bp, url_prefix='/event_manager')
 
