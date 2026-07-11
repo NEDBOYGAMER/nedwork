@@ -25,6 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     background.start();
 
     adjust_headers();
+    adjust_grid();
+    setup_modal();
     fill_dashboard()
 
 });
@@ -44,6 +46,37 @@ async function adjust_headers(){
 
     const welcome = document.getElementById("dash-greeting")
     welcome.textContent = "Welcome " + user
+}
+
+function adjust_grid() {
+    document.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+    });
+}
+
+
+function setup_modal(){
+    // Get DOM elements
+    const modal = document.getElementById("modal-menu");
+    const openBtn = document.getElementById("add-widget-btn");
+    const closeBtn = document.getElementById("closeMenuBtn");
+
+    // Open the modal (change display to flex so it centers perfectly)
+    openBtn.addEventListener("click", () => {
+    modal.style.display = "flex";
+    });
+
+    // Close the modal when clicking the 'X'
+    closeBtn.addEventListener("click", () => {
+    modal.style.display = "none";
+    });
+
+    // Close the modal when clicking anywhere outside of the menu content box
+    window.addEventListener("click", (event) => {
+    if (event.target === modal) {
+        modal.style.display = "none";
+    }
+    });
 }
 
 async function fill_dashboard(){
