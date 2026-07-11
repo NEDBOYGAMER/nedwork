@@ -1,0 +1,44 @@
+.time-widget {
+    padding: 20px;
+    justify-content: space-between;
+    height: 100px;
+}
+
+
+.widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    color: var(--text-muted);
+    font-size: 11px;
+    letter-spacing: 3px;
+}
+
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+}
+
+
+.clock {
+    margin-top: 5px;
+
+    font-family: "Orbitron", monospace;
+    font-size: 32px;
+    letter-spacing: 4px;
+
+    color: var(--text-primary);
+}
+
+
+.date {
+    color: var(--text-muted);
+    font-size: 12px;
+    letter-spacing: 1px;
+}

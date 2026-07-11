@@ -1,184 +1,187 @@
-# seed_db.py
+import random
 from flask_app import create_app, db
-from flask_app.models import User, Group, Dashboard, UserGroup
+from flask_app.models import User, Group, Dashboard, UserGroup, Friendship, Permission, UserPermission
 
 
 def seed_database():
     app = create_app()
 
     with app.app_context():
-        print("Starting database reset and seed...")
+        print("🚀 Starting database reset and friendly seed...")
 
-        # 1. Clear existing entries to prevent UniqueConstraint errors
+        # 1. Recreate tables to ensure the schema matches the models exactly
         try:
-            print("Deleting old records...")
-
-            # Delete dashboards first because they reference users
-            db.session.query(Dashboard).delete()
-
-            # Delete memberships
-            db.session.query(UserGroup).delete()
-
-            # Delete users and groups
-            db.session.query(User).delete()
-            db.session.query(Group).delete()
-
-            db.session.commit()
-            print("Database cleared successfully.")
-
+            print("🧹 Dropping and recreating all tables...")
+            db.drop_all()
+            db.create_all()
+            print("✨ Database schema recreated successfully.")
         except Exception as e:
             db.session.rollback()
-            print(f"Error clearing database: {e}")
+            print(f"❌ Error resetting database schema: {e}")
             return
 
         print("---")
 
-        # 2. Create Groups
+        # 2. Create Simple Global Permissions
+        print("🔐 Seeding application features...")
+        permission_names = ["use_chat", "create_groups", "custom_themes", "access_beta"]
+        permissions_dict = {}
+        
+        for name in permission_names:
+            perm = Permission(name=name)
+            db.session.add(perm)
+            permissions_dict[name] = perm
+        
+        print(f"🔑 Created {len(permissions_dict)} permissions.")
+
+        # 3. Create Casual Friend Groups
         group_names = [
-            "Admin",
-            "Tester",
-            "Developer",
-            "Project Manager",
-            "Data Analyst",
-            "Support",
-            "Marketing"
+            "The Boys", "Gaming Clan", "Study Group", "Close Friends", 
+            "Family", "Movie Night", "Concert Squad", "Weekend Hikers"
         ]
 
         groups = {}
-
         for name in group_names:
             group = Group(name=name)
             db.session.add(group)
             groups[name] = group
 
-        print(f"Created {len(groups)} groups.")
+        print(f"📦 Created {len(groups)} casual friend groups.")
 
-        # 3. Create Users
-        users_data = [
-            {
-                "username": "alice_dev",
-                "email": "alice@example.com",
-                "password": "SecurePass123!",
-                "groups": [
-                    ("Admin", "admin"),
-                    ("Developer", "member")
-                ]
-            },
-            {
-                "username": "bob_tester",
-                "email": "bob@example.com",
-                "password": "Testing456!",
-                "groups": [
-                    ("Tester", "member")
-                ]
-            },
-            {
-                "username": "charlie_pm",
-                "email": "charlie@example.com",
-                "password": "ManageProj789!",
-                "groups": [
-                    ("Project Manager", "organizer")
-                ]
-            },
-            {
-                "username": "dana_data",
-                "email": "dana@example.com",
-                "password": "DataCrunch2026!",
-                "groups": [
-                    ("Data Analyst", "member"),
-                    ("Developer", "member")
-                ]
-            },
-            {
-                "username": "evan_support",
-                "email": "evan@example.com",
-                "password": "HelpDeskPassword!",
-                "groups": [
-                    ("Support", "member")
-                ]
-            },
-            {
-                "username": "fiona_mkt",
-                "email": "fiona@example.com",
-                "password": "GrowthMetrics#1",
-                "groups": [
-                    ("Marketing", "admin"),
-                    ("Data Analyst", "member")
-                ]
-            },
-            {
-                "username": "grace_lead",
-                "email": "grace@example.com",
-                "password": "LeadDevPass99!",
-                "groups": [
-                    ("Admin", "admin"),
-                    ("Developer", "admin"),
-                    ("Project Manager", "organizer")
-                ]
-            }
+        # 4. Programmatically generate simple Users
+        roles_pool = ["member", "admin", "owner"]
+        created_users = []
+
+        print("👤 Creating your custom user...")
+        # Add your custom user explicitly
+        custom_user = User(username="r", email="r@nedwork.ch")
+        custom_user.generate_key()
+        custom_user.set_password("1")
+        db.session.add(custom_user)
+        created_users.append(custom_user)
+
+        # Assign your user to a couple of casual starting groups
+        for g_name in random.sample(group_names, 2):
+            db.session.add(UserGroup(user=custom_user, group=groups[g_name], role="owner"))
+        for p_name in random.sample(permission_names, 2):
+            db.session.add(UserPermission(user=custom_user, permission=permissions_dict[p_name]))
+
+        first_names = [
+            "Alice", "Bob", "Charlie", "Dana", "Evan", "Fiona", "Grace", "Henry", 
+            "Ivy", "Jack", "Liam", "Mia", "Noah", "Olivia", "Peter", "Quinn", 
+            "Ruby", "Sam", "Tara", "Umar", "Victor", "Wendy", "Xavier", "Yara", 
+            "Zane", "Arthur", "Elena", "Marcus", "Chloe", "Luke", "Sophia", "Ryan"
         ]
+        
+        # Simple passwords list to pick from sequentially or randomly
+        simple_passwords = ["123", "12", "15", "abc"]
+        total_users_to_create = min(25, len(first_names)) # Kept smaller for quick clean testing
 
-        users = {}
-
-        for u_data in users_data:
-            user = User(
-                username=u_data["username"],
-                email=u_data["email"]
-            )
-            user.set_password(u_data["password"])
-
+        print(f"👥 Generating {total_users_to_create} simplified users...")
+        
+        for i in range(total_users_to_create):
+            username = first_names[i]
+            email = f"{username.lower()}@example.com"
+            password = simple_passwords[i % len(simple_passwords)] # Rotates cleanly through 123, 12, 15, abc
+            
+            user = User(username=username, email=email)
+            user.generate_key()
+            user.set_password(password)
             db.session.add(user)
-            users[u_data["username"]] = user
-
-            for group_name, role in u_data["groups"]:
+            created_users.append(user)
+            
+            # --- Assign user to 1 to 2 random groups ---
+            num_groups = random.randint(1, 2)
+            assigned_groups = random.sample(group_names, num_groups)
+            
+            for g_name in assigned_groups:
+                role = random.choice(roles_pool)
                 membership = UserGroup(
                     user=user,
-                    group=groups[group_name],
+                    group=groups[g_name],
                     role=role
                 )
                 db.session.add(membership)
+                
+            # --- Assign a random permission ---
+            p_name = random.choice(permission_names)
+            user_perm = UserPermission(user=user, permission=permissions_dict[p_name])
+            db.session.add(user_perm)
 
-        print(f"Created {len(users)} users and assigned group roles.")
-
-        # 4. Create Dashboards
-        dashboards_data = [
-            {"name": "Main Analytics", "username": "alice_dev"},
-            {"name": "Database Health", "username": "alice_dev"},
-            {"name": "QA Overview", "username": "bob_tester"},
-            {"name": "Automation Metrics", "username": "bob_tester"},
-            {"name": "Sprint Velocity", "username": "charlie_pm"},
-            {"name": "Roadmap Timeline", "username": "charlie_pm"},
-            {"name": "BI Insights", "username": "dana_data"},
-            {"name": "ETL Pipeline Monitor", "username": "dana_data"},
-            {"name": "Ticket Volume", "username": "evan_support"},
-            {"name": "SLA Compliance", "username": "evan_support"},
-            {"name": "Campaign ROI", "username": "fiona_mkt"},
-            {"name": "Social Engagement", "username": "fiona_mkt"},
-            {"name": "System Architecture", "username": "grace_lead"},
-            {"name": "Global Error Logs", "username": "grace_lead"}
+        # 5. Generate Dashboards with changing widget mock layouts to test widget logic
+        print("📊 Creating custom dashboards with varied widget loads...")
+        
+        # Variations of logic states for widgets to test your front-end logic parsing
+        widget_presets = [
+            ["time", "weather"],
+            ["timer", "notes"],
+            ["time", "notes", "weather"],
+            ["timer", "time"],
         ]
+        
+        dashboard_counter = 1
+        for user in created_users:
+            # Everyone gets 1 or 2 test boards
+            num_dashboards = random.randint(1, 2)
+            
+            for index in range(num_dashboards):
+                # Ensure name fits under 20 chars safely
+                db_name = "main"
+                if index > 0:
+                    db_name += str(index+1)
+                
+                # Pull a structural preset configuration to test logic
+                test_widgets = random.choice(widget_presets)
+                
+                dashboard = Dashboard(
+                    name=db_name,
+                    user=user,
+                    widgets=test_widgets
+                )
+                db.session.add(dashboard)
+                dashboard_counter += 1
+                
+        print(f"📈 Provisioned {dashboard_counter - 1} dashboards with mixed JSON widget payloads.")
 
-        for d_data in dashboards_data:
-            dashboard = Dashboard(
-                name=d_data["name"],
-                user=users[d_data["username"]]
-            )
-            db.session.add(dashboard)
+        # 6. Build Friendships
+        print("🤝 Linking casual friend graph...")
+        friendship_statuses = ["accepted", "accepted", "pending"] 
+        existing_friendships = set()
+        friendship_count = 0
+        
+        for i, sender in enumerate(created_users):
+            num_friends = random.randint(2, 5)
+            eligible_receivers = [u for j, u in enumerate(created_users) if i != j]
+            receivers = random.sample(eligible_receivers, min(num_friends, len(eligible_receivers)))
+            
+            for receiver in receivers:
+                pair = (sender.username, receiver.username)
+                reverse_pair = (receiver.username, sender.username)
+                
+                if pair not in existing_friendships and reverse_pair not in existing_friendships:
+                    status = random.choice(friendship_statuses)
+                    friendship = Friendship(
+                        sender=sender,
+                        receiver=receiver,
+                        status=status
+                    )
+                    db.session.add(friendship)
+                    existing_friendships.add(pair)
+                    friendship_count += 1
 
-        print(f"Created {len(dashboards_data)} dashboards.")
+        print(f"🔗 Connected {friendship_count} friendships.")
 
-        # 5. Commit everything
+        # 7. Save out changes
         try:
+            print("💾 Committing seed data to database...")
             db.session.commit()
             print("---")
-            print("Database successfully wiped and seeded!")
-
+            print("🎉 Success! Simplified playground dataset successfully populated.")
         except Exception as e:
             db.session.rollback()
             print("---")
-            print(f"Error during seeding: {e}")
+            print(f"⚡ Crucial Error during seeding execution: {e}")
 
 
 if __name__ == "__main__":
     seed_database()
-

@@ -48,3 +48,25 @@ def get_group_data(group_name):
         "name": group.name,
         "users": user_list
     })
+
+
+
+@tests_bp.route('/api/v1/friends/<name>', methods=['GET'])
+def get_friend_data(name):
+    print(name)
+    user = User.query.filter_by(username=name).first()
+
+    if not user:
+        return({"error": "User not found"}), 404
+    
+    friends = user.friends
+    
+    friends_list = []
+    for friend in friends:
+        friends_list.append({
+            "name": friend.username,
+        })
+
+    return jsonify({
+        "friends": friends_list
+    })

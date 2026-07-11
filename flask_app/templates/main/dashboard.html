@@ -15,7 +15,15 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/bg.css') }}">
 
     <!--PAGE-->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/widget.css') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/time.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/notes.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/weather.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/timer.css') }}">
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <script type="module" src="{{ url_for('static', filename='js/pages/dashboard.js') }}"></script>
 </head>
@@ -57,8 +65,8 @@
     <main id="content">
 
         <header class="dash-header">
-            <span class="dash-greeting" id="dash-greeting">Dashboard</span>
-            <span class="dash-date"     id="dash-date"></span>
+            <span class="dash-greeting" id="dash-greeting">Welcome</span>
+            <span class="dash-greeting" id="dash-name">Dashboard</span>
         </header>
 
         <div id="card-grid">
@@ -67,22 +75,12 @@
 
     </main>
 
-    <!-- ── Add-widget button ────────────────────────────────────────── -->
-    <button id="plus-button" title="Add widget">+</button>
-
-    <!-- ── Overlay ──────────────────────────────────────────────────── -->
-    <div id="overlay" class="hidden"></div>
-
-    <!-- ── Widget picker modal ──────────────────────────────────────── -->
-    <div id="add-window" class="hidden">
-        <div class="modal-header">
-            <span class="modal-title">Add Widget</span>
-            <button id="close-add-window" class="close-btn">✕</button>
-        </div>
-        <div id="widget-picker">
-            <!-- Populated by dashboard.js -->
-        </div>
-    </div>
 
 </body>
 </html>
+
+
+
+
+
+

@@ -54,38 +54,38 @@
 
 [data-theme="light"] {
     /* Background */
-    --bg-gradient-top: #a2acd4;
+    --bg-gradient-top: #ffffff;
     --bg-gradient-bottom: #a2a2b1;
 
     /* Text */
     --text-color: rgb(0, 0, 0);
 
     /* Accent / main neon */
-    --accent: #4b51ad;
+    --accent: #bd5f29;
 
     /* Light UI surfaces */
-    --surface-dark: #a6b1c456;
-    --surface-button-dark: #9999b879;
-    --surface-opaque: #b8c2da;
+    --surface-dark: #afa79556;
+    --surface-button-dark: #b89e9979;
+    --surface-opaque: #dac7b8;
 
     /* Glow / cursor ring */
     --cursor_mode: darken;
     --cursor-hover: rgba(0, 0, 0, 1);
-    --cursor-ring: rgba(33, 35, 70, 0.568);
+    --cursor-ring: rgba(70, 54, 33, 0.568);
     --cursor-ring-hover: rgba(165, 165, 165, 0.3);
 
     /* Glitch effect colors */
-    --glitch-red: rgb(98, 0, 255);
-    --glitch-cyan: cyan;
+    --glitch-red: rgb(255, 217, 0);
+    --glitch-cyan: rgb(255, 60, 0);
 
     /* Pure white (used in hover states) */
     --white: #000000;
 
     /* Animated Background */
-    --glow1: rgba(21, 23, 31, 0.105);
+    --glow1: rgba(31, 24, 21, 0.105);
     --glow2: rgba(0, 0, 0, 0);
 
-    --dots: rgb(24, 24, 32);
+    --dots: rgb(32, 26, 24);
     --dot_fallof: 1.1;
 
 
@@ -93,7 +93,7 @@
 
 
 
-    --surface-strong: rgba(240, 243, 255, 0.95);
+    --surface-strong: rgba(255, 245, 240, 0.95);
     --surface-hover: rgba(0, 0, 0, 0.05);
     --border-soft: rgba(0, 0, 0, 0.08);
 

@@ -1,11 +1,10 @@
-
-
 #Welcome {
     font-size: 120px;
     margin-top: 0;
     padding-top: 60px;
     margin-bottom: 10px;
     color: var(--text-color);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 #Welcome:hover {
@@ -25,6 +24,7 @@
     font-stretch: expanded;
     margin-top: 10px;
     color: var(--text-color);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 #nedwork:hover {
@@ -32,58 +32,73 @@
 }
 
 #main-box {
-    margin-bottom: 10vh;
+    margin-bottom: 5vh;
 }
 
-#login-box {
+#container {
     background-color: var(--surface-dark);
-    border-color: var(--text-color);
-    border-radius: 50px;
-    border-style: solid;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     margin-left: 30vw;
     margin-right: 30vw;
+    padding: 1%;
+    backdrop-filter: blur(3px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75);
+    border-radius: 20px;
+}
+.less_padding {
+    padding: 10px;
 }
 
-.login_input {
-    background-color: var(--surface-dark);
+input {
+    background-color: rgba(0, 0, 0, 0);
     border-color: var(--text-color);
-    border-radius: 10px;
+    border-style: none;
+    border-bottom-style: outset;
     padding: 5px;
     color: var(--text-color);
     margin-bottom: 20px;
     font-size: 20px;
     width: 80%;
+    font-family: 'Orbitron', sans-serif;
+}
+input:focus {
+    outline: none;
 }
 
 #buttons {
     display: grid;
     grid-template-columns: 40% 20% 40%;
+    grid-template-rows: 100%;
     width: 80%;
     margin: auto;
 }
 
-#log-button {
+#active-button {
     background-color: color-mix(in srgb, var(--accent) 47%, transparent);
     border-radius: 20px;
-    border-style: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     margin-bottom: 10px;
-    font-size: x-large;
+    font-size: 120%;
     color: var(--text-color);
+    font-family: 'Orbitron', sans-serif;
+    padding: 10px;
+    box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 47%, transparent);
 }
 
-#reg-button {
+#inactive-button {
     grid-column: 3;
     background-color: var(--surface-button-dark);
     border-radius: 20px;
-    border-style: solid;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     margin-bottom: 10px;
-    font-size: x-large;
+    font-size: 120%;
     color: var(--text-color);
+    font-family: 'Orbitron', sans-serif;
+    padding: 10px;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.041);
 }
 
 * { cursor: none !important; }
-
-
 
 #bg-canvas {
     position: fixed;
@@ -92,9 +107,10 @@
     pointer-events: none;
 }
 
-
 #pulse-bar {
-    margin: auto;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 10px;
     width: 30vw;
     height: 2px;
     background: linear-gradient(90deg, transparent, var(--accent), transparent);

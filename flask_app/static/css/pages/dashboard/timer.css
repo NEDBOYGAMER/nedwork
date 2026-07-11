@@ -1,0 +1,53 @@
+.timer-widget {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100px; /* Matches all other widgets */
+}
+
+.timer-display {
+    margin-top: 2px;
+}
+
+#timer-time {
+    font-family: "Orbitron", monospace;
+    font-size: 32px;
+    letter-spacing: 4px;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.timer-controls {
+    display: flex;
+    gap: 15px;
+}
+
+.timer-controls button {
+    background: none;
+    border: none;
+    padding: 0;
+    
+    color: var(--text-muted);
+    font-size: 11px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.timer-controls button:hover {
+    color: var(--text-primary);
+}
+
+/* Flashing red dot when running */
+.active-timer {
+    background: #ff4a4a !important;
+    box-shadow: 0 0 12px #ff4a4a !important;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}

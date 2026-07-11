@@ -1,9 +1,40 @@
 document.addEventListener("DOMContentLoaded", () => {
     console.log("DOM fully loaded! Calling loadTableData now...");
+
+    document.getElementById("overview-button").addEventListener("click", () => {
+        loadTableData();
+    });
+
+    setUpTableListener();
     loadTableData();
 });
 
-let state = "table"
+
+function setUpTableListener(){
+    const table = document.getElementById("user-table");
+
+    table.addEventListener('click', (event) => {
+        if (event.target.classList.contains('clickable-item')) {
+            const type = event.target.getAttribute('data-type'); 
+            const value = event.target.getAttribute('data-value'); 
+            
+            console.log(`Clicked on ${type}: ${value}`);
+
+            switch (type){
+                case "group":
+                    loadGroupData(value)
+                    break
+                case "user":
+                    loadFriendData(value)
+                    break
+            }
+        }
+    })
+}
+
+ 
+
+
 
 async function loadTableData(selected) {
     try {
@@ -36,16 +67,6 @@ async function loadTableData(selected) {
             table.appendChild(row);
         });
 
-        table.addEventListener('click', (event) => {
-            if (event.target.classList.contains('clickable-item')) {
-                const type = event.target.getAttribute('data-type'); 
-                const value = event.target.getAttribute('data-value'); 
-                
-                console.log(`Clicked on ${type}: ${value}`);
-                loadGroupData(value)
-            }
-        })
-
     } catch (error) {
         console.error("Error loading data:", error);
     }
@@ -70,7 +91,7 @@ async function loadGroupData(groupName) {
         (data.users || []).forEach(user => {
             const row = document.createElement("tr");
 
-            const userSpans = `<span class="clickable-item" data-type="dashboard" data-value="${user.name}">${user.name}</span>`
+            const userSpans = `<span class="clickable-item" data-type="user" data-value="${user.name}">${user.name}</span>`
 
 
             row.innerHTML = `
@@ -80,17 +101,44 @@ async function loadGroupData(groupName) {
             table.appendChild(row);
         });
 
-            table.addEventListener('click', (event) => {
-            if (event.target.classList.contains('clickable-item')) {
-                const type = event.target.getAttribute('data-type'); 
-                const value = event.target.getAttribute('data-value'); 
-                
-                console.log(`Clicked on ${type}: ${value}`);
-                loadTableData(value)
-            }
-        })
+    } catch (error) {
+        console.error("Error loading group data:", error);
+    }
+}
+
+
+
+async function loadFriendData(username) {
+    try {
+        console.log(username)
+        const response = await fetch(`/tests/api/v1/friends/${(username)}`);
+        if (!response.ok) throw new Error("Failed to fetch friend data");
+
+        const data = await response.json();
+
+        const table = document.getElementById("user-table");
+        if (!table) return;
+
+        table.innerHTML = "";
+
+        const title = document.getElementById("title");
+        title.innerHTML = username + "'s friends";
+
+
+        (data.friends || []).forEach(user => {
+            const row = document.createElement("tr");
+
+            const userSpans = `<span class="clickable-item" data-type="user" data-value="${user.name}">${user.name}</span>`
+
+
+            row.innerHTML = `
+            <td>${userSpans}</td>
+            `;
+            table.appendChild(row);
+        });
 
     } catch (error) {
         console.error("Error loading group data:", error);
     }
 }
+

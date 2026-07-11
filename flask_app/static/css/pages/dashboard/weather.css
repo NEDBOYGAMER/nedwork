@@ -1,0 +1,23 @@
+.weather-widget {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100px; /* Matches time and notes widgets */
+}
+
+.weather-display {
+    margin-top: 5px;
+
+    font-family: "Orbitron", monospace;
+    font-size: 32px;
+    letter-spacing: 4px;
+
+    color: var(--text-primary);
+}
+
+.weather-desc {
+    color: var(--text-muted);
+    font-size: 11px;
+    letter-spacing: 2px;
+}

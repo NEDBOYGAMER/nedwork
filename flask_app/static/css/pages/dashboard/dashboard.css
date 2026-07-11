@@ -1,0 +1,128 @@
+#side-nav {
+    height: 100vh;
+    width: 120px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-strong);
+    border-right: 1px solid var(--border-soft);
+    padding: 16px;
+    box-sizing: border-box;
+    z-index: 200;
+}
+
+.nav-top {
+    padding: 10px 8px 18px;
+}
+
+.logo {
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 2px;
+}
+
+.nav-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nav-section.grow {
+    flex: 1;
+}
+
+.nav-item {
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-color);
+    text-align: left;
+    cursor: pointer;
+    transition: .2s;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+
+.nav-item:hover,
+.nav-item.active {
+    background: var(--surface-hover);
+}
+
+.nav-item.danger {
+    color: var(--danger);
+}
+
+.icon-item {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 20px;
+    transition: .2s;
+    font-family: inherit;
+}
+
+.icon-item:hover {
+    background: var(--surface-hover);
+}
+
+.nav-bottom {
+    margin-top: 10px;
+}
+
+#content {
+    margin-left: 152px;
+    min-height: 100vh;
+}
+
+.dash-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 28px 28px 0;
+}
+
+.dash-greeting {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    opacity: .35;
+}
+
+#card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    padding: 20px 28px 100px;
+    align-content: start;
+    min-height: 100px;
+}
+
+/* global scrollbar styling */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-soft) transparent;
+}
+
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-soft);
+    border-radius: 2px;
+}
