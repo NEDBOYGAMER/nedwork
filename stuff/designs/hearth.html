@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Hearth — Home Dashboard</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,700;0,900;1,600&family=Literata:wght@400;500;600&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+  :root{
+    --bg-deep: #1E1610;
+    --bg-mid: #2A1E14;
+    --glow: rgba(255, 178, 92, 0.16);
+
+    --paper: #F2E6C9;
+    --paper-alt: #ECD9B3;
+    --paper-shadow: rgba(30, 18, 8, 0.45);
+
+    --ink: #3B2A1B;
+    --ink-soft: #7A6448;
+    --ink-faint: #A6906F;
+
+    --rust: #B85C34;
+    --rust-soft: #E8C7B0;
+    --moss: #6E7A4E;
+    --moss-soft: #DCE2C6;
+    --brass: #BE9349;
+    --twine: #C6A164;
+    --cream: #F4E9D2;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(ellipse 900px 500px at 20% -5%, var(--glow), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 90% 10%, rgba(190,147,73,0.10), transparent 55%),
+      linear-gradient(160deg, var(--bg-mid), var(--bg-deep) 65%);
+    color: var(--cream);
+    font-family: "Literata", serif;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* grain overlay for atmosphere */
+  body::before{
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/></svg>");
+    z-index: 1;
+  }
+
+  h1,h2,h3,.font-display{ font-family: "Fraunces", serif; }
+  .hand{ font-family: "Caveat", cursive; }
+
+  main{
+    position: relative;
+    z-index: 2;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 48px 32px 90px;
+  }
+
+  /* ---------- Header ---------- */
+  .header{
+    display:flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 40px;
+    padding-bottom: 26px;
+    border-bottom: 1px solid rgba(244,233,210,0.14);
+  }
+  .eyebrow{
+    font-family: "Caveat", cursive;
+    font-size: 22px;
+    color: var(--brass);
+    margin-bottom: 2px;
+  }
+  .headline{
+    font-size: 40px;
+    font-weight: 700;
+    font-style: italic;
+    color: var(--cream);
+    letter-spacing: 0.2px;
+  }
+  .headline em{ color: var(--rust-soft); font-style: italic; }
+  .subline{
+    font-size: 14px;
+    color: var(--ink-faint);
+    margin-top: 6px;
+    max-width: 380px;
+  }
+  .moon{
+    font-size: 34px;
+    filter: drop-shadow(0 0 10px rgba(255,200,120,0.35));
+  }
+
+  /* ---------- Hanging tags row ---------- */
+  .tags-row{
+    display:flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    margin-bottom: 48px;
+    padding-top: 6px;
+  }
+  .hang-tag{
+    position: relative;
+    padding-top: 22px;
+  }
+  .hang-tag::before{
+    content:'';
+    position:absolute;
+    top:0; left:50%;
+    width:1px; height:20px;
+    background: var(--twine);
+  }
+  .tag-body{
+    background: var(--paper);
+    color: var(--ink);
+    padding: 12px 18px 14px;
+    border-radius: 4px 4px 10px 10px;
+    box-shadow: 0 10px 18px -8px var(--paper-shadow);
+    min-width: 138px;
+    text-align: center;
+    position: relative;
+  }
+  .tag-body::after{
+    content:'';
+    position: absolute;
+    top: 6px; left: 50%;
+    transform: translateX(-50%);
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--bg-deep);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+  }
+  .tag-value{
+    font-family:"Fraunces", serif;
+    font-weight: 700;
+    font-size: 21px;
+    margin-top: 6px;
+  }
+  .tag-label{
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .hang-tag:nth-child(odd){ transform: rotate(-2deg); }
+  .hang-tag:nth-child(even){ transform: rotate(1.5deg); }
+
+  /* ---------- Board layout ---------- */
+  .board{
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 30px 26px;
+  }
+
+  .paper-card{
+    background: var(--paper);
+    color: var(--ink);
+    padding: 22px;
+    box-shadow: 0 18px 32px -14px var(--paper-shadow), 0 2px 0 rgba(255,255,255,0.4) inset;
+    position: relative;
+  }
+  /* torn / deckled edge via clipped triangles pattern using mask */
+  .paper-card{
+    border-radius: 3px;
+    clip-path: polygon(
+      0% 1%, 4% 0%, 10% 1%, 16% 0%, 24% 1%, 32% 0%, 40% 1%, 48% 0%, 56% 1%, 64% 0%, 72% 1%, 80% 0%, 88% 1%, 96% 0%, 100% 1%,
+      100% 99%, 96% 100%, 88% 99%, 80% 100%, 72% 99%, 64% 100%, 56% 99%, 48% 100%, 40% 99%, 32% 100%, 24% 99%, 16% 100%, 8% 99%, 0% 100%
+    );
+  }
+
+  .washi{
+    position: absolute;
+    top: -10px; left: 26px;
+    width: 70px; height: 22px;
+    background: repeating-linear-gradient(135deg, rgba(184,92,52,0.55), rgba(184,92,52,0.55) 6px, rgba(184,92,52,0.4) 6px, rgba(184,92,52,0.4) 12px);
+    opacity: 0.85;
+    transform: rotate(-4deg);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  .pin{
+    position: absolute;
+    top: -9px; right: 22px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #E7B24E, var(--brass) 70%);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.45);
+  }
+
+  .c-chart{ grid-column: span 7; transform: rotate(-0.6deg); }
+  .c-journal{ grid-column: span 5; transform: rotate(0.8deg); }
+  .c-clock{ grid-column: span 4; transform: rotate(-0.5deg); text-align:center; }
+  .c-almanac{ grid-column: span 4; transform: rotate(0.7deg); }
+  .c-brew{ grid-column: span 4; transform: rotate(-1deg); }
+  .c-todo{ grid-column: span 6; transform: rotate(0.4deg); }
+  .c-calendar{ grid-column: span 6; transform: rotate(-0.7deg); }
+
+  .card-title{
+    font-family:"Fraunces", serif;
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+  .card-caption{
+    font-size: 11px;
+    color: var(--ink-soft);
+    font-style: italic;
+    margin-bottom: 16px;
+  }
+
+  /* ---------- Weekly rhythm (ruler chart) ---------- */
+  .ruler-bars{
+    display:flex;
+    align-items: flex-end;
+    gap: 16px;
+    height: 140px;
+    border-bottom: 2px solid var(--ink-faint);
+    padding-bottom: 4px;
+    position: relative;
+  }
+  .ruler-bars::after{
+    content:'';
+    position:absolute;
+    left:0; right:0; bottom: -10px;
+    height: 8px;
+    background-image: repeating-linear-gradient(90deg, var(--ink-faint) 0 1px, transparent 1px 14px);
+    opacity: 0.5;
+  }
+  .rbar-col{ flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; height:100%; justify-content:flex-end; }
+  .rbar{
+    width: 60%;
+    border-radius: 3px 3px 0 0;
+    background: linear-gradient(180deg, var(--brass), var(--rust));
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.15);
+  }
+  .rbar-day{ font-family:"Caveat", cursive; font-size: 16px; color: var(--ink-soft); }
+
+  /* ---------- Journal / notes ---------- */
+  .journal-toggle{
+    position:absolute; top: 18px; right: 18px;
+    width: 30px; height:30px;
+    border-radius: 50%;
+    background: var(--paper-alt);
+    border: 1px solid rgba(59,42,27,0.2);
+    display:flex; align-items:center; justify-content:center;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .journal-toggle svg{ width:13px; height:13px; }
+  #notes-textarea, #notes-preview{
+    width: 100%; min-height: 150px;
+    background: transparent;
+    border: none; outline: none; resize: none;
+    font-family: "Caveat", cursive;
+    font-size: 20px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+  #notes-preview h2{ font-family:"Fraunces",serif; font-size: 18px; font-style:italic; }
+  #notes-preview li{ margin-left: 20px; }
+
+  /* ---------- Analog clock ---------- */
+  .clock-face-wrap{
+    display:flex; justify-content:center; margin: 4px 0 10px;
+  }
+  .clock-frame{
+    width: 148px; height: 148px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #FBF4E2, var(--paper-alt) 70%);
+    box-shadow: 0 0 0 8px var(--brass), 0 0 0 9px rgba(59,42,27,0.3), 0 14px 26px -10px rgba(0,0,0,0.5);
+    position: relative;
+  }
+  .tick{ position:absolute; background: var(--ink-soft); }
+  .hand-el{
+    position:absolute; left:50%; bottom:50%;
+    transform-origin: bottom center;
+    background: var(--ink);
+    border-radius: 3px;
+  }
+  #hour-hand{ width:4px; height:38px; margin-left:-2px; }
+  #minute-hand{ width:3px; height:52px; margin-left:-1.5px; }
+  #second-hand{ width:1.5px; height:58px; margin-left:-0.75px; background: var(--rust); }
+  .clock-pin{
+    position:absolute; top:50%; left:50%; width:9px; height:9px;
+    background: var(--brass); border-radius:50%; transform: translate(-50%,-50%);
+  }
+  .clock-date{ font-family:"Caveat", cursive; font-size: 20px; color: var(--ink-soft); }
+
+  /* ---------- Almanac / weather ---------- */
+  .almanac-main{ display:flex; align-items:center; gap: 16px; margin-bottom: 12px; }
+  .almanac-temp{ font-family:"Fraunces",serif; font-size: 32px; font-weight:700; }
+  .almanac-desc{ font-size: 13px; color: var(--ink-soft); font-style: italic; }
+  .almanac-icon svg{ width:44px; height:44px; color: var(--rust); }
+  .almanac-note{
+    font-family:"Caveat", cursive;
+    font-size: 17px;
+    color: var(--ink-soft);
+    border-top: 1px dashed var(--ink-faint);
+    padding-top: 10px;
+    margin-top: 8px;
+  }
+
+  /* ---------- Brewing card ---------- */
+  .brew-row{ display:flex; align-items:center; gap:14px; }
+  .brew-icon svg{ width:42px; height:42px; color: var(--rust); }
+  .brew-name{ font-family:"Fraunces", serif; font-weight:700; font-size:17px; }
+  .brew-sub{ font-size:12px; color:var(--ink-soft); font-style:italic; }
+  .steam{
+    position:relative; width:42px; height:42px;
+  }
+  .steam span{
+    position:absolute; bottom: 30px; width:3px; height:14px;
+    background: rgba(59,42,27,0.25);
+    border-radius: 3px;
+    animation: rise 2.4s ease-in-out infinite;
+  }
+  .steam span:nth-child(1){ left:10px; animation-delay: 0s; }
+  .steam span:nth-child(2){ left:20px; animation-delay: .6s; }
+  .steam span:nth-child(3){ left:30px; animation-delay: 1.2s; }
+  @keyframes rise{
+    0%{ transform: translateY(0) scaleY(1); opacity:0; }
+    30%{ opacity:.7; }
+    100%{ transform: translateY(-22px) scaleY(1.6); opacity:0; }
+  }
+
+  /* ---------- To-do list ---------- */
+  .lined-list{
+    background-image: repeating-linear-gradient(transparent, transparent 30px, rgba(59,42,27,0.15) 31px);
+  }
+  .todo-row{
+    display:flex; align-items:center; gap: 12px;
+    height: 31px;
+  }
+  .todo-check{
+    width: 16px; height:16px;
+    border: 1.5px solid var(--ink-soft);
+    border-radius: 3px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .todo-check svg{ width:10px; height:10px; opacity:0; color: var(--rust); }
+  .todo-check.done svg{ opacity:1; }
+  .todo-label{ font-family:"Literata", serif; font-size: 14px; }
+  .todo-row.completed .todo-label{ text-decoration: line-through; color: var(--ink-faint); }
+
+  /* ---------- Calendar ---------- */
+  .cal-grid{
+    display:grid; grid-template-columns: repeat(7,1fr);
+    gap: 2px; text-align:center;
+  }
+  .cal-dow{ font-family:"Caveat",cursive; font-size:15px; color: var(--ink-soft); padding-bottom:4px; }
+  .cal-day{ font-size:12px; padding:8px 0; border-radius: 50%; color: var(--ink-soft); }
+  .cal-day.muted{ opacity: 0.3; }
+  .cal-day.today{
+    background: var(--rust); color: var(--cream); font-weight:700;
+    font-family:"Fraunces",serif;
+  }
+  .cal-day.event{ position:relative; }
+  .cal-day.event::after{
+    content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
+    width:4px; height:4px; border-radius:50%; background: var(--moss);
+  }
+
+  @media (max-width: 980px){
+    .board > *{ grid-column: span 12 !important; transform:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<main>
+
+  <div class="header">
+    <div>
+      <div class="eyebrow">☾ Sunday evening, July 12</div>
+      <h1 class="headline">Welcome home, <em>Alex</em>.</h1>
+      <div class="subline">The kettle's on, the lamp is lit — here's how your day settled.</div>
+    </div>
+    <div class="moon">🕯️</div>
+  </div>
+
+  <div class="tags-row">
+    <div class="hang-tag">
+      <div class="tag-body">
+        <div class="tag-value">3h 42m</div>
+        <div class="tag-label">Focused today</div>
+      </div>
+    </div>
+    <div class="hang-tag">
+      <div class="tag-body">
+        <div class="tag-value">8 / 12</div>
+        <div class="tag-label">Tasks done</div>
+      </div>
+    </div>
+    <div class="hang-tag">
+      <div class="tag-body">
+        <div class="tag-value">24</div>
+        <div class="tag-label">Notes kept</div>
+      </div>
+    </div>
+    <div class="hang-tag">
+      <div class="tag-body">
+        <div class="tag-value">5 days</div>
+        <div class="tag-label">Quiet streak</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="board">
+
+    <!-- Weekly rhythm -->
+    <div class="paper-card c-chart">
+      <div class="washi"></div>
+      <div class="card-title">The week's rhythm</div>
+      <div class="card-caption">Hours spent in deep focus, marked like notches on a ruler</div>
+      <div class="ruler-bars" id="ruler-bars"></div>
+    </div>
+
+    <!-- Journal -->
+    <div class="paper-card c-journal">
+      <div class="pin"></div>
+      <div class="journal-toggle" id="toggle-mode-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </div>
+      <div class="card-title">Journal</div>
+      <div class="card-caption">A page for the day</div>
+      <textarea id="notes-textarea" placeholder="Dear day...">Dear day,
+
+Shipped the dashboard proto.
+Coffee was strong. Rain by evening.
+
+## Tomorrow
+- Call Sam back
+- Water the plants</textarea>
+      <div id="notes-preview" style="display:none;"></div>
+    </div>
+
+    <!-- Analog clock -->
+    <div class="paper-card c-clock">
+      <div class="pin"></div>
+      <div class="card-title">The mantel clock</div>
+      <div class="card-caption">Time, kept the old way</div>
+      <div class="clock-face-wrap">
+        <div class="clock-frame">
+          <div id="hour-hand" class="hand-el"></div>
+          <div id="minute-hand" class="hand-el"></div>
+          <div id="second-hand" class="hand-el"></div>
+          <div class="clock-pin"></div>
+        </div>
+      </div>
+      <div class="clock-date" id="clock-date">Loading…</div>
+    </div>
+
+    <!-- Almanac / weather -->
+    <div class="paper-card c-almanac">
+      <div class="washi"></div>
+      <div class="card-title">Almanac</div>
+      <div class="card-caption">St. Gallen, this evening</div>
+      <div class="almanac-main">
+        <div class="almanac-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 18a5 5 0 0 0-10 0M12 2v4M4.2 8.2l1.4 1.4M19.8 8.2l-1.4 1.4"/><line x1="12" y1="20" x2="12" y2="22"/></svg>
+        </div>
+        <div>
+          <div class="almanac-temp">18°</div>
+          <div class="almanac-desc">Clouding over, gentle wind</div>
+        </div>
+      </div>
+      <div class="almanac-note">"A good night for a blanket and a book."</div>
+    </div>
+
+    <!-- Currently brewing -->
+    <div class="paper-card c-brew">
+      <div class="pin"></div>
+      <div class="card-title">On the stove</div>
+      <div class="card-caption">What's brewing right now</div>
+      <div class="brew-row">
+        <div class="steam">
+          <span></span><span></span><span></span>
+          <div class="brew-icon" style="position:absolute; bottom:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4Z"/></svg>
+          </div>
+        </div>
+        <div>
+          <div class="brew-name">Chamomile & honey</div>
+          <div class="brew-sub">Steeping for 3 more minutes</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- To-do list -->
+    <div class="paper-card c-todo">
+      <div class="washi"></div>
+      <div class="card-title">Tonight's list</div>
+      <div class="card-caption">Written, not typed</div>
+      <div class="lined-list" id="todo-list">
+        <div class="todo-row completed">
+          <div class="todo-check done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="todo-label">Draft the roadmap</div>
+        </div>
+        <div class="todo-row">
+          <div class="todo-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="todo-label">Review Sam's PR</div>
+        </div>
+        <div class="todo-row">
+          <div class="todo-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="todo-label">Water the plants</div>
+        </div>
+        <div class="todo-row">
+          <div class="todo-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="todo-label">Read a chapter before bed</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="paper-card c-calendar">
+      <div class="pin"></div>
+      <div class="card-title">July, on the wall</div>
+      <div class="card-caption">Two things marked this week</div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  /* ---------- Analog clock ---------- */
+  function updateClock(){
+    const now = new Date();
+    const h = now.getHours() % 12;
+    const m = now.getMinutes();
+    const s = now.getSeconds();
+
+    const hourDeg = (h * 30) + (m * 0.5);
+    const minDeg = m * 6 + s * 0.1;
+    const secDeg = s * 6;
+
+    document.getElementById("hour-hand").style.transform = `rotate(${hourDeg}deg)`;
+    document.getElementById("minute-hand").style.transform = `rotate(${minDeg}deg)`;
+    document.getElementById("second-hand").style.transform = `rotate(${secDeg}deg)`;
+
+    const date = now.toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
+    document.getElementById("clock-date").textContent = date;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  /* ---------- Journal toggle ---------- */
+  const textarea = document.getElementById("notes-textarea");
+  const preview = document.getElementById("notes-preview");
+  const toggleBtn = document.getElementById("toggle-mode-btn");
+  const penIcon = toggleBtn.innerHTML;
+  const tickIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  let isPreview = false;
+  toggleBtn.addEventListener("click", () => {
+    if(!isPreview){
+      preview.innerHTML = marked.parse(textarea.value);
+      textarea.style.display = "none";
+      preview.style.display = "block";
+      toggleBtn.innerHTML = tickIcon;
+    } else {
+      textarea.style.display = "block";
+      preview.style.display = "none";
+      toggleBtn.innerHTML = penIcon;
+    }
+    isPreview = !isPreview;
+  });
+
+  /* ---------- Weekly rhythm bars ---------- */
+  const rhythmData = [
+    {day:"Mon", hrs:4.2}, {day:"Tue", hrs:5.6}, {day:"Wed", hrs:3.1},
+    {day:"Thu", hrs:6.4}, {day:"Fri", hrs:5.0}, {day:"Sat", hrs:1.8}, {day:"Sun", hrs:2.4},
+  ];
+  const maxHrs = Math.max(...rhythmData.map(d => d.hrs));
+  const rbars = document.getElementById("ruler-bars");
+  rhythmData.forEach(d => {
+    const pct = Math.round((d.hrs / maxHrs) * 100);
+    const col = document.createElement("div");
+    col.className = "rbar-col";
+    col.innerHTML = `<div class="rbar" style="height:${pct}%;" title="${d.day}: ${d.hrs}h"></div><div class="rbar-day">${d.day}</div>`;
+    rbars.appendChild(col);
+  });
+
+  /* ---------- To-do toggle ---------- */
+  document.querySelectorAll(".todo-check").forEach(box => {
+    box.addEventListener("click", () => {
+      box.classList.toggle("done");
+      box.closest(".todo-row").classList.toggle("completed");
+    });
+  });
+
+  /* ---------- Calendar ---------- */
+  const calGrid = document.getElementById("cal-grid");
+  ["Mo","Tu","We","Th","Fr","Sa","Su"].forEach(d => {
+    const el = document.createElement("div");
+    el.className = "cal-dow";
+    el.textContent = d;
+    calGrid.appendChild(el);
+  });
+  const firstOfMonth = new Date(2026, 6, 1);
+  const startOffset = (firstOfMonth.getDay() + 6) % 7;
+  const daysInMonth = new Date(2026, 7, 0).getDate();
+  const eventDays = [14, 16, 21];
+  const today = 12;
+  for(let i=0;i<startOffset;i++){
+    const el = document.createElement("div");
+    el.className = "cal-day muted";
+    el.textContent = 30 - startOffset + i + 1;
+    calGrid.appendChild(el);
+  }
+  for(let d=1; d<=daysInMonth; d++){
+    const el = document.createElement("div");
+    el.className = "cal-day";
+    if(d === today) el.classList.add("today");
+    if(eventDays.includes(d)) el.classList.add("event");
+    el.textContent = d;
+    calGrid.appendChild(el);
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nova — Personal Dashboard</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+  :root{
+    --bg: #F3F4F9;
+    --surface: #FFFFFF;
+    --surface-alt: #FAFAFC;
+    --border: #E7E8F1;
+    --text-primary: #191B26;
+    --text-muted: #8A8DA3;
+    --text-faint: #B7B9CC;
+
+    --accent: #5B5FEF;
+    --accent-soft: #EEEFFE;
+    --accent-strong: #4245C4;
+
+    --teal: #12B79E;
+    --teal-soft: #E4F9F5;
+    --amber: #F5A524;
+    --amber-soft: #FEF3E0;
+    --coral: #F45B69;
+    --coral-soft: #FDE9EB;
+
+    --radius-lg: 18px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --shadow-card: 0 1px 2px rgba(20,21,40,0.04), 0 8px 24px -12px rgba(20,21,40,0.10);
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 100% 0%, rgba(91,95,239,0.06), transparent 40%);
+    color: var(--text-primary);
+    font-family: "Inter", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,h2,h3,.font-display{
+    font-family: "Sora", sans-serif;
+  }
+
+  .mono{ font-family: "JetBrains Mono", monospace; }
+
+  a{ color: inherit; }
+
+  /* ---------- Layout ---------- */
+  .app{
+    display: grid;
+    grid-template-columns: 84px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 22px 0;
+    gap: 6px;
+    position: sticky;
+    top:0;
+    height: 100vh;
+  }
+
+  .sidebar .logo{
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    display:flex; align-items:center; justify-content:center;
+    color:white; font-weight:700; font-size:15px;
+    font-family:"Sora", sans-serif;
+    margin-bottom: 26px;
+    box-shadow: 0 8px 18px -6px rgba(91,95,239,0.55);
+  }
+
+  .nav-icon{
+    width: 44px; height: 44px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius: 12px;
+    color: var(--text-faint);
+    cursor: pointer;
+    transition: .15s ease;
+  }
+  .nav-icon svg{ width:19px; height:19px; }
+  .nav-icon:hover{ background: var(--surface-alt); color: var(--text-muted); }
+  .nav-icon.active{ background: var(--accent-soft); color: var(--accent); }
+
+  .sidebar .spacer{ flex:1; }
+
+  /* ---------- Main ---------- */
+  main{
+    padding: 28px 36px 60px;
+    max-width: 1280px;
+  }
+
+  .topbar{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .greeting-eyebrow{
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .greeting{
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .greeting span{ color: var(--accent); }
+
+  .topbar-right{
+    display:flex;
+    align-items:center;
+    gap: 14px;
+  }
+
+  .search{
+    display:flex; align-items:center; gap:8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 14px;
+    color: var(--text-faint);
+    font-size: 13px;
+    width: 220px;
+  }
+  .search svg{ width:14px; height:14px; flex-shrink:0; }
+
+  .avatar{
+    width: 38px; height:38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#8EC5FC,#5B5FEF);
+    display:flex; align-items:center; justify-content:center;
+    color:white; font-weight:600; font-size:13px;
+    font-family:"Sora", sans-serif;
+  }
+
+  /* ---------- Grid ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 18px;
+  }
+
+  .card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: 20px;
+    opacity: 0;
+    transform: translateY(8px);
+    animation: rise .5s ease forwards;
+  }
+  @keyframes rise{ to{ opacity:1; transform:none; } }
+
+  .card-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 14px;
+  }
+  .card-title{
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: .3px;
+  }
+  .card-sub{
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  /* ---------- Stat cards ---------- */
+  .stat{
+    grid-column: span 3;
+    display:flex; align-items:center; gap:14px;
+  }
+  .stat-icon{
+    width: 46px; height:46px;
+    border-radius: 13px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink: 0;
+  }
+  .stat-icon svg{ width:20px; height:20px; }
+  .stat-value{
+    font-size: 22px;
+    font-weight: 700;
+    font-family: "Sora", sans-serif;
+    letter-spacing: -0.3px;
+    line-height: 1.1;
+  }
+  .stat-label{
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .stat-delta{
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: auto;
+    padding: 3px 7px;
+    border-radius: 100px;
+  }
+  .delta-up{ color: var(--teal); background: var(--teal-soft); }
+  .delta-down{ color: var(--coral); background: var(--coral-soft); }
+
+  /* ---------- Focus chart ---------- */
+  .chart-card{ grid-column: span 8; }
+  .chart-legend{ display:flex; gap:16px; font-size:12px; color:var(--text-muted); }
+  .legend-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; }
+
+  .bars{
+    display:flex;
+    align-items:flex-end;
+    gap: 14px;
+    height: 160px;
+    padding-top: 10px;
+  }
+  .bar-col{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 8px;
+    height:100%;
+    justify-content:flex-end;
+  }
+  .bar-track{
+    width: 100%;
+    max-width: 34px;
+    height: 100%;
+    display:flex;
+    align-items:flex-end;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface-alt);
+  }
+  .bar-fill{
+    width: 100%;
+    border-radius: 8px 8px 0 0;
+    background: linear-gradient(180deg, #7C7FF2, var(--accent));
+    transition: filter .15s;
+  }
+  .bar-track:hover .bar-fill{ filter: brightness(1.08); }
+  .bar-day{ font-size: 11px; color: var(--text-faint); font-weight: 500; }
+
+  /* ---------- Activity feed ---------- */
+  .feed-card{ grid-column: span 4; }
+  .feed-item{
+    display:flex; gap:12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .feed-item:last-child{ border-bottom:none; padding-bottom:0; }
+  .feed-item:first-child{ padding-top:0; }
+  .feed-dot{
+    width: 8px; height:8px; border-radius:50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  .feed-text{ font-size: 13px; line-height:1.4; }
+  .feed-time{ font-size: 11px; color: var(--text-faint); margin-top:2px; }
+
+  /* ---------- Notes widget ---------- */
+  .notes-card{ grid-column: span 4; display:flex; flex-direction:column; }
+  .notes-toggle{
+    width: 28px; height:28px;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    border-radius: 8px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    color: var(--text-muted);
+  }
+  .notes-toggle:hover{ background: var(--accent-soft); color: var(--accent); border-color: var(--accent-soft); }
+  .notes-toggle svg{ width:13px; height:13px; }
+  .notes-body{ flex:1; min-height: 140px; }
+  #notes-textarea, #notes-preview{
+    width:100%; height: 140px;
+    border:none; outline:none; resize:none;
+    background: transparent;
+    font-family: "Inter", sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    overflow-y:auto;
+  }
+  #notes-textarea::placeholder{ color: var(--text-faint); }
+  #notes-preview h2{ font-size:15px; margin:6px 0 4px; font-family:"Sora",sans-serif; }
+  #notes-preview h3{ font-size:13px; margin:6px 0 2px; }
+  #notes-preview li{ margin-left:18px; }
+  #notes-preview code{ background: var(--surface-alt); padding:1px 5px; border-radius:4px; font-size:12px; }
+
+  /* ---------- Clock widget ---------- */
+  .clock-card{ grid-column: span 4; display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .clock-ring-wrap{ position:relative; width: 128px; height:128px; margin: 4px 0 12px; }
+  .clock-ring-wrap svg{ transform: rotate(-90deg); }
+  .ring-track{ fill:none; stroke: var(--surface-alt); stroke-width: 8; }
+  .ring-progress{ fill:none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+  .clock-center{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  #clock-time{ font-size: 20px; font-weight:600; letter-spacing: 0.5px; }
+  #clock-date{ font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+  .day-progress-label{ font-size: 11px; color: var(--text-faint); }
+
+  /* ---------- Weather widget ---------- */
+  .weather-card{ grid-column: span 4; }
+  .weather-main{ display:flex; align-items:center; gap:16px; }
+  .weather-temp{ font-size: 34px; font-weight:700; font-family:"Sora",sans-serif; }
+  .weather-desc{ font-size:13px; color: var(--text-muted); margin-top:2px; }
+  .weather-icon{ width:52px; height:52px; flex-shrink:0; }
+  .weather-row{
+    display:flex; justify-content:space-between;
+    margin-top:16px; padding-top:14px; border-top:1px solid var(--border);
+  }
+  .weather-day{ text-align:center; font-size:11px; color:var(--text-muted); }
+  .weather-day svg{ width:18px; height:18px; margin: 4px 0; color: var(--accent); }
+  .weather-day b{ display:block; color: var(--text-primary); font-size:12px; margin-top:2px; }
+
+  /* ---------- Tasks widget ---------- */
+  .tasks-card{ grid-column: span 6; }
+  .task-row{
+    display:flex; align-items:center; gap:12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .task-row:last-child{ border-bottom:none; padding-bottom:0; }
+  .task-row:first-child{ padding-top:0; }
+  .task-check{
+    width:18px; height:18px;
+    border-radius: 6px;
+    border: 1.5px solid var(--text-faint);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    flex-shrink:0;
+    transition: .15s;
+  }
+  .task-check svg{ width:11px; height:11px; opacity:0; transition:.15s; color:white; }
+  .task-check.done{ background: var(--accent); border-color: var(--accent); }
+  .task-check.done svg{ opacity:1; }
+  .task-label{ font-size: 13px; flex:1; }
+  .task-row.completed .task-label{ color: var(--text-faint); text-decoration: line-through; }
+  .task-tag{
+    font-size: 10px; font-weight:600; padding: 3px 8px; border-radius: 100px;
+  }
+  .tag-work{ background: var(--accent-soft); color: var(--accent); }
+  .tag-personal{ background: var(--amber-soft); color: var(--amber); }
+  .tag-urgent{ background: var(--coral-soft); color: var(--coral); }
+
+  /* ---------- Calendar widget ---------- */
+  .cal-card{ grid-column: span 6; }
+  .cal-grid{
+    display:grid; grid-template-columns: repeat(7,1fr);
+    gap: 4px; text-align:center;
+  }
+  .cal-dow{ font-size:10px; color: var(--text-faint); font-weight:600; padding-bottom:6px; }
+  .cal-day{
+    font-size: 12px; padding: 7px 0; border-radius: 8px; color: var(--text-muted);
+  }
+  .cal-day.muted{ color: var(--text-faint); opacity:.4; }
+  .cal-day.today{ background: var(--accent); color:white; font-weight:700; }
+  .cal-day.event{ position:relative; }
+  .cal-day.event::after{
+    content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
+    width:4px; height:4px; border-radius:50%; background: var(--coral);
+  }
+  .cal-day.today.event::after{ background: white; }
+
+  /* stagger */
+  .grid .card:nth-child(1){ animation-delay: .02s; }
+  .grid .card:nth-child(2){ animation-delay: .06s; }
+  .grid .card:nth-child(3){ animation-delay: .1s; }
+  .grid .card:nth-child(4){ animation-delay: .14s; }
+  .grid .card:nth-child(5){ animation-delay: .18s; }
+  .grid .card:nth-child(6){ animation-delay: .22s; }
+  .grid .card:nth-child(7){ animation-delay: .26s; }
+  .grid .card:nth-child(8){ animation-delay: .30s; }
+  .grid .card:nth-child(9){ animation-delay: .34s; }
+  .grid .card:nth-child(10){ animation-delay: .38s; }
+
+  @media (max-width: 980px){
+    .app{ grid-template-columns: 1fr; }
+    .sidebar{ display:none; }
+    .stat, .chart-card, .feed-card, .notes-card, .clock-card, .weather-card, .tasks-card, .cal-card{
+      grid-column: span 12;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .card{ animation: none; opacity:1; transform:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">N</div>
+
+    <div class="nav-icon active" title="Overview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+    </div>
+    <div class="nav-icon" title="Notes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5a1 1 0 0 0 1 1h5"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>
+    </div>
+    <div class="nav-icon" title="Tasks">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    </div>
+    <div class="nav-icon" title="Calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="nav-icon" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main>
+
+    <div class="topbar">
+      <div>
+        <div class="greeting-eyebrow">Sunday, July 12</div>
+        <h1 class="greeting">Good afternoon, <span>Alex</span></h1>
+      </div>
+      <div class="topbar-right">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          Search…
+        </div>
+        <div class="avatar">A</div>
+      </div>
+    </div>
+
+    <div class="grid">
+
+      <!-- Stat cards -->
+      <div class="card stat">
+        <div class="stat-icon" style="background:var(--accent-soft); color:var(--accent);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <div>
+          <div class="stat-value">3h 42m</div>
+          <div class="stat-label">Focus time today</div>
+        </div>
+        <div class="stat-delta delta-up">+18%</div>
+      </div>
+
+      <div class="card stat">
+        <div class="stat-icon" style="background:var(--teal-soft); color:var(--teal);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div>
+          <div class="stat-value">8 / 12</div>
+          <div class="stat-label">Tasks completed</div>
+        </div>
+        <div class="stat-delta delta-up">+2</div>
+      </div>
+
+      <div class="card stat">
+        <div class="stat-icon" style="background:var(--amber-soft); color:var(--amber);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5a1 1 0 0 0 1 1h5"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/></svg>
+        </div>
+        <div>
+          <div class="stat-value">24</div>
+          <div class="stat-label">Notes this month</div>
+        </div>
+        <div class="stat-delta delta-up">+5</div>
+      </div>
+
+      <div class="card stat">
+        <div class="stat-icon" style="background:var(--coral-soft); color:var(--coral);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8 6 5 10.5 5 14a7 7 0 0 0 14 0c0-3.5-3-8-7-12Z"/></svg>
+        </div>
+        <div>
+          <div class="stat-value">5 days</div>
+          <div class="stat-label">Current streak</div>
+        </div>
+        <div class="stat-delta delta-down">-1</div>
+      </div>
+
+      <!-- Weekly focus chart -->
+      <div class="card chart-card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">WEEKLY FOCUS</div>
+            <div class="card-sub">Hours spent in deep work, last 7 days</div>
+          </div>
+          <div class="chart-legend">
+            <span><i class="legend-dot" style="background:var(--accent)"></i>This week</span>
+          </div>
+        </div>
+        <div class="bars" id="focus-bars"></div>
+      </div>
+
+      <!-- Activity feed -->
+      <div class="card feed-card">
+        <div class="card-head">
+          <div class="card-title">RECENT ACTIVITY</div>
+        </div>
+        <div id="feed-list">
+          <div class="feed-item">
+            <span class="feed-dot" style="background:var(--teal)"></span>
+            <div>
+              <div class="feed-text">Completed "Draft Q3 roadmap"</div>
+              <div class="feed-time">12 minutes ago</div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <span class="feed-dot" style="background:var(--accent)"></span>
+            <div>
+              <div class="feed-text">New note: "Client call follow-ups"</div>
+              <div class="feed-time">1 hour ago</div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <span class="feed-dot" style="background:var(--amber)"></span>
+            <div>
+              <div class="feed-text">Started a 50-minute focus session</div>
+              <div class="feed-time">2 hours ago</div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <span class="feed-dot" style="background:var(--coral)"></span>
+            <div>
+              <div class="feed-text">Missed task: "Review PR #482"</div>
+              <div class="feed-time">Yesterday</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes widget -->
+      <div class="card notes-card">
+        <div class="card-head">
+          <div class="card-title">NOTES</div>
+          <div class="notes-toggle" id="toggle-mode-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </div>
+        </div>
+        <div class="notes-body">
+          <textarea id="notes-textarea" placeholder="## Today
+- Ship the dashboard proto
+- Reply to Sam
+
+Type your thoughts in **Markdown**…">## Today
+- Ship the dashboard proto
+- Reply to Sam
+- Read the *design* review
+
+Notes support **Markdown**.</textarea>
+          <div id="notes-preview" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Clock widget -->
+      <div class="card clock-card">
+        <div class="card-head" style="width:100%;">
+          <div class="card-title">TIME</div>
+          <div class="card-sub" id="clock-tz">Local</div>
+        </div>
+        <div class="clock-ring-wrap">
+          <svg width="128" height="128" viewBox="0 0 128 128">
+            <circle class="ring-track" cx="64" cy="64" r="56"></circle>
+            <circle class="ring-progress" id="ring-progress" cx="64" cy="64" r="56"
+              stroke-dasharray="351.9" stroke-dashoffset="351.9"></circle>
+          </svg>
+          <div class="clock-center">
+            <span id="clock-time" class="mono">00:00:00</span>
+          </div>
+        </div>
+        <div id="clock-date">Loading…</div>
+        <div class="day-progress-label" id="day-progress-label">0% of day elapsed</div>
+      </div>
+
+      <!-- Weather widget -->
+      <div class="card weather-card">
+        <div class="card-head">
+          <div class="card-title">WEATHER</div>
+          <div class="card-sub">St. Gallen, CH</div>
+        </div>
+        <div class="weather-main">
+          <svg class="weather-icon" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <div>
+            <div class="weather-temp">22°</div>
+            <div class="weather-desc">Clear skies, light breeze</div>
+          </div>
+        </div>
+        <div class="weather-row">
+          <div class="weather-day">Mon
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/></svg>
+            <b>24°</b>
+          </div>
+          <div class="weather-day">Tue
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M17 18a5 5 0 0 0-10 0M12 2v4M4.2 8.2l1.4 1.4M19.8 8.2l-1.4 1.4"/></svg>
+            <b>21°</b>
+          </div>
+          <div class="weather-day">Wed
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 19a4 4 0 1 1 .9-7.9A5 5 0 0 1 18 13a3.5 3.5 0 0 1-.5 6.9H8Z"/></svg>
+            <b>19°</b>
+          </div>
+          <div class="weather-day">Thu
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M16 13v8M8 13v8M12 15v8M8 9a4 4 0 1 1 .9 7.9H18A3.5 3.5 0 0 0 18 9c-.3 0-.6 0-.9.1A5 5 0 0 0 8 9Z"/></svg>
+            <b>18°</b>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tasks widget -->
+      <div class="card tasks-card">
+        <div class="card-head">
+          <div class="card-title">TODAY'S TASKS</div>
+          <div class="card-sub">3 remaining</div>
+        </div>
+        <div id="task-list">
+          <div class="task-row completed">
+            <div class="task-check done">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="task-label">Draft Q3 roadmap</div>
+            <span class="task-tag tag-work">Work</span>
+          </div>
+          <div class="task-row">
+            <div class="task-check">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="task-label">Review PR #482</div>
+            <span class="task-tag tag-urgent">Urgent</span>
+          </div>
+          <div class="task-row">
+            <div class="task-check">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="task-label">Book dentist appointment</div>
+            <span class="task-tag tag-personal">Personal</span>
+          </div>
+          <div class="task-row">
+            <div class="task-check">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="task-label">Reply to Sam re: proposal</div>
+            <span class="task-tag tag-work">Work</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar widget -->
+      <div class="card cal-card">
+        <div class="card-head">
+          <div class="card-title">JULY 2026</div>
+          <div class="card-sub">2 events this week</div>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  /* ---------- Clock + day-progress ring ---------- */
+  const RING_CIRC = 2 * Math.PI * 56;
+  function updateClock(){
+    const now = new Date();
+    const time = now.toLocaleTimeString("en-GB", { hour12: false });
+    const date = now.toLocaleDateString("en-GB", { weekday:"short", day:"2-digit", month:"short", year:"numeric" });
+    document.getElementById("clock-time").textContent = time;
+    document.getElementById("clock-date").textContent = date;
+
+    const secondsToday = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+    const pct = secondsToday / 86400;
+    const offset = RING_CIRC * (1 - pct);
+    document.getElementById("ring-progress").style.strokeDasharray = RING_CIRC.toFixed(1);
+    document.getElementById("ring-progress").style.strokeDashoffset = offset.toFixed(1);
+    document.getElementById("day-progress-label").textContent = Math.round(pct*100) + "% of day elapsed";
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  /* ---------- Notes: edit / preview toggle ---------- */
+  const textarea = document.getElementById("notes-textarea");
+  const preview = document.getElementById("notes-preview");
+  const toggleBtn = document.getElementById("toggle-mode-btn");
+  const penIcon = toggleBtn.innerHTML;
+  const tickIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  let isPreview = false;
+  toggleBtn.addEventListener("click", () => {
+    if(!isPreview){
+      preview.innerHTML = marked.parse(textarea.value);
+      textarea.style.display = "none";
+      preview.style.display = "block";
+      toggleBtn.innerHTML = tickIcon;
+    } else {
+      textarea.style.display = "block";
+      preview.style.display = "none";
+      toggleBtn.innerHTML = penIcon;
+    }
+    isPreview = !isPreview;
+  });
+
+  /* ---------- Weekly focus bar chart ---------- */
+  const focusData = [
+    {day:"Mon", hrs:4.2},
+    {day:"Tue", hrs:5.6},
+    {day:"Wed", hrs:3.1},
+    {day:"Thu", hrs:6.4},
+    {day:"Fri", hrs:5.0},
+    {day:"Sat", hrs:1.8},
+    {day:"Sun", hrs:2.4},
+  ];
+  const maxHrs = Math.max(...focusData.map(d => d.hrs));
+  const barsEl = document.getElementById("focus-bars");
+  focusData.forEach(d => {
+    const pct = Math.round((d.hrs / maxHrs) * 100);
+    const col = document.createElement("div");
+    col.className = "bar-col";
+    col.innerHTML = `
+      <div class="bar-track" title="${d.day}: ${d.hrs}h">
+        <div class="bar-fill" style="height:${pct}%;"></div>
+      </div>
+      <div class="bar-day">${d.day}</div>
+    `;
+    barsEl.appendChild(col);
+  });
+
+  /* ---------- Tasks: toggle complete ---------- */
+  document.querySelectorAll(".task-check").forEach(box => {
+    box.addEventListener("click", () => {
+      box.classList.toggle("done");
+      box.closest(".task-row").classList.toggle("completed");
+    });
+  });
+
+  /* ---------- Mini calendar (July 2026, today = 12th) ---------- */
+  const calGrid = document.getElementById("cal-grid");
+  const dows = ["Mo","Tu","We","Th","Fr","Sa","Su"];
+  dows.forEach(d => {
+    const el = document.createElement("div");
+    el.className = "cal-dow";
+    el.textContent = d;
+    calGrid.appendChild(el);
+  });
+
+  const firstOfMonth = new Date(2026, 6, 1); // July = month 6
+  const startOffset = (firstOfMonth.getDay() + 6) % 7; // Mon=0
+  const daysInMonth = new Date(2026, 7, 0).getDate();
+  const eventDays = [14, 16, 21];
+  const today = 12;
+
+  for(let i=0; i<startOffset; i++){
+    const el = document.createElement("div");
+    el.className = "cal-day muted";
+    el.textContent = 30 - startOffset + i + 1;
+    calGrid.appendChild(el);
+  }
+  for(let d=1; d<=daysInMonth; d++){
+    const el = document.createElement("div");
+    el.className = "cal-day";
+    if(d === today) el.classList.add("today");
+    if(eventDays.includes(d)) el.classList.add("event");
+    el.textContent = d;
+    calGrid.appendChild(el);
+  }
+</script>
+
+</body>
+</html>
