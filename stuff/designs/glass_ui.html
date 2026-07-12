@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Halo — Health Finance</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #0A0D12;
+    --bg-elevated: #0F131A;
+    --surface: rgba(255,255,255,0.035);
+    --surface-hover: rgba(255,255,255,0.06);
+    --border: rgba(255,255,255,0.08);
+
+    --text: #F3F5F8;
+    --text-muted: #868C9C;
+    --text-faint: #565C6C;
+
+    --teal: #2FE3C4;
+    --teal-soft: rgba(47,227,196,0.14);
+    --lime: #C9F24C;
+    --amber: #F2B84C;
+    --coral: #F2694C;
+    --blue: #5B8DEF;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse 700px 400px at 15% 0%, rgba(47,227,196,0.08), transparent 60%),
+      radial-gradient(ellipse 600px 500px at 100% 20%, rgba(91,141,239,0.06), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: "Inter", sans-serif;
+  }
+
+  h1,h2,h3,.font-display{ font-family: "Space Grotesk", sans-serif; }
+  .mono-num{ font-family: "Space Grotesk", sans-serif; font-weight: 600; }
+
+  .app{ display:grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    background: var(--bg-elevated);
+    border-right: 1px solid var(--border);
+    padding: 22px 16px;
+    display:flex; flex-direction:column;
+  }
+  .logo-row{ display:flex; align-items:center; gap:10px; padding: 4px 6px 26px; }
+  .logo-mark{
+    width: 30px; height:30px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--teal), var(--lime));
+    display:flex; align-items:center; justify-content:center;
+    font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:14px; color:#08110D;
+  }
+  .logo-text{ font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:16px; }
+
+  .nav-label{
+    font-size: 10.5px; letter-spacing: 1.4px; color: var(--text-faint);
+    font-weight: 600; padding: 16px 10px 8px;
+  }
+  .nav-item{
+    display:flex; align-items:center; gap:10px;
+    padding: 9px 10px; border-radius: 9px;
+    font-size: 13px; color: var(--text-muted);
+    cursor:pointer; transition:.15s;
+  }
+  .nav-item svg{ width:15px; height:15px; flex-shrink:0; }
+  .nav-item:hover{ background: var(--surface-hover); color: var(--text); }
+  .nav-item.active{
+    background: var(--surface-hover);
+    color: var(--text);
+    box-shadow: inset 2px 0 0 var(--teal);
+  }
+
+  .sidebar-spacer{ flex:1; }
+
+  .upgrade-card{
+    background: linear-gradient(160deg, rgba(47,227,196,0.14), rgba(47,227,196,0.03));
+    border: 1px solid rgba(47,227,196,0.25);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .upgrade-card .icon{
+    width:30px; height:30px; border-radius:8px;
+    background: var(--teal-soft); color: var(--teal);
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom: 10px;
+  }
+  .upgrade-card .icon svg{ width:15px; height:15px; }
+  .upgrade-card b{ font-size: 13px; display:block; margin-bottom:4px; }
+  .upgrade-card p{ font-size:11px; color: var(--text-muted); margin:0 0 12px; line-height:1.5; }
+  .upgrade-btn{
+    background: var(--teal); color:#06110D; border:none; border-radius:8px;
+    padding: 8px 0; width:100%; font-size:12px; font-weight:600; cursor:pointer;
+  }
+
+  /* ---------- Main ---------- */
+  main{ padding: 24px 30px 60px; }
+
+  .topbar{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom: 24px; gap: 14px; flex-wrap: wrap;
+  }
+  .page-title{ font-size: 20px; font-weight:700; }
+  .topbar-right{ display:flex; gap:10px; align-items:center; }
+  .pill{
+    display:flex; align-items:center; gap:8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 9px 16px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .pill svg{ width:13px; height:13px; }
+  .pill.search{ min-width: 230px; color: var(--text-faint); }
+  .pill.action{ color: var(--text); cursor:pointer; }
+  .pill.action:hover{ background: var(--surface-hover); }
+
+  /* ---------- Grid ---------- */
+  .grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap: 18px; }
+
+  .card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 20px;
+    position: relative;
+  }
+  .card-head{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 14px; }
+  .card-label{ font-size: 12px; color: var(--text-muted); }
+  .card-more{ color: var(--text-faint); cursor:pointer; font-size:16px; line-height:1; }
+
+  /* ---------- Balance card ---------- */
+  .c-balance{ grid-column: span 5; }
+  .balance-value{ font-size: 32px; font-weight:700; }
+  .balance-compare{ font-size:11px; color: var(--text-faint); margin-top:2px; }
+  .balance-compare b{ color: var(--teal); font-weight:600; }
+  .balance-row2{ display:flex; justify-content:space-between; align-items:center; margin: 6px 0 16px; }
+  .balance-avg{ font-size:12px; color:var(--text-muted); }
+  .balance-link{ font-size:11px; color: var(--teal); cursor:pointer; }
+
+  .crystal-panel{
+    border-radius: 14px;
+    background: linear-gradient(155deg, #0E2A26, #0A1A22 70%);
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+    min-height: 130px;
+    display:flex; flex-direction:column; justify-content:flex-end;
+  }
+  .crystal-glow{
+    position:absolute; width:220px; height:220px; right:-50px; top:-60px;
+    background: radial-gradient(circle, rgba(47,227,196,0.35), transparent 65%);
+    filter: blur(6px);
+  }
+  .crystal-shape{
+    position:absolute; right: 10px; top: 8px; width:150px; height:110px;
+  }
+  .crystal-label{ font-size: 12px; color: var(--teal); font-weight:600; position:relative; z-index:2; }
+  .crystal-sub{ font-size:11px; color: rgba(255,255,255,0.55); margin-top:3px; position:relative; z-index:2; }
+
+  /* ---------- Insurance & metrics card ---------- */
+  .c-insure{ grid-column: span 4; }
+  .insure-value{ font-size: 26px; font-weight:700; }
+  .insure-sub{ font-size:11px; color:var(--text-faint); margin-top:2px; margin-bottom:16px; }
+  .coverage-tag{
+    background: var(--teal-soft); color: var(--teal);
+    font-size:10.5px; font-weight:600;
+    padding: 3px 9px; border-radius:100px;
+  }
+  .insure-split{ display:flex; gap:16px; margin-bottom: 18px; }
+  .insure-split div{ flex:1; }
+  .insure-split .num{ font-size:16px; font-weight:700; }
+  .insure-split .lbl{ font-size:10.5px; color:var(--text-faint); margin-top:2px; }
+  .avatar-stack{ display:flex; align-items:center; }
+  .avatar-stack .av{
+    width:28px; height:28px; border-radius:50%;
+    border: 2px solid var(--bg-elevated);
+    margin-left: -8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:600; color:#08110D;
+  }
+  .avatar-stack .av:first-child{ margin-left:0; }
+  .avatar-stack .plus{
+    width:28px; height:28px; border-radius:50%;
+    background: var(--surface-hover); border: 1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    margin-left:-8px; color: var(--text-muted); font-size:14px; cursor:pointer;
+  }
+
+  /* ---------- Smart health finance ---------- */
+  .c-smart{ grid-column: span 3; display:flex; flex-direction:column; }
+  .donut-wrap{ position:relative; width:90px; height:90px; margin: 4px auto 6px; }
+  .donut-wrap svg{ transform: rotate(-90deg); }
+  .donut-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .donut-center b{ font-size:16px; }
+  .donut-center span{ font-size:9px; color:var(--text-faint); }
+  .wave-wrap{ height: 46px; margin-top: 10px; }
+
+  /* ---------- Financial tracking ---------- */
+  .c-tracking{ grid-column: span 5; }
+  .tracking-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
+  .tracking-value{ font-size:24px; font-weight:700; }
+  .tracking-value span{ font-size:13px; color:var(--text-faint); font-weight:400; }
+  .tracking-days{ font-size:11px; color:var(--text-faint); margin-top:2px; }
+  .tracking-delta{ background: var(--teal-soft); color:var(--teal); font-size:11px; font-weight:600; padding:4px 9px; border-radius:100px; }
+  .spend-bar{ display:flex; height:8px; border-radius: 6px; overflow:hidden; gap:2px; margin-bottom:12px; }
+  .spend-seg{ height:100%; }
+  .spend-legend{ display:flex; flex-wrap:wrap; gap: 14px 20px; }
+  .spend-legend .item{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); }
+  .spend-legend .sw{ width:8px; height:8px; border-radius:2px; }
+
+  /* ---------- Transactions ---------- */
+  .c-transactions{ grid-column: span 4; }
+  .tabs{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .tab{
+    font-size: 11px; padding: 6px 12px; border-radius:100px;
+    background: var(--surface-hover); color: var(--text-muted); cursor:pointer;
+  }
+  .tab.active{ background: var(--teal-soft); color: var(--teal); }
+  .tx-table{ width:100%; border-collapse: collapse; }
+  .tx-table th{
+    text-align:left; font-size:10px; color:var(--text-faint);
+    font-weight:600; padding-bottom:10px; letter-spacing:0.4px;
+  }
+  .tx-table td{ padding: 10px 0; font-size:12.5px; border-top: 1px solid var(--border); }
+  .status{ font-size:10.5px; font-weight:600; padding:3px 10px; border-radius:100px; display:inline-block; }
+  .status.paid{ background: rgba(47,227,196,0.14); color: var(--teal); }
+  .status.claimed{ background: rgba(91,141,239,0.16); color: var(--blue); }
+  .status.pending{ background: rgba(242,184,76,0.16); color: var(--amber); }
+
+  /* ---------- AI Assistant chat ---------- */
+  .c-ai{ grid-column: span 3; display:flex; flex-direction:column; }
+  .ai-title{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-bottom:14px; }
+  .ai-title svg{ width:15px; height:15px; color: var(--lime); }
+  .chat-bubble{
+    background: var(--surface-hover);
+    border-radius: 12px 12px 12px 4px;
+    padding: 10px 13px;
+    font-size: 12px;
+    line-height:1.5;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    max-width: 90%;
+  }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom: 16px; }
+  .chip{
+    font-size: 10.5px; padding: 5px 10px; border-radius:100px;
+    border: 1px solid var(--border); color: var(--text-muted); cursor:pointer;
+  }
+  .chip:hover{ border-color: var(--teal); color: var(--teal); }
+  .insight-box{
+    background: linear-gradient(160deg, rgba(201,242,76,0.08), transparent);
+    border: 1px solid rgba(201,242,76,0.2);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin-top: auto;
+  }
+  .insight-box b{ color: var(--lime); display:block; margin-bottom: 4px; font-size: 11.5px; }
+
+  @media (max-width: 1080px){
+    .app{ grid-template-columns: 1fr; }
+    .sidebar{ display:none; }
+    .grid > *{ grid-column: span 12 !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo-row">
+      <div class="logo-mark">H</div>
+      <div class="logo-text">Halo</div>
+    </div>
+
+    <div class="nav-label">MAIN</div>
+    <div class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+      Overview
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M7 15h3"/></svg>
+      Health Wallet
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      Transactions
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4.5 8-11V5l-8-3-8 3v6c0 6.5 8 11 8 11Z"/></svg>
+      Insurance
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
+      Payment
+    </div>
+
+    <div class="nav-label">FEATURES</div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
+      AI Insights
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 4.9L19 9.8l-4.9 1.9L12 16.6l-1.9-4.9L5 9.8l4.9-1.9L12 3Z"/></svg>
+      AI Assistant
+    </div>
+
+    <div class="nav-label">TOOLS</div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      Settings
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4M12 17h.01"/></svg>
+      Help Center
+    </div>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="upgrade-card">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 4.9L19 9.8l-4.9 1.9L12 16.6l-1.9-4.9L5 9.8l4.9-1.9L12 3Z"/></svg>
+      </div>
+      <b>Upgrade to Pro</b>
+      <p>Get insights on coverage and eligibility with AI. Simplify decisions.</p>
+      <button class="upgrade-btn">Upgrade</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main>
+
+    <div class="topbar">
+      <div class="page-title">Overview</div>
+      <div class="topbar-right">
+        <div class="pill action">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M18 17V9M13 17V5M8 17v-3"/></svg>
+          Reports
+        </div>
+        <div class="pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          12:37 PM, Wed
+        </div>
+        <div class="pill search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          Search for any health metric…
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+
+      <!-- Balance -->
+      <div class="card c-balance">
+        <div class="card-head">
+          <div>
+            <div class="balance-value">$18,540.00</div>
+            <div class="balance-compare">Compared to last year <b>+12.4%</b></div>
+          </div>
+          <span class="card-more">⋯</span>
+        </div>
+        <div class="balance-row2">
+          <span class="balance-avg">Yearly Avg. $15,200.00</span>
+          <span class="balance-link">How is it working? →</span>
+        </div>
+        <div class="crystal-panel">
+          <div class="crystal-glow"></div>
+          <svg class="crystal-shape" viewBox="0 0 150 110">
+            <polygon points="90,10 130,40 110,90 70,95 50,55" fill="#1E7A6B" opacity="0.9"/>
+            <polygon points="90,10 130,40 110,90" fill="#2FE3C4" opacity="0.55"/>
+            <polygon points="70,95 110,90 95,60" fill="#C9F24C" opacity="0.5"/>
+            <polygon points="50,55 70,95 40,80" fill="#13453D" opacity="0.9"/>
+            <polygon points="90,10 50,55 65,20" fill="#3EFFDA" opacity="0.35"/>
+          </svg>
+          <div class="crystal-label">AI Assistant</div>
+          <div class="crystal-sub">is analyzing your insurance usage…</div>
+        </div>
+      </div>
+
+      <!-- Insurance & metrics -->
+      <div class="card c-insure">
+        <div class="card-head">
+          <div class="card-label">Insurance &amp; Health Metrics</div>
+          <span class="card-more">⋯</span>
+        </div>
+        <div class="insure-value">$12,240.00</div>
+        <div class="insure-sub">Coverage Balance</div>
+        <span class="coverage-tag">18% AI-powered insurance and health insights</span>
+        <div class="insure-split" style="margin-top:16px;">
+          <div>
+            <div class="num">$265</div>
+            <div class="lbl">Co-pay Balance</div>
+          </div>
+          <div>
+            <div class="num">$8k <span style="font-size:11px; color:var(--teal); font-weight:600;">24%</span></div>
+            <div class="lbl">Health Savings</div>
+          </div>
+        </div>
+        <div class="avatar-stack">
+          <div class="av" style="background:#F2B84C;">JM</div>
+          <div class="av" style="background:#5B8DEF;">RT</div>
+          <div class="av" style="background:#F2694C;">CL</div>
+          <div class="av" style="background:#2FE3C4;">SN</div>
+          <div class="plus">+</div>
+        </div>
+      </div>
+
+      <!-- Smart health finance -->
+      <div class="card c-smart">
+        <div class="card-head">
+          <div class="card-label">Smart Health Finance</div>
+          <span class="card-more">⋯</span>
+        </div>
+        <div class="donut-wrap">
+          <svg width="90" height="90" viewBox="0 0 90 90">
+            <circle cx="45" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="9"></circle>
+            <circle cx="45" cy="45" r="38" fill="none" stroke="url(#donutGrad)" stroke-width="9"
+              stroke-linecap="round" stroke-dasharray="238.7" stroke-dashoffset="143.2"
+              transform="rotate(-90 45 45)"></circle>
+            <defs>
+              <linearGradient id="donutGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#2FE3C4"/>
+                <stop offset="100%" stop-color="#C9F24C"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="donut-center"><b>40%</b><span>Hospital Visits</span></div>
+        </div>
+        <div class="wave-wrap">
+          <svg viewBox="0 0 200 46" width="100%" height="100%" preserveAspectRatio="none">
+            <path d="M0 30 Q 15 5, 30 24 T 60 20 T 90 34 T 120 12 T 150 26 T 180 18 T 200 22"
+              fill="none" stroke="#2FE3C4" stroke-width="2"/>
+            <path d="M0 36 Q 15 20, 30 34 T 60 30 T 90 40 T 120 24 T 150 34 T 180 28 T 200 32"
+              fill="none" stroke="#C9F24C" stroke-width="1.5" opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Financial tracking -->
+      <div class="card c-tracking">
+        <div class="card-head">
+          <div>
+            <div class="card-label">Healthcare Financial Tracking</div>
+            <div class="tracking-value">$1,390 <span>/ $1,600</span></div>
+            <div class="tracking-days">2 days into cycle</div>
+          </div>
+          <span class="tracking-delta">+8%</span>
+        </div>
+        <div style="font-size:11px; color:var(--text-faint); margin-bottom:8px;">Smart Spending Limits</div>
+        <div class="spend-bar">
+          <div class="spend-seg" style="width:40%; background:#2FE3C4;"></div>
+          <div class="spend-seg" style="width:35%; background:#59C97A;"></div>
+          <div class="spend-seg" style="width:25%; background:#C9F24C;"></div>
+        </div>
+        <div class="spend-legend">
+          <div class="item"><span class="sw" style="background:#2FE3C4;"></span>Hospitals (40%)</div>
+          <div class="item"><span class="sw" style="background:#59C97A;"></span>Medications (35%)</div>
+          <div class="item"><span class="sw" style="background:#C9F24C;"></span>Lab Tests (25%)</div>
+        </div>
+      </div>
+
+      <!-- Transactions -->
+      <div class="card c-transactions">
+        <div class="card-head">
+          <div class="pill search" style="width:100%; padding:8px 12px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            Search health metrics…
+          </div>
+        </div>
+        <div class="tabs">
+          <div class="tab active">All Records</div>
+          <div class="tab">Pending</div>
+          <div class="tab">Completed</div>
+        </div>
+        <table class="tx-table">
+          <thead><tr><th>Category</th><th>Value</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Consultation</td><td>$120.00</td><td><span class="status paid">Paid</span></td></tr>
+            <tr><td>Pharmacy</td><td>$265.00</td><td><span class="status claimed">Claimed</span></td></tr>
+            <tr><td>Insurance</td><td>$1,200.00</td><td><span class="status pending">Pending</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- AI Assistant -->
+      <div class="card c-ai">
+        <div class="ai-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 4.9L19 9.8l-4.9 1.9L12 16.6l-1.9-4.9L5 9.8l4.9-1.9L12 3Z"/></svg>
+          AI Assistant
+        </div>
+        <div class="chat-bubble">What area are you managing today — coverage, spending, or claims?</div>
+        <div class="chip-row">
+          <span class="chip">Coverage</span>
+          <span class="chip">Spending</span>
+          <span class="chip">Claims</span>
+        </div>
+        <div class="insight-box">
+          <b>Insurance Focus</b>
+          Prioritize health coverage. Avoid unnecessary add-on deductible plans.
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

@@ -6,6 +6,9 @@ import {notes} from '../widgets/notes.js'
 
 let user = ""
 
+let widgets = []
+let dashboard_name = ""
+
 document.addEventListener('DOMContentLoaded', () => {
     const cursor = document.getElementById('cursor');
     const ring = document.getElementById('cursor-ring');
@@ -77,14 +80,42 @@ function setup_modal(){
         modal.style.display = "none";
     }
     });
+
+
+
+    const add_time_widget = document.getElementById("add_time_widget")
+    const add_timer_widget = document.getElementById("add_timer_widget")
+    const add_notes_widget = document.getElementById("add_notes_widget")
+    const add_weather_widget = document.getElementById("add_weather_widget")
+
+    add_time_widget.addEventListener("click", () => {
+        add_widget("time");
+    });
+
+    add_timer_widget.addEventListener("click", () => {
+        add_widget("timer");
+    });
+
+    add_notes_widget.addEventListener("click", () => {
+        add_widget("notes");
+    });
+
+    add_weather_widget.addEventListener("click", () => {
+        add_widget("weather");
+    });
 }
 
 async function fill_dashboard(){
+    close_poups()
+    const grid = document.getElementById("card-grid");
+    grid.innerHTML = ""
+
+
     const response = await fetch('/dashboard/api/load/main');
     const dashboard = await response.json();
 
-    const widgets = dashboard.widgets
-    const dashboard_name = dashboard.name
+    widgets = dashboard.widgets
+    dashboard_name = dashboard.name
     const dashname = document.getElementById("dash-name")
     dashname.textContent = "Dashboard: " + dashboard_name
 
@@ -96,4 +127,54 @@ async function fill_dashboard(){
     WigetFunctions.forEach(widget => {
         widget();
     });
+}
+
+function close_poups(){
+    const modal = document.getElementById("modal-menu");
+    modal.style.display = "none";
+};
+
+async function add_widget(widget_name) {
+    switch (widget_name) {
+        case "time":
+            console.log("time")
+            widgets.push("time")
+            break
+        case "timer":
+            widgets.push("timer")
+            break
+        case "notes":
+            widgets.push("notes")
+            break
+        case "weather":
+            widgets.push("weather")
+            break
+    }
+
+    try {
+        console.log(widgets)
+        const response = await fetch(`/dashboard/api/update/update_widget`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: dashboard_name,
+                widgets: widgets
+            })
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+            console.log("Widgets updated successfully:", result);
+            fill_dashboard()
+        } else {
+            console.error("Failed to update:", result.error);
+        }
+    } catch (error) {
+        console.error("Network error:", error);
+    }
+
+    console.log(widgets)
 }

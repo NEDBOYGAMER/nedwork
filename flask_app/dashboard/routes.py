@@ -30,3 +30,31 @@ def load_dashboard(dashboardname):
             })
 
 
+@dashboard_bp.route('/api/update/update_widget', methods=['POST'])
+def widget_update():
+    valid, user = Session.check(request.cookies.get("session_id"))
+
+    if not valid:
+        return render_template('auth/login.html')
+
+
+    data = request.get_json()
+    if not data or "widgets" not in data:
+        return jsonify({"error": "Missing 'widgets' data in request body"}), 400
+    
+
+    new_widgets = data["widgets"]
+    dashboardname = data["name"]
+
+    for dashboard in user.dashboards:
+        if dashboard.name == dashboardname:
+
+            dashboard.widgets = new_widgets
+            db.session.commit()
+            return jsonify({
+                "success": True,
+                "name": dashboard.name,
+                "widgets": dashboard.widgets
+            })
+
+
