@@ -1,21 +1,24 @@
-import { createWidgetCard } from './widget.js';
+// timer.js
+// No longer imports widget.js or builds its own card — widget.js's
+// createWidget() builds the shell from `definition` below, then calls
+// init(card) to wire up behaviour.
 
-export function timer() {
-    const card = createWidgetCard("timer", {
-        title: "TIMER",
-        dotId: "timer-dot",
-        bodyHTML: `
-        <div class="timer-display">
-            <span id="timer-time" title="Click to set time">05:00</span>
-        </div>
+export const definition = {
+    title: "TIMER",
+    dotId: "timer-dot",
+    bodyHTML: `
+    <div class="timer-display">
+        <span id="timer-time" title="Click to set time">05:00</span>
+    </div>
 
-        <div class="timer-controls">
-            <button id="timer-toggle">START</button>
-            <button id="timer-reset">RESET</button>
-        </div>
-        `
-    });
+    <div class="timer-controls">
+        <button id="timer-toggle">START</button>
+        <button id="timer-reset">RESET</button>
+    </div>
+    `,
+};
 
+export function init(card) {
     let duration = 300; // default 5 minutes in seconds
     let timeRemaining = duration;
     let timerId = null;

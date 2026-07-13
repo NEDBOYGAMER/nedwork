@@ -3,11 +3,12 @@ export const WIDGET_DEFAULTS = {
         "type": "time",
         "id": "-",
         "settings": {
-        "24_format": "true",
-        "show_seconds": true,
-        "show_date": true,
-        "date_style": "dd.m.jjjj", 
-        "style": "tech"
+            title: true,
+            "24_format": "true",
+            "show_seconds": true,
+            "show_date": true,
+            "date_style": "dd.m.jjjj", 
+            "style": "tech"
         }
     },
 
@@ -15,9 +16,10 @@ export const WIDGET_DEFAULTS = {
         "type": "weather",
         "id": "-",
         "settings": {
-        "location": "default",
-        "unit": "celsius",
-        "style": "tech"
+            title: true,
+            "location": "default",
+            "unit": "celsius",
+            "style": "tech"
         }
     },
 
@@ -26,15 +28,19 @@ export const WIDGET_DEFAULTS = {
         "id": "-",
         "text": "default",
         "settings": {
-        "style": "tech"
+            title: true,
+            "style": "tech"
         }
     },
 
     timer: {
         type: "timer",
+        "id": "-",
         settings: {
+            title: true,
             duration: 300,
-            started: 0
+            started: 0,
+            style : "tech"
         }
     }
 };

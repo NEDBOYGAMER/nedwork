@@ -142,7 +142,7 @@ class Dashboard(db.Model):
 
     user = db.relationship("User", back_populates="dashboards")
 
-    widgets = db.Column(db.JSON, nullable=True) # atm there is time, timer, weather, notes
+    widgets = db.Column(db.JSON, nullable=True)# no automatic fill
 
 
 class Group(db.Model):

@@ -1,8 +1,5 @@
 import { createBackground } from '../components/background.js';
-import {time} from '../widgets/time.js'
-import {timer} from '../widgets/timer.js'
-import {weather} from '../widgets/weather.js'
-import {notes} from '../widgets/notes.js'
+import { createWidget } from '../widgets/widget.js';
 import { WIDGET_DEFAULTS } from "../widgets/widget_default.js";
 
 let user = ""
@@ -34,14 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     fill_dashboard()
 
 });
-
-const WIGET_FUNCTIONS = {
-    time,
-    weather,
-    notes,
-    timer
-}
-
 
 async function adjust_headers(){
     const response = await fetch('/auth/api/who');
@@ -120,14 +109,9 @@ async function fill_dashboard(){
     const dashname = document.getElementById("dash-name")
     dashname.textContent = "Dashboard: " + dashboard_name
 
-    
-
-    const WigetFunctions = widgets.map(widget => WIGET_FUNCTIONS[widget.type]);
 
 
-    WigetFunctions.forEach(widget => {
-        widget();
-    });
+    widgets.forEach(createWidget);
 }
 
 function close_poups(){
@@ -135,7 +119,7 @@ function close_poups(){
     modal.style.display = "none";
 };
 
-async function add_widget(widgetName) {
+function add_widget(widgetName) {
     const widget = WIDGET_DEFAULTS[widgetName];
 
     if (!widget) {
@@ -143,9 +127,28 @@ async function add_widget(widgetName) {
         return;
     }
 
+    widget.id = crypto.randomUUID();
+
     widgets.push(structuredClone(widget));
 
+    update_widgets()
+}
 
+
+export function delete_widget(id) {
+    const index = widgets.findIndex(widget => widget.id === id);
+
+    if (index !== -1) {
+        widgets.splice(index, 1);
+    } else {
+        console.error("Widget not found:", id);
+    }
+
+    update_widgets()
+}
+
+
+async function update_widgets(params) {
     try {
         console.log(widgets)
         const response = await fetch(`/dashboard/api/update/update_widget`, {

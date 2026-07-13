@@ -1,35 +1,50 @@
-import { createWidgetCard } from './widget.js';
+// weather.js
+// No longer imports widget.js or builds its own card — widget.js's
+// createWidget() builds the shell from `definition` below, then calls
+// init(card, widgetConfig) to wire up behaviour.
+//
+// Expected widgetConfig shape (see WIDGET_DEFAULTS.weather):
+//   {
+//     type: "weather",
+//     id: "-",
+//     settings: { location: "default", unit: "celsius", style: "tech" }
+//   }
 
-export function weather() {
-    const card = createWidgetCard("weather", {
-        title: "WEATHER",
-        bodyHTML: `
-        <div class="weather-display">
-            <span id="weather-temp">--°C</span>
-        </div>
+export const definition = {
+    title: "WEATHER",
+    bodyHTML: `
+    <div class="weather-display">
+        <span id="weather-temp">--°C</span>
+    </div>
 
-        <div class="weather-desc" id="weather-condition">
-            Loading...
-        </div>
-        `
-    });
+    <div class="weather-desc" id="weather-condition">
+        Loading...
+    </div>
+    `,
+};
+
+export function init(card, widgetConfig = {}) {
+    const settings = widgetConfig.settings || {};
+    const location = settings.location && settings.location !== "default" ? settings.location : "";
+    const useFahrenheit = settings.unit === "fahrenheit";
+    const unitSymbol = useFahrenheit ? "°F" : "°C";
 
     const tempEl = card.querySelector("#weather-temp");
     const conditionEl = card.querySelector("#weather-condition");
 
     async function updateWeather() {
         try {
-            // Fetches weather based on the user's IP location using wttr.in JSON format
-            const response = await fetch("https://wttr.in/?format=j1");
+            // Empty location falls back to wttr.in's IP-based geolocation
+            const response = await fetch(`https://wttr.in/${encodeURIComponent(location)}?format=j1`);
             if (!response.ok) throw new Error("Weather data fetch failed");
 
             const data = await response.json();
 
             const currentCondition = data.current_condition[0];
-            const tempC = currentCondition.temp_C;
+            const temp = useFahrenheit ? currentCondition.temp_F : currentCondition.temp_C;
             const desc = currentCondition.weatherDesc[0].value;
 
-            tempEl.textContent = `${tempC}°C`;
+            tempEl.textContent = `${temp}${unitSymbol}`;
             conditionEl.textContent = desc.toUpperCase();
         } catch (error) {
             console.error("Error updating weather:", error);
