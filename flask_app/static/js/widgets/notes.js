@@ -1,9 +1,6 @@
+import { createWidgetCard } from './widget.js';
+
 export function notes() {
-    const grid = document.getElementById("card-grid");
-
-    const card = document.createElement("div");
-    card.classList.add("card", "notes-widget");
-
     // Inline SVGs for clean, sharp, white icons
     const tickIcon = `
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -18,8 +15,11 @@ export function notes() {
         </svg>
     `;
 
-    // Starts in edit mode, so the checkmark (tick) icon is visible to "save" or preview
-    card.innerHTML = `
+    // Notes has its own absolute-positioned toggle button instead of the
+    // shared widget-header, so we opt out of that part of the shell.
+    const card = createWidgetCard("notes", {
+        showHeader: false,
+        bodyHTML: `
         <button id="toggle-mode-btn" style="position: absolute; top: 10px; right: 10px; z-index: 10;">
             ${tickIcon}
         </button>
@@ -27,9 +27,8 @@ export function notes() {
             <textarea id="notes-textarea" placeholder="Type your thoughts here..."></textarea>
             <div id="notes-preview" style="display: none;"></div>
         </div>
-    `;
-
-    grid.appendChild(card);
+        `
+    });
 
     const textarea = card.querySelector("#notes-textarea");
     const preview = card.querySelector("#notes-preview");
@@ -37,10 +36,10 @@ export function notes() {
 
     // Toggle Mode using the 'marked' library
     let isPreviewMode = false;
-    toggleBtn.addEventListener("click", () => {
+    function togglePreview() {
         if (!isPreviewMode) {
             preview.innerHTML = marked.parse(textarea.value);
-            
+
             textarea.style.display = "none";
             preview.style.display = "block";
             toggleBtn.innerHTML = penIcon; // Switch to the pen icon
@@ -50,5 +49,13 @@ export function notes() {
             toggleBtn.innerHTML = tickIcon; // Switch back to the tick icon
         }
         isPreviewMode = !isPreviewMode;
+    }
+
+    toggleBtn.addEventListener("click", togglePreview);
+
+    // Context-menu "Edit" drops back into the editable textarea and focuses it
+    card.addEventListener("widget:edit", () => {
+        if (isPreviewMode) togglePreview();
+        textarea.focus();
     });
 }

@@ -3,6 +3,7 @@ import {time} from '../widgets/time.js'
 import {timer} from '../widgets/timer.js'
 import {weather} from '../widgets/weather.js'
 import {notes} from '../widgets/notes.js'
+import { WIDGET_DEFAULTS } from "../widgets/widget_default.js";
 
 let user = ""
 
@@ -121,7 +122,7 @@ async function fill_dashboard(){
 
     
 
-    const WigetFunctions = widgets.map(name => WIGET_FUNCTIONS[name]);
+    const WigetFunctions = widgets.map(widget => WIGET_FUNCTIONS[widget.type]);
 
 
     WigetFunctions.forEach(widget => {
@@ -134,22 +135,16 @@ function close_poups(){
     modal.style.display = "none";
 };
 
-async function add_widget(widget_name) {
-    switch (widget_name) {
-        case "time":
-            console.log("time")
-            widgets.push("time")
-            break
-        case "timer":
-            widgets.push("timer")
-            break
-        case "notes":
-            widgets.push("notes")
-            break
-        case "weather":
-            widgets.push("weather")
-            break
+async function add_widget(widgetName) {
+    const widget = WIDGET_DEFAULTS[widgetName];
+
+    if (!widget) {
+        console.error("Unknown widget:", widgetName);
+        return;
     }
+
+    widgets.push(structuredClone(widget));
+
 
     try {
         console.log(widgets)

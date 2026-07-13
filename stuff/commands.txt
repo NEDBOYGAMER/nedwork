@@ -1,0 +1,4 @@
+systemctl restart nedwork
+
+sudo journalctl -u nedwork -n 50 --no-pager
+

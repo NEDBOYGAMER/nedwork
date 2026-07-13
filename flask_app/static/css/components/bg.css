@@ -10,7 +10,6 @@ body {
     background: linear-gradient(0deg, var(--bg-gradient-top) 0%, var(--bg-gradient-bottom) 100%);
     background-attachment: fixed;
     text-align: center;
-    font-family: 'Orbitron', sans-serif;
     color: var(--text-color);
     align-items: center;
     margin: 0;

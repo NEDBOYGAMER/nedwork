@@ -112,12 +112,6 @@ def seed_database():
         print("📊 Creating custom dashboards with varied widget loads...")
         
         # Variations of logic states for widgets to test your front-end logic parsing
-        widget_presets = [
-            ["time", "weather"],
-            ["timer", "notes"],
-            ["time", "notes", "weather"],
-            ["timer", "time"],
-        ]
         
         dashboard_counter = 1
         for user in created_users:
@@ -130,13 +124,10 @@ def seed_database():
                 if index > 0:
                     db_name += str(index+1)
                 
-                # Pull a structural preset configuration to test logic
-                test_widgets = random.choice(widget_presets)
-                
                 dashboard = Dashboard(
                     name=db_name,
                     user=user,
-                    widgets=test_widgets
+                    widgets=[]
                 )
                 db.session.add(dashboard)
                 dashboard_counter += 1

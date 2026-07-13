@@ -1,15 +1,10 @@
+import { createWidgetCard } from './widget.js';
+
 export function timer() {
-    const grid = document.getElementById("card-grid");
-
-    const card = document.createElement("div");
-    card.classList.add("card", "timer-widget");
-
-    card.innerHTML = `
-        <div class="widget-header">
-            <span class="widget-title">TIMER</span>
-            <span class="status-dot" id="timer-dot"></span>
-        </div>
-
+    const card = createWidgetCard("timer", {
+        title: "TIMER",
+        dotId: "timer-dot",
+        bodyHTML: `
         <div class="timer-display">
             <span id="timer-time" title="Click to set time">05:00</span>
         </div>
@@ -18,9 +13,8 @@ export function timer() {
             <button id="timer-toggle">START</button>
             <button id="timer-reset">RESET</button>
         </div>
-    `;
-
-    grid.appendChild(card);
+        `
+    });
 
     let duration = 300; // default 5 minutes in seconds
     let timeRemaining = duration;
@@ -39,10 +33,10 @@ export function timer() {
 
     function startTimer() {
         if (timerId !== null) return;
-        
+
         dot.classList.add("active-timer");
         toggleBtn.textContent = "PAUSE";
-        
+
         timerId = setInterval(() => {
             if (timeRemaining > 0) {
                 timeRemaining--;
@@ -64,8 +58,7 @@ export function timer() {
         toggleBtn.textContent = "START";
     }
 
-    // Change duration by clicking the numbers
-    display.addEventListener("click", () => {
+    function editDuration() {
         pauseTimer();
         const input = prompt("Enter minutes:", Math.floor(duration / 60));
         const mins = parseInt(input, 10);
@@ -74,7 +67,10 @@ export function timer() {
             timeRemaining = duration;
             updateDisplay();
         }
-    });
+    }
+
+    // Change duration by clicking the numbers
+    display.addEventListener("click", editDuration);
 
     toggleBtn.addEventListener("click", () => {
         if (timerId === null) {
@@ -89,6 +85,11 @@ export function timer() {
         timeRemaining = duration;
         updateDisplay();
     });
+
+    // Context-menu "Edit" reuses the same set-time prompt as clicking the display
+    card.addEventListener("widget:edit", editDuration);
+    // Make sure the interval doesn't keep running once the card is removed
+    card.addEventListener("widget:delete", pauseTimer);
 
     updateDisplay();
 }
