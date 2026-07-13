@@ -41,7 +41,6 @@ export function createBackground({
     let ry = -200;
 
     let gridPoints = [];
-    let blobs = [];
 
     let W = 0;
     let H = 0;
@@ -61,14 +60,10 @@ export function createBackground({
     // =========================
     // PUBLIC API
     // =========================
-    function setMode(newMode) {
-        mode = newMode;
-        localStorage.setItem('background', newMode);
-
-        if (newMode === 'optblobs') {
-            createBlobs();
-        }
-    }
+function setMode(newMode) {
+    mode = newMode;
+    localStorage.setItem('background', newMode);
+}
 
     // =========================
     // RESIZE
@@ -156,53 +151,7 @@ export function createBackground({
         }
     }
 
-    // =========================
-    // BLOBS MODE
-    // =========================
-    function createBlobs() {
-        const count = 12;
 
-        blobs = Array.from({ length: count }, () => ({
-            x: Math.random() * W,
-            y: Math.random() * H,
-            vx: (Math.random() - 0.5) * 0.3,
-            vy: (Math.random() - 0.5) * 0.3,
-            r: 120 + Math.random() * 200
-        }));
-    }
-
-    function updateBlobs() {
-        blobs.forEach(b => {
-            b.x += b.vx;
-            b.y += b.vy;
-
-            if (b.x < -200) b.x = W + 200;
-            if (b.x > W + 200) b.x = -200;
-            if (b.y < -200) b.y = H + 200;
-            if (b.y > H + 200) b.y = -200;
-        });
-    }
-
-    function drawBlobs() {
-        ctx.save();
-        ctx.globalAlpha = 0.25;
-        ctx.filter = 'blur(60px)';
-
-        const color = css().getPropertyValue('--accent').trim();
-
-        blobs.forEach(b => {
-            const grd = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-            grd.addColorStop(0, color);
-            grd.addColorStop(1, 'transparent');
-
-            ctx.fillStyle = grd;
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
-        ctx.restore();
-    }
 
     // =========================
     // CURSOR UPDATE
@@ -282,12 +231,6 @@ export function createBackground({
             drawGlow();
             updateDots();
             drawDots();
-        }
-
-        if (mode === 'optblobs') {
-            drawGlow();
-            updateBlobs();
-            drawBlobs();
         }
 
         requestAnimationFrame(render);

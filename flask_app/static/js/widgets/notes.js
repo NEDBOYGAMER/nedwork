@@ -1,7 +1,7 @@
 // notes.js
-// No longer imports widget.js or builds its own card — widget.js's
-// createWidget() builds the shell from `definition` below, then calls
-// init(card, widgetConfig) to wire up behaviour.
+// Exports a NotesWidget class (extends Widget from base_widget.js).
+// widget.js's createWidget() builds the card shell from getDefinition(),
+// then calls instance.init(card) to wire up behaviour.
 //
 // Expected widgetConfig shape (see WIDGET_DEFAULTS.notes):
 //   {
@@ -10,6 +10,8 @@
 //     text: "default",   // "default" is a sentinel for "no saved text yet"
 //     settings: { style: "tech" }
 //   }
+
+import { Widget } from './base_widget.js';
 
 // Inline SVGs for clean, sharp, white icons
 const tickIcon = `
@@ -25,11 +27,13 @@ const penIcon = `
     </svg>
 `;
 
-// Notes has its own absolute-positioned toggle button instead of the
-// shared widget-header, so it opts out of that part of the shell.
-export const definition = {
-    showHeader: false,
-    bodyHTML: `
+export class NotesWidget extends Widget {
+    getDefinition() {
+        // Notes has its own absolute-positioned toggle button instead of the
+        // shared widget-header, so it opts out of that part of the shell.
+        return {
+            showHeader: false,
+            bodyHTML: `
     <button id="toggle-mode-btn" style="position: absolute; top: 10px; right: 10px; z-index: 10;">
         ${tickIcon}
     </button>
@@ -38,39 +42,41 @@ export const definition = {
         <div id="notes-preview" style="display: none;"></div>
     </div>
     `,
-};
-
-export function init(card, widgetConfig = {}) {
-    const savedText = widgetConfig.text && widgetConfig.text !== "default" ? widgetConfig.text : "";
-
-    const textarea = card.querySelector("#notes-textarea");
-    const preview = card.querySelector("#notes-preview");
-    const toggleBtn = card.querySelector("#toggle-mode-btn");
-
-    textarea.value = savedText;
-
-    // Toggle Mode using the 'marked' library
-    let isPreviewMode = false;
-    function togglePreview() {
-        if (!isPreviewMode) {
-            preview.innerHTML = marked.parse(textarea.value);
-
-            textarea.style.display = "none";
-            preview.style.display = "block";
-            toggleBtn.innerHTML = penIcon; // Switch to the pen icon
-        } else {
-            textarea.style.display = "block";
-            preview.style.display = "none";
-            toggleBtn.innerHTML = tickIcon; // Switch back to the tick icon
-        }
-        isPreviewMode = !isPreviewMode;
+        };
     }
 
-    toggleBtn.addEventListener("click", togglePreview);
+    init(card) {
+        const savedText = this.config.text && this.config.text !== "default" ? this.config.text : "";
 
-    // Context-menu "Edit" drops back into the editable textarea and focuses it
-    card.addEventListener("widget:edit", () => {
-        if (isPreviewMode) togglePreview();
-        textarea.focus();
-    });
+        this.textarea = card.querySelector("#notes-textarea");
+        this.preview = card.querySelector("#notes-preview");
+        this.toggleBtn = card.querySelector("#toggle-mode-btn");
+
+        this.textarea.value = savedText;
+        this.isPreviewMode = false;
+
+        this.toggleBtn.addEventListener("click", () => this.togglePreview());
+
+        // Context-menu "Edit" drops back into the editable textarea and focuses it
+        card.addEventListener("widget:edit", () => {
+            if (this.isPreviewMode) this.togglePreview();
+            this.textarea.focus();
+        });
+    }
+
+    // Toggle Mode using the 'marked' library
+    togglePreview() {
+        if (!this.isPreviewMode) {
+            this.preview.innerHTML = marked.parse(this.textarea.value);
+
+            this.textarea.style.display = "none";
+            this.preview.style.display = "block";
+            this.toggleBtn.innerHTML = penIcon; // Switch to the pen icon
+        } else {
+            this.textarea.style.display = "block";
+            this.preview.style.display = "none";
+            this.toggleBtn.innerHTML = tickIcon; // Switch back to the tick icon
+        }
+        this.isPreviewMode = !this.isPreviewMode;
+    }
 }

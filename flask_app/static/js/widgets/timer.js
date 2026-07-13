@@ -1,12 +1,16 @@
 // timer.js
-// No longer imports widget.js or builds its own card — widget.js's
-// createWidget() builds the shell from `definition` below, then calls
-// init(card) to wire up behaviour.
+// Exports a TimerWidget class (extends Widget from base_widget.js).
+// widget.js's createWidget() builds the card shell from getDefinition(),
+// then calls instance.init(card) to wire up behaviour.
 
-export const definition = {
-    title: "TIMER",
-    dotId: "timer-dot",
-    bodyHTML: `
+import { Widget } from './base_widget.js';
+
+export class TimerWidget extends Widget {
+    getDefinition() {
+        return {
+            title: "TIMER",
+            dotId: "timer-dot",
+            bodyHTML: `
     <div class="timer-display">
         <span id="timer-time" title="Click to set time">05:00</span>
     </div>
@@ -16,83 +20,83 @@ export const definition = {
         <button id="timer-reset">RESET</button>
     </div>
     `,
-};
-
-export function init(card) {
-    let duration = 300; // default 5 minutes in seconds
-    let timeRemaining = duration;
-    let timerId = null;
-
-    const display = card.querySelector("#timer-time");
-    const toggleBtn = card.querySelector("#timer-toggle");
-    const resetBtn = card.querySelector("#timer-reset");
-    const dot = card.querySelector("#timer-dot");
-
-    function updateDisplay() {
-        const minutes = Math.floor(timeRemaining / 60).toString().padStart(2, "0");
-        const seconds = (timeRemaining % 60).toString().padStart(2, "0");
-        display.textContent = `${minutes}:${seconds}`;
+        };
     }
 
-    function startTimer() {
-        if (timerId !== null) return;
+    init(card) {
+        this.duration = 300; // default 5 minutes in seconds
+        this.timeRemaining = this.duration;
+        this.timerId = null;
 
-        dot.classList.add("active-timer");
-        toggleBtn.textContent = "PAUSE";
+        this.display = card.querySelector("#timer-time");
+        this.toggleBtn = card.querySelector("#timer-toggle");
+        this.resetBtn = card.querySelector("#timer-reset");
+        this.dot = card.querySelector("#timer-dot");
 
-        timerId = setInterval(() => {
-            if (timeRemaining > 0) {
-                timeRemaining--;
-                updateDisplay();
+        // Change duration by clicking the numbers
+        this.display.addEventListener("click", () => this.editDuration());
+
+        this.toggleBtn.addEventListener("click", () => {
+            if (this.timerId === null) {
+                this.startTimer();
             } else {
-                clearInterval(timerId);
-                timerId = null;
-                dot.classList.remove("active-timer");
-                toggleBtn.textContent = "START";
+                this.pauseTimer();
+            }
+        });
+
+        this.resetBtn.addEventListener("click", () => {
+            this.pauseTimer();
+            this.timeRemaining = this.duration;
+            this.updateDisplay();
+        });
+
+        // Context-menu "Edit" reuses the same set-time prompt as clicking the display
+        card.addEventListener("widget:edit", () => this.editDuration());
+
+        this.updateDisplay();
+    }
+
+    updateDisplay() {
+        const minutes = Math.floor(this.timeRemaining / 60).toString().padStart(2, "0");
+        const seconds = (this.timeRemaining % 60).toString().padStart(2, "0");
+        this.display.textContent = `${minutes}:${seconds}`;
+    }
+
+    startTimer() {
+        if (this.timerId !== null) return;
+
+        this.dot.classList.add("active-timer");
+        this.toggleBtn.textContent = "PAUSE";
+
+        this.timerId = setInterval(() => {
+            if (this.timeRemaining > 0) {
+                this.timeRemaining--;
+                this.updateDisplay();
+            } else {
+                clearInterval(this.timerId);
+                this.timerId = null;
+                this.dot.classList.remove("active-timer");
+                this.toggleBtn.textContent = "START";
                 alert("Time's up!");
             }
         }, 1000);
     }
 
-    function pauseTimer() {
-        clearInterval(timerId);
-        timerId = null;
-        dot.classList.remove("active-timer");
-        toggleBtn.textContent = "START";
+    pauseTimer() {
+        clearInterval(this.timerId);
+        this.timerId = null;
+        this.dot.classList.remove("active-timer");
+        this.toggleBtn.textContent = "START";
     }
 
-    function editDuration() {
-        pauseTimer();
-        const input = prompt("Enter minutes:", Math.floor(duration / 60));
+    editDuration() {
+        this.pauseTimer();
+        const input = prompt("Enter minutes:", Math.floor(this.duration / 60));
         const mins = parseInt(input, 10);
         if (!isNaN(mins) && mins > 0) {
-            duration = mins * 60;
-            timeRemaining = duration;
-            updateDisplay();
+            this.duration = mins * 60;
+            this.timeRemaining = this.duration;
+            this.updateDisplay();
         }
     }
-
-    // Change duration by clicking the numbers
-    display.addEventListener("click", editDuration);
-
-    toggleBtn.addEventListener("click", () => {
-        if (timerId === null) {
-            startTimer();
-        } else {
-            pauseTimer();
-        }
-    });
-
-    resetBtn.addEventListener("click", () => {
-        pauseTimer();
-        timeRemaining = duration;
-        updateDisplay();
-    });
-
-    // Context-menu "Edit" reuses the same set-time prompt as clicking the display
-    card.addEventListener("widget:edit", editDuration);
-    // Make sure the interval doesn't keep running once the card is removed
-    card.addEventListener("widget:delete", pauseTimer);
-
-    updateDisplay();
 }

@@ -1,7 +1,7 @@
 // time.js
-// No longer imports widget.js or builds its own card — widget.js's
-// createWidget() builds the shell from `definition` below, then calls
-// init(card, widgetConfig) to wire up behaviour.
+// Exports a TimeWidget class (extends Widget from base_widget.js).
+// widget.js's createWidget() builds the card shell from getDefinition(),
+// then calls instance.init(card) to wire up behaviour.
 //
 // Expected widgetConfig shape (see WIDGET_DEFAULTS.time):
 //   {
@@ -16,18 +16,7 @@
 //     }
 //   }
 
-export const definition = {
-    title: "TIME",
-    bodyHTML: `
-    <div class="clock">
-        <span id="clock-time">00:00:00</span>
-    </div>
-
-    <div class="date" id="clock-date">
-        Loading...
-    </div>
-    `,
-};
+import { Widget } from './base_widget.js';
 
 function isTruthy(value) {
     // settings sometimes send booleans, sometimes the strings "true"/"false"
@@ -50,35 +39,61 @@ function formatDate(date, pattern) {
         .replace(/\bm\b/gi, m);
 }
 
-export function init(card, widgetConfig = {}) {
-    const settings = widgetConfig.settings || {};
-    const use24Hour = isTruthy(settings["24_format"]);
-    const showSeconds = settings.show_seconds !== false; // default true
-    const showDate = settings.show_date !== false; // default true
-    const dateStyle = settings.date_style;
+export class TimeWidget extends Widget {
+    getDefinition() {
+        return {
+            title: "TIME",
+            bodyHTML: `
+    <div class="clock">
+        <span id="clock-time">00:00:00</span>
+    </div>
 
-    const timeEl = card.querySelector("#clock-time");
-    const dateEl = card.querySelector("#clock-date");
-
-    if (!showDate) {
-        dateEl.style.display = "none";
+    <div class="date" id="clock-date">
+        Loading...
+    </div>
+    `,
+        };
     }
 
-    function updateTime() {
+    init(card) {
+        const settings = this.config.settings || {};
+        this.use24Hour = isTruthy(settings["24_format"]);
+        this.showSeconds = settings.show_seconds !== false; // default true
+        this.showDate = settings.show_date !== false; // default true
+        this.dateStyle = settings.date_style;
+
+        this.timeEl = card.querySelector("#clock-time");
+        this.dateEl = card.querySelector("#clock-date");
+
+        if (!this.showDate) {
+            this.dateEl.style.display = "none";
+        }
+
+        this.updateTime();
+        this.intervalId = setInterval(
+            () => this.updateTime(),
+            this.showSeconds ? 1000 : 60 * 1000
+        );
+
+        // Stop the clock from ticking in the background once the card is gone
+        card.addEventListener("widget:delete", () => clearInterval(this.intervalId));
+    }
+
+    updateTime() {
         const now = new Date();
 
         const timeStr = now.toLocaleTimeString("en-GB", {
-            hour12: !use24Hour,
+            hour12: !this.use24Hour,
             hour: "2-digit",
             minute: "2-digit",
-            second: showSeconds ? "2-digit" : undefined,
+            second: this.showSeconds ? "2-digit" : undefined,
         });
 
-        timeEl.textContent = timeStr;
+        this.timeEl.textContent = timeStr;
 
-        if (showDate) {
-            dateEl.textContent = dateStyle
-                ? formatDate(now, dateStyle)
+        if (this.showDate) {
+            this.dateEl.textContent = this.dateStyle
+                ? formatDate(now, this.dateStyle)
                 : now.toLocaleDateString("en-GB", {
                     weekday: "short",
                     day: "2-digit",
@@ -87,10 +102,4 @@ export function init(card, widgetConfig = {}) {
                 });
         }
     }
-
-    updateTime();
-    const intervalId = setInterval(updateTime, showSeconds ? 1000 : 60 * 1000);
-
-    // Stop the clock from ticking in the background once the card is gone
-    card.addEventListener("widget:delete", () => clearInterval(intervalId));
 }

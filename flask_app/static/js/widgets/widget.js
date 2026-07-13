@@ -1,57 +1,54 @@
 // widget.js
 // Central orchestrator for all dashboard widgets.
 //
-// Previously each widget file (time.js, timer.js, weather.js, notes.js)
-// imported createWidgetCard() and called it to build itself. That's now
-// inverted: widget.js owns the registry of widget types, and the main
-// script calls createWidget(config) with a config.type selector. widget.js
-// builds the shared card shell and then hands off to the matching widget
-// module to fill it in and wire up behaviour.
-//
-// Each widget module now exports:
-//   - `definition` (or a function returning one): the shell config
+// Each widget module now exports a class extending `Widget` (base_widget.js):
+//   - `getDefinition()`: returns the shell config
 //        { title, bodyHTML, showHeader, showStatusDot, dotId, extraCardClasses, contextMenuItems }
-//   - `init(card, options)`: wires up behaviour on the already-built card
+//   - `init(card)`: wires up behaviour on the already-built card. Per-instance
+//        state (timers, DOM refs, cached settings) lives on `this`.
+//
+// widget.js owns the registry of widget types (type -> class) and the
+// createWidget() factory: it instantiates the right class, builds the
+// shared card shell from instance.getDefinition(), and calls instance.init(card).
 //
 // A widget can still react to the menu actions via the "widget:edit" and
 // "widget:delete" custom events on the card element, e.g.:
 //
 //   card.addEventListener("widget:edit", () => { ... });
-//   card.addEventListener("widget:delete", () => { clearInterval(id); });
+//   card.addEventListener("widget:delete", () => { clearInterval(this.id); });
 //
 // "widget:delete" fires *before* the card is removed from the DOM, so it's
 // the right place to clear intervals/timeouts/listeners.
 
-import * as weatherModule from './weather.js';
-import * as timeModule from './time.js';
-import * as timerModule from './timer.js';
-import * as notesModule from './notes.js';
+import { WeatherWidget } from './weather.js';
+import { TimeWidget } from './time.js';
+import { TimerWidget } from './timer.js';
+import { NotesWidget } from './notes.js';
 
 import { delete_widget } from '../pages/dashboard.js';
 
-// type -> widget module. Add new widgets here.
+// type -> widget class. Add new widgets here.
 const registry = {
-    weather: weatherModule,
-    time: timeModule,
-    timer: timerModule,
-    notes: notesModule,
+    weather: WeatherWidget,
+    time: TimeWidget,
+    timer: TimerWidget,
+    notes: NotesWidget,
 };
 
 let activeMenu = null;
-let config = {}
 
 /**
  * Build a widget end-to-end: look up widgetConfig.type in the registry,
- * build the card shell from that module's `definition`, insert it into the
- * grid, then call the module's `init(card, widgetConfig)` to wire up
- * behaviour.
+ * instantiate that widget's class, build the card shell from
+ * instance.getDefinition(), insert it into the grid, then call
+ * instance.init(card) to wire up behaviour.
  *
  * widgetConfig matches the shape stored in the DB / WIDGET_DEFAULTS, e.g.:
  *   { type: "timer", id: "abc123", settings: { duration: 300, ... } }
  *   { type: "notes", id: "abc123", text: "...", settings: { ... } }
  *
- * The full widgetConfig (not just `settings`) is passed through to
- * `definition()` and `init()` so widgets can use `id`, `text`, or any other
+ * The full widgetConfig (not just `settings`) is available to the instance
+ * as `this.config`, so widgets can use `id`, `text`, or any other
  * top-level field alongside `settings`.
  *
  * @param {Object} widgetConfig
@@ -61,18 +58,15 @@ let config = {}
  */
 export function createWidget(widgetConfig = {}) {
     const { type, id } = widgetConfig;
-    config = widgetConfig
 
-    const widgetModule = registry[type];
-    if (!widgetModule) {
+    const WidgetClass = registry[type];
+    if (!WidgetClass) {
         console.error(`createWidget: unknown widget type "${type}"`, widgetConfig);
         return null;
     }
 
-    const definition =
-        typeof widgetModule.definition === "function"
-            ? widgetModule.definition(widgetConfig)
-            : widgetModule.definition || {};
+    const instance = new WidgetClass(widgetConfig);
+    const definition = instance.getDefinition();
 
     const card = buildCardShell(type, definition);
 
@@ -81,9 +75,12 @@ export function createWidget(widgetConfig = {}) {
         card.dataset.widgetId = id;
     }
 
-    if (typeof widgetModule.init === "function") {
-        widgetModule.init(card, widgetConfig);
-    }
+    // Keep the full config reachable from the card itself — the context
+    // menu's default delete handler needs widgetConfig.id.
+    card.widgetConfig = widgetConfig;
+    instance.card = card;
+
+    instance.init(card);
 
     return card;
 }
@@ -91,8 +88,8 @@ export function createWidget(widgetConfig = {}) {
 /**
  * Build the shared card shell (optional header + status dot), append it to
  * the grid, and wire up the right-click context menu. Internal — widget
- * modules no longer call this directly, they just describe themselves via
- * `definition` and createWidget() does the building.
+ * classes no longer build this directly, they just describe themselves via
+ * getDefinition() and createWidget() does the building.
  */
 function buildCardShell(type, definition = {}) {
     const {
@@ -206,4 +203,3 @@ function closeContextMenu() {
         activeMenu = null;
     }
 }
-
