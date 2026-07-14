@@ -25,6 +25,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+document.addEventListener('keydown', (e) => {
+    if (e.code === "Enter"){
+        if (state == "login"){
+            login()
+        }
+        else if (state == "register"){
+            register()
+        }
+    }
+});
+
 async function register() {
     const username = document.getElementById('username')?.value;
     const password = document.getElementById('password')?.value;
@@ -112,6 +123,7 @@ async function login() {
 
 
 function loadLogin() {
+    state = "login"
     const container = document.getElementById("container")
     container.innerHTML = ""
 
@@ -173,6 +185,7 @@ function loadLogin() {
 
 
 function loadRegister() {
+    state = "register"
     const container = document.getElementById("container")
     container.innerHTML = ""
 

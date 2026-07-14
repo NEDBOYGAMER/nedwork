@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     adjust_headers();
     adjust_grid();
-    setup_modal();
+    setup_add_modal();
     fill_dashboard()
 
 });
@@ -48,11 +48,11 @@ function adjust_grid() {
 }
 
 
-function setup_modal(){
+function setup_add_modal(){
     // Get DOM elements
-    const modal = document.getElementById("modal-menu");
+    const modal = document.getElementById("add_modal-menu");
     const openBtn = document.getElementById("add-widget-btn");
-    const closeBtn = document.getElementById("closeMenuBtn");
+    const closeBtn = document.getElementById("add_closeMenuBtn");
 
     // Open the modal (change display to flex so it centers perfectly)
     openBtn.addEventListener("click", () => {

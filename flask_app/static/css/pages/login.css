@@ -121,3 +121,73 @@ input:focus {
     50% { opacity: 20%; }
     0%, 100% { opacity: 80%; }
 }
+
+
+/* ===== MOBILE OPTIMIZATION ===== */
+@media (max-width: 700px) {
+    #Welcome {
+        font-size: 15vw;
+        padding-top: 40px;
+        margin-bottom: 4px;
+    }
+
+    #nedwork {
+        font-size: 6.5vw;
+        margin-top: 6px;
+    }
+
+    #main-box {
+        margin-bottom: 4vh;
+        padding: 0 4vw;
+    }
+
+    #pulse-bar {
+        width: 60vw;
+    }
+
+    #container {
+        margin-left: 5vw;
+        margin-right: 5vw;
+        padding: 6%;
+        border-radius: 16px;
+    }
+
+    input {
+        width: 100%;
+        font-size: 16px; /* keeps iOS Safari from auto-zooming on focus */
+        box-sizing: border-box;
+        margin-bottom: 16px;
+    }
+
+    #buttons {
+        grid-template-columns: 47% 6% 47%;
+        width: 100%;
+    }
+
+    #active-button,
+    #inactive-button {
+        font-size: 100%;
+        padding: 12px 8px;
+    }
+
+    /* No real mouse on touch devices: hide the custom cursor
+       instead of letting it sit at (0,0) with no mousemove to move it */
+    #cursor,
+    #cursor-ring {
+        display: none;
+    }
+
+    * {
+        cursor: auto !important;
+    }
+}
+
+@media (max-width: 380px) {
+    #Welcome {
+        font-size: 17vw;
+    }
+
+    #nedwork {
+        font-size: 7.5vw;
+    }
+}

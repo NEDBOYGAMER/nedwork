@@ -1,4 +1,4 @@
-from flask import request, Blueprint, jsonify, render_template, make_response
+from flask import request, Blueprint, jsonify, render_template, make_response, redirect, url_for
 from ..models import *
 from .. import db
 from datetime import *
@@ -8,7 +8,12 @@ auth_bp = Blueprint("auth", __name__, static_folder='../static')
 
 @auth_bp.route("/login", methods=["GET"])
 def login_page():
-    return render_template('auth/login.html')
+    valid, user = Session.check(request.cookies.get("session_id"))
+
+    if not valid:
+        return render_template('auth/login.html')
+
+    return redirect(url_for('dashboard.dashboard'))
 
 
 @auth_bp.route("/api/register", methods=["POST"])

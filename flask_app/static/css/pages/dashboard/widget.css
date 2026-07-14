@@ -91,3 +91,25 @@
     margin: 4px 2px;
     background: var(--border-soft);
 }
+
+
+
+@media (max-width: 700px) {
+    .widget-context-menu {
+        min-width: 160px;
+    }
+
+    .context-menu-item {
+        padding: 12px 14px;
+        font-size: 13px;
+    }
+}
+
+/* touch devices don't have real hover — this stops the glow
+   from getting "stuck" on a card after you tap it */
+@media (hover: none) {
+    .card:hover {
+        border-color: var(--border-soft);
+        box-shadow: none;
+    }
+}

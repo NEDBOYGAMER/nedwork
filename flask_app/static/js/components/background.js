@@ -72,7 +72,6 @@ function setMode(newMode) {
         W = canvas.width = window.innerWidth;
         H = canvas.height = window.innerHeight;
 
-        if (mode === 'optblobs') createBlobs();
     }
 
     // =========================
@@ -225,6 +224,8 @@ function setMode(newMode) {
         updateCursor();
 
         ctx.clearRect(0, 0, W, H);
+
+        console.log(mode)
 
         if (mode === 'optgrid') {
             makeGrid();

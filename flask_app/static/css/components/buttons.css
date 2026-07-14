@@ -57,6 +57,12 @@
     pointer-events: none;
 }
 
+#bg-switch {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .toggle-box {
     position: relative;
 
@@ -114,9 +120,18 @@
 #switch:checked + .toggle-box .slider {
     transform: translateX(95px);
 }
+#bg-switch:checked + .toggle-box .slider {
+    transform: translateX(95px);
+}
 
 #switch:not(:checked) + .toggle-box .left,
 #switch:checked + .toggle-box .right {
+    color: var(--accent-text);
+    font-weight: 700;
+}
+
+#bg-switch:not(:checked) + .toggle-box .left,
+#bg-switch:checked + .toggle-box .right {
     color: var(--accent-text);
     font-weight: 700;
 }

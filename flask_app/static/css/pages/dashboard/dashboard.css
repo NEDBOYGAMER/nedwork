@@ -182,14 +182,6 @@
   box-shadow: 0 0 5px rgba(163, 163, 255, 0.2);
 }
 
-
-
-
-
-
-
-
-
 /* The dark background overlay */
 .modal {
   display: none; /* Hidden by default */
@@ -248,3 +240,4 @@
     transition: border-color .2s, box-shadow .2s;
     min-height: 100px;
 }
+

@@ -68,17 +68,14 @@
             <div class="setting-row">
                 <h2>Background</h2>
 
-                <div class="nselect">
-                    <input type="radio" name="background" id="optgrid" checked>
-                    <input type="radio" name="background" id="optblobs">
-                    <input type="radio" name="background" id="optnone">
+                <input type="checkbox" id="bg-switch">
+                <label for="bg-switch" class="toggle-box">
+                    <span class="option left">Grid</span>
+                    <span class="option right">None</span>
+                    <div class="slider"></div>
+                </label>
 
-                    <label class="option" for="optgrid">Grid</label>
-                    <label class="option" for="optblobs">Blobs</label>
-                    <label class="option" for="optnone">None</label>
 
-                    <div class="nselect-slider"></div>
-                </div>
             </div>
 
             <h1>Notifications</h1>

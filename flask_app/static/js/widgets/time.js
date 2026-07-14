@@ -75,8 +75,6 @@ export class TimeWidget extends Widget {
             this.showSeconds ? 1000 : 60 * 1000
         );
 
-        // Stop the clock from ticking in the background once the card is gone
-        card.addEventListener("widget:delete", () => clearInterval(this.intervalId));
     }
 
     updateTime() {
