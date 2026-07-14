@@ -16,7 +16,7 @@
 //     }
 //   }
 
-import { Widget } from './base_widget.js';
+import { Widget } from '../base_widget.js';
 
 function isTruthy(value) {
     // settings sometimes send booleans, sometimes the strings "true"/"false"

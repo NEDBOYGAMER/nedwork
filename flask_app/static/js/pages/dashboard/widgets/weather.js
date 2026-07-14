@@ -10,7 +10,7 @@
 //     settings: { location: "default", unit: "celsius", style: "tech" }
 //   }
 
-import { Widget } from './base_widget.js';
+import { Widget } from '../base_widget.js';
 
 export class WeatherWidget extends Widget {
     getDefinition() {

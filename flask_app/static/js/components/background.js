@@ -225,8 +225,6 @@ function setMode(newMode) {
 
         ctx.clearRect(0, 0, W, H);
 
-        console.log(mode)
-
         if (mode === 'optgrid') {
             makeGrid();
             drawGlow();

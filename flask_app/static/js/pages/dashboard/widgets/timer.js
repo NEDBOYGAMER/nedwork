@@ -2,8 +2,7 @@
 // Exports a TimerWidget class (extends Widget from base_widget.js).
 // widget.js's createWidget() builds the card shell from getDefinition(),
 // then calls instance.init(card) to wire up behaviour.
-
-import { Widget } from './base_widget.js';
+import { Widget } from '../base_widget.js';
 
 export class TimerWidget extends Widget {
     getDefinition() {

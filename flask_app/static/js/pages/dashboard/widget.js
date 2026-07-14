@@ -20,12 +20,12 @@
 // "widget:delete" fires *before* the card is removed from the DOM, so it's
 // the right place to clear intervals/timeouts/listeners.
 
-import { WeatherWidget } from './weather.js';
-import { TimeWidget } from './time.js';
-import { TimerWidget } from './timer.js';
-import { NotesWidget } from './notes.js';
+import { WeatherWidget } from './widgets/weather.js';
+import { TimeWidget } from './widgets/time.js';
+import { TimerWidget } from './widgets/timer.js';
+import { NotesWidget } from './widgets/notes.js';
 
-import { delete_widget } from '../pages/dashboard.js';
+import { delete_widget } from './dashboard.js';
 
 // type -> widget class. Add new widgets here.
 const registry = {

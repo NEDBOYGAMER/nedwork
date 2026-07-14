@@ -11,7 +11,7 @@
 //     settings: { style: "tech" }
 //   }
 
-import { Widget } from './base_widget.js';
+import { Widget } from '../base_widget.js';
 
 // Inline SVGs for clean, sharp, white icons
 const tickIcon = `

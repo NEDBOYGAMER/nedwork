@@ -1,6 +1,6 @@
-import { createBackground } from '../components/background.js';
-import { createWidget } from '../widgets/widget.js';
-import { WIDGET_DEFAULTS } from "../widgets/widget_default.js";
+import { createBackground } from '../../components/background.js';
+import { createWidget } from './widget.js';
+import { WIDGET_DEFAULTS } from "./widget_default.js";
 
 let user = ""
 
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     adjust_headers();
     adjust_grid();
-    setup_add_modal();
+    setup_modal();
     fill_dashboard()
 
 });
@@ -48,11 +48,11 @@ function adjust_grid() {
 }
 
 
-function setup_add_modal(){
+function setup_modal(){
     // Get DOM elements
-    const modal = document.getElementById("add_modal-menu");
+    const modal = document.getElementById("modal-menu");
     const openBtn = document.getElementById("add-widget-btn");
-    const closeBtn = document.getElementById("add_closeMenuBtn");
+    const closeBtn = document.getElementById("closeMenuBtn");
 
     // Open the modal (change display to flex so it centers perfectly)
     openBtn.addEventListener("click", () => {
