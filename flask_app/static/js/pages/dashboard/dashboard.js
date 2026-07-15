@@ -1,6 +1,6 @@
 import { createBackground } from '../../components/background.js';
-import { createWidget } from './widget.js';
 import { WIDGET_DEFAULTS } from "./widget_default.js";
+import { createWidget } from "./widget_registry.js";
 
 let user = ""
 
@@ -96,7 +96,7 @@ function setup_modal(){
 }
 
 async function fill_dashboard(){
-    close_poups()
+    close_popups()
     const grid = document.getElementById("card-grid");
     grid.innerHTML = ""
 
@@ -114,7 +114,9 @@ async function fill_dashboard(){
     widgets.forEach(createWidget);
 }
 
-function close_poups(){
+
+
+function close_popups(){
     const modal = document.getElementById("modal-menu");
     modal.style.display = "none";
 };
@@ -135,44 +137,3 @@ function add_widget(widgetName) {
 }
 
 
-export function delete_widget(id) {
-    const index = widgets.findIndex(widget => widget.id === id);
-
-    if (index !== -1) {
-        widgets.splice(index, 1);
-    } else {
-        console.error("Widget not found:", id);
-    }
-
-    update_widgets()
-}
-
-
-async function update_widgets(params) {
-    try {
-        console.log(widgets)
-        const response = await fetch(`/dashboard/api/update/update_widget`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: dashboard_name,
-                widgets: widgets
-            })
-        });
-
-        const result = await response.json();
-        
-        if (response.ok) {
-            console.log("Widgets updated successfully:", result);
-            fill_dashboard()
-        } else {
-            console.error("Failed to update:", result.error);
-        }
-    } catch (error) {
-        console.error("Network error:", error);
-    }
-
-    console.log(widgets)
-}
