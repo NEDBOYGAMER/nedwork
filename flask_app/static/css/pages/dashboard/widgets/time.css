@@ -26,18 +26,29 @@
 }
 
 
-.clock {
-    margin-top: 5px;
+.clock,
+.weekday,
+.date {
+    margin: 0;
+    font-weight: 400;
+}
 
-    font-family: "Orbitron", monospace;
+
+.field-primary {
+    margin-top: 5px;
     font-size: 32px;
     letter-spacing: 4px;
 
     color: var(--text-primary);
 }
 
+/* The monospace/tech look only really suits digits, so keep it on the clock */
+.clock.field-primary {
+    font-family: "Orbitron", monospace;
+}
 
-.date {
+
+.field-secondary {
     color: var(--text-muted);
     font-size: 12px;
     letter-spacing: 1px;

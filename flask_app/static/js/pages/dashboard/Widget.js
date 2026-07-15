@@ -6,6 +6,8 @@ export class Widget {
         this.card = null
     }
 
+    active_widget = null
+
     buildShell() {
         this.card = document.createElement("div")
         this.card.classList.add("card")
@@ -19,6 +21,27 @@ export class Widget {
             this.card.appendChild(titleEl)
             console.log(this.title)
         }
-        
+    
+        this.setUpContext()
+    }
+
+
+    setUpContext() {
+        this.card.addEventListener("contextmenu", (event) => {
+            event.preventDefault()
+
+            active_widget = this.id
+
+            const menu = document.getElementById("card-context-menu")
+
+            menu.style.left = `${event.pageX}px`
+            menu.style.top = `${event.pageY}px`
+
+            menu.classList.remove("context-hidden")
+        })
+
+        document.addEventListener("click", () => {
+            document.getElementById("card-context-menu").classList.add("context-hidden")
+        })
     }
 }

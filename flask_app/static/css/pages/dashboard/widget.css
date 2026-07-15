@@ -10,6 +10,7 @@
     animation: cardIn .25s cubic-bezier(.16, 1, .3, 1);
     transition: border-color .2s, box-shadow .2s;
     min-height: 100px;
+    align-items: center;
 }
 .card:hover {
     border-color: color-mix(in srgb, var(--accent) 40%, transparent);
@@ -17,5 +18,7 @@
 }
 
 .widget-title {
-    
+    align-self: self-start;
+    opacity: 0.5;
+    font-size: small;
 }

@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/global/colors.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/basic.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/bg.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/context_menu.css') }}">
 
     <!--PAGE-->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/dashboard.css') }}">
@@ -101,6 +102,12 @@
             
         </div>
     </div>
+
+
+    <ul id="card-context-menu" class="context-menu">
+        <li class="context-option" id="edit-context-option">Edit</li>
+        <li class="context-option" id="delete-context-option">Delete</li>
+    </ul>
 
 
 
