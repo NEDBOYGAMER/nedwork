@@ -1,23 +1,41 @@
 .weather-widget {
-    padding: 20px;
+    padding: 20px 16px 18px;
+    gap: 2px;
+}
+
+.weather-icon {
+    font-size: 40px;
+    line-height: 1;
+    margin-top: 4px;
+}
+
+.weather-temp {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 6px 0 0;
+}
+
+.weather-condition {
+    font-size: 12px;
+    opacity: .7;
+    text-transform: capitalize;
+}
+
+.weather-location {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: .4;
+    margin-top: 8px;
+}
+
+.weather-details {
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100px; /* Matches time and notes widgets */
+    gap: 14px;
+    margin-top: 10px;
 }
 
-.weather-display {
-    margin-top: 5px;
-
-    font-family: "Orbitron", monospace;
-    font-size: 32px;
-    letter-spacing: 4px;
-
-    color: var(--text-primary);
-}
-
-.weather-desc {
-    color: var(--text-muted);
+.weather-detail {
     font-size: 11px;
-    letter-spacing: 2px;
+    opacity: .6;
 }

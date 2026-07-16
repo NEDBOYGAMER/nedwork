@@ -80,6 +80,7 @@ function setup_modal(){
     const add_timer_widget = document.getElementById("add_timer_widget")
     const add_notes_widget = document.getElementById("add_notes_widget")
     const add_weather_widget = document.getElementById("add_weather_widget")
+    const add_quote_widget = document.getElementById("add_quote_widget")
 
     add_time_widget.addEventListener("click", () => {
         add_widget("time");
@@ -95,6 +96,10 @@ function setup_modal(){
 
     add_weather_widget.addEventListener("click", () => {
         add_widget("weather");
+    });
+
+    add_quote_widget.addEventListener("click", () => {
+        add_widget("quote");
     });
 }
 

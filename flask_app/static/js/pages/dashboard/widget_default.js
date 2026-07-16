@@ -21,8 +21,10 @@ export const WIDGET_DEFAULTS = {
         "id": "-",
         "settings": {
             title: "Weather",
-            "location": "default",
+            "location": "Zurich, Switzerland",
             "unit": "celsius",
+            "show_humidity": true,
+            "show_wind": false,
         },
         style:"tech"
     },
@@ -44,10 +46,24 @@ export const WIDGET_DEFAULTS = {
         settings: {
             title: "Timer",
             offline: true,
+            sound: true,
+            autorestart: false,
         },
         style:"tech",
         duration: 300,
         started: 0,
+    },
+
+    quote: {
+        "type": "quote",
+        "id": "-",
+        "settings": {
+            title: "Quote",
+            "category": "mixed",
+            "font": "serif",
+            "show_source": true,
+        },
+        style:"tech"
     }
 };
 
@@ -68,4 +84,10 @@ export const WIDGET_SETTINGS_TYPE = {
     "format24": "yes/no",
     "show_seconds": "yes/no",
     "date_style": "dropdown",
+    "show_humidity": "yes/no",
+    "show_wind": "yes/no",
+    "sound": "yes/no",
+    "autorestart": "yes/no",
+    "category": "dropdown",
+    "show_source": "yes/no",
 }
