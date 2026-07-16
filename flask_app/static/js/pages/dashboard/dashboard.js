@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     adjust_grid();
     setup_modal();
     fill_dashboard()
+    setup_listeners()
 
 });
 
@@ -36,6 +37,8 @@ async function adjust_headers(){
     const response = await fetch('/auth/api/who');
     const info = await response.json();
     user = info.user
+
+    localStorage.setItem("username", user);
 
     const welcome = document.getElementById("dash-greeting")
     welcome.textContent = "Welcome " + user
@@ -99,18 +102,15 @@ async function fill_dashboard(){
     close_popups()
     const grid = document.getElementById("card-grid");
     grid.innerHTML = ""
-
-
+    
     const response = await fetch('/dashboard/api/load/main');
     const dashboard = await response.json();
-
     widgets = dashboard.widgets
     dashboard_name = dashboard.name
     const dashname = document.getElementById("dash-name")
+
+    localStorage.setItem("dashboard_name", dashboard_name);
     dashname.textContent = "Dashboard: " + dashboard_name
-
-
-
     widgets.forEach(createWidget);
 }
 
@@ -122,7 +122,6 @@ function close_popups(){
 };
 
 function add_widget(widgetName) {
-    console.log("add_widget")
     const widget = WIDGET_DEFAULTS[widgetName];
 
     if (!widget) {
@@ -137,43 +136,6 @@ function add_widget(widgetName) {
     update_widgets()
 }
 
-function delete_widget(id) {
-    widgets = widgets.filter(w => w.id !== id);
-    update_widgets();
-}
-
-
-let context_target_id = null;
-
-function setup_context_menu() {
-    const menu = document.getElementById("card-context-menu");
-    const grid = document.getElementById("card-grid");
-
-    // delegated listener: catches the event from ANY card, current or future
-    grid.addEventListener("widget:contextmenu", (event) => {
-        context_target_id = event.detail.id;
-
-        menu.style.left = `${event.detail.x}px`;
-        menu.style.top = `${event.detail.y}px`;
-        menu.classList.remove("context-hidden");
-    });
-
-    // hide menu on any outside click (registered once, not per-widget)
-    document.addEventListener("click", () => {
-        menu.classList.add("context-hidden");
-    });
-
-    document.getElementById("delete-context-option").addEventListener("click", () => {
-        if (context_target_id) delete_widget(context_target_id);
-    });
-
-    document.getElementById("edit-context-option").addEventListener("click", () => {
-        if (context_target_id) edit_widget(context_target_id);
-    });
-}
-
-
-
 async function update_widgets() {
     const response = await fetch('/dashboard/api/update/update_widget', {
         method: 'POST',
@@ -185,11 +147,12 @@ async function update_widgets() {
             widgets: widgets
         })
     });
-
-    if (response.ok) {
-        const grid = document.getElementById("card-grid");
-        grid.innerHTML = "";
-        widgets.forEach(createWidget);
-    }
     fill_dashboard()
+}
+
+
+function setup_listeners() {
+    document.addEventListener("widget:update", () => {
+        fill_dashboard()
+    })
 }

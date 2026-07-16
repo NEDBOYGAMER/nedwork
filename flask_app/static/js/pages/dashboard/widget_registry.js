@@ -9,7 +9,6 @@ const WIDGET_REGISTRY = {
 
 export function createWidget(config) {
     const WidgetClass = WIDGET_REGISTRY[config.type];
-    console.log(config)
     const instance = new WidgetClass(config);
     instance.build();
 }
