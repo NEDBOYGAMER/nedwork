@@ -28,15 +28,41 @@ export class Widget {
         this.card.addEventListener("contextmenu", (event) => {
             event.preventDefault()
 
-            // dispatch a bubbling custom event carrying the widget's id
-            this.card.dispatchEvent(new CustomEvent("widget:contextmenu", {
-                bubbles: true,
-                detail: {
-                    id: this.id,
-                    x: event.pageX,
-                    y: event.pageY
-                }
-            }))
+            console.log("context")
+
+            let menu = document.getElementById("context-menu")
+            menu?.remove()
+
+            
+            menu = document.createElement("ul")
+            menu.classList.add("context-menu")
+            menu.id = "context-menu"
+            menu.style.left = `${event.pageX}px`
+            menu.style.top = `${event.pageY}px`
+
+            const editbutton = document.createElement("li")
+            editbutton.classList.add("context-option")
+            editbutton.id = "edit-context-option"
+            editbutton.innerText = "Edit"
+
+            const deletebutton = document.createElement("li")
+            deletebutton.classList.add("context-option")
+            deletebutton.id = "delete-context-option"
+            deletebutton.innerText = "Delete"
+
+            document.body.appendChild(menu)
+            menu.appendChild(editbutton)
+            menu.appendChild(deletebutton)
+            
+
         })
+
+        document.addEventListener("click", () => {
+            let menu = document.getElementById("context-menu")
+            menu?.remove()
+            
+        })
+
     }
+
 }
