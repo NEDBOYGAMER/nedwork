@@ -6,8 +6,6 @@ export class Widget {
         this.card = null
     }
 
-    active_widget = null
-
     buildShell() {
         this.card = document.createElement("div")
         this.card.classList.add("card")
@@ -30,18 +28,15 @@ export class Widget {
         this.card.addEventListener("contextmenu", (event) => {
             event.preventDefault()
 
-            active_widget = this.id
-
-            const menu = document.getElementById("card-context-menu")
-
-            menu.style.left = `${event.pageX}px`
-            menu.style.top = `${event.pageY}px`
-
-            menu.classList.remove("context-hidden")
-        })
-
-        document.addEventListener("click", () => {
-            document.getElementById("card-context-menu").classList.add("context-hidden")
+            // dispatch a bubbling custom event carrying the widget's id
+            this.card.dispatchEvent(new CustomEvent("widget:contextmenu", {
+                bubbles: true,
+                detail: {
+                    id: this.id,
+                    x: event.pageX,
+                    y: event.pageY
+                }
+            }))
         })
     }
 }

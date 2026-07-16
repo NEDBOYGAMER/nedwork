@@ -122,6 +122,7 @@ function close_popups(){
 };
 
 function add_widget(widgetName) {
+    console.log("add_widget")
     const widget = WIDGET_DEFAULTS[widgetName];
 
     if (!widget) {
@@ -136,4 +137,59 @@ function add_widget(widgetName) {
     update_widgets()
 }
 
+function delete_widget(id) {
+    widgets = widgets.filter(w => w.id !== id);
+    update_widgets();
+}
 
+
+let context_target_id = null;
+
+function setup_context_menu() {
+    const menu = document.getElementById("card-context-menu");
+    const grid = document.getElementById("card-grid");
+
+    // delegated listener: catches the event from ANY card, current or future
+    grid.addEventListener("widget:contextmenu", (event) => {
+        context_target_id = event.detail.id;
+
+        menu.style.left = `${event.detail.x}px`;
+        menu.style.top = `${event.detail.y}px`;
+        menu.classList.remove("context-hidden");
+    });
+
+    // hide menu on any outside click (registered once, not per-widget)
+    document.addEventListener("click", () => {
+        menu.classList.add("context-hidden");
+    });
+
+    document.getElementById("delete-context-option").addEventListener("click", () => {
+        if (context_target_id) delete_widget(context_target_id);
+    });
+
+    document.getElementById("edit-context-option").addEventListener("click", () => {
+        if (context_target_id) edit_widget(context_target_id);
+    });
+}
+
+
+
+async function update_widgets() {
+    const response = await fetch('/dashboard/api/update/update_widget', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            name: dashboard_name,
+            widgets: widgets
+        })
+    });
+
+    if (response.ok) {
+        const grid = document.getElementById("card-grid");
+        grid.innerHTML = "";
+        widgets.forEach(createWidget);
+    }
+    fill_dashboard()
+}
