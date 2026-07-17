@@ -14,7 +14,21 @@ const WIDGET_REGISTRY = {
 };
 
 export function createWidget(config) {
-    const WidgetClass = WIDGET_REGISTRY[config.type];
-    const instance = new WidgetClass(config);
-    instance.build();
+    try {
+        const WidgetClass = WIDGET_REGISTRY[config.type];
+
+        if (!WidgetClass) {
+            console.error(`Unknown widget type: ${config.type}, skipped it`);
+            return;
+        }
+
+        const instance = new WidgetClass(config);
+        instance.build();
+
+        return instance;
+
+    } catch (error) {
+        console.error("Failed to create widget:", config, error);
+        return null;
+    }
 }

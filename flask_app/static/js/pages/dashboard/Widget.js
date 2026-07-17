@@ -1,9 +1,12 @@
+import { WIDGET_SETTINGS_SCHEMA } from "./widget_default.js";
 export class Widget {
     constructor(config) {
         this.type = config.type
         this.id = config.id
         this.title = config.settings.title
         this.card = null
+        this.widgets = null
+        this.dashboard_name = null
     }
 
     buildShell() {
@@ -18,10 +21,18 @@ export class Widget {
             titleEl.innerText = this.title
             this.card.appendChild(titleEl)
         }
+
+        this.getInfos()
     
         this.setUpContext()
     }
 
+    async getInfos(){
+        const dashboard_info = await fetch('/dashboard/api/load/main');
+        const dashboard = await dashboard_info.json();
+        this.widgets = dashboard.widgets
+        this.dashboard_name = localStorage.getItem("dashboard_name");
+    }
 
     setUpContext() {
         this.card.addEventListener("contextmenu", (event) => {
@@ -61,7 +72,7 @@ export class Widget {
 
 
             editbutton.addEventListener("click", () =>{
-                this.deleteWidget()
+                this.editWidget()
 
             })
             
@@ -76,32 +87,37 @@ export class Widget {
 
     }
 
-    async deleteWidget() {
-    
-        const dashboard_info = await fetch('/dashboard/api/load/main');
-        const dashboard = await dashboard_info.json();
-    
-        let widgets = dashboard.widgets
-        
-        console.log(widgets)
-        widgets = widgets.filter(widget => widget.id !== this.id);
-        console.log(widgets)
-    
-        let dashboard_name = localStorage.getItem("dashboard_name");
-    
+    async deleteWidget() {    
         const response = await fetch('/dashboard/api/update/update_widget', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                name: dashboard_name,
-                widgets: widgets
+                name: this.dashboard_name,
+                widgets: this.widgets
             })
         });
 
         this.card.dispatchEvent(new CustomEvent("widget:update", {bubbles: true,}))
     
+    }
+
+    editWidget(){
+        this.setUpSettings()
+    }
+
+
+    setUpSettings(){
+        let container = document.createElement("div")
+        container.classList.add("modal")
+        container.id = "settings-modal"
+
+        let type = this.type
+
+        let settings = WIDGET_SETTINGS_SCHEMA[type]
+
+        console.log(settings)
     }
 }
 
