@@ -3,6 +3,9 @@
 {% block title %}nedwork{% endblock %}
 
 {% block head %}
+    <meta name="description" content="Private Dashboard Site">
+    <meta property="og:image" content="flask_app/static/img/about/header_img.png">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/login.css') }}">
     <script type="module" src="{{ url_for('static', filename='js/pages/login.js') }}"></script>
 {% endblock %}
