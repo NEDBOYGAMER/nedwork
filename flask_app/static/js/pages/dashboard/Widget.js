@@ -118,6 +118,13 @@ export class Widget {
         let settings = WIDGET_SETTINGS_SCHEMA[type]
 
         console.log(settings)
+        Object.entries(settings).forEach(([key, value]) => {
+            let line = document.createElement("p");
+            line.innerText = `${key}: ${value}`;
+            container.appendChild(line);
+        });
+
+        document.body.appendChild(container);
     }
 }
 
