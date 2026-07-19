@@ -285,7 +285,7 @@
     position: relative;
 }
 
-#drop {
+.dropdown > input[type="checkbox"] {
     position: absolute;
     opacity: 0;
     pointer-events: none;
@@ -320,7 +320,7 @@
         opacity .3s ease;
 }
 
-#drop:checked + .dropdown-header .dropdown-arrow {
+.dropdown > input[type="checkbox"]:checked + .dropdown-header .dropdown-arrow {
     transform: rotate(180deg);
     opacity: 1;
 }
@@ -357,7 +357,7 @@
     z-index: 20;
 }
 
-#drop:checked ~ .dropdown-menu {
+.dropdown > input[type="checkbox"]:checked ~ .dropdown-menu {
     max-height: 240px;
 
     opacity: 1;
@@ -438,4 +438,102 @@
         width: 100%;
         max-width: 320px;
     }
+}
+
+/* =========================
+   TEXTAREA (multiline ui-input)
+========================= */
+
+textarea.ui-input {
+    height: auto;
+    min-height: 96px;
+    padding: 16px 20px;
+    line-height: 1.5;
+    font-family: inherit;
+    resize: vertical;
+}
+
+/* =========================
+   COLOR INPUT
+========================= */
+
+.color-input {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 60px;
+    height: 60px;
+    padding: 4px;
+    border-radius: 16px;
+    background: var(--surface-button-dark);
+    border: 1px solid var(--border-soft);
+    cursor: pointer;
+    transition: border-color .25s ease, box-shadow .25s ease;
+}
+
+.color-input:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.color-input::-webkit-color-swatch {
+    border: none;
+    border-radius: 12px;
+}
+
+/* =========================
+   MODAL ACTION BUTTONS (Save / Cancel)
+========================= */
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 26px;
+}
+
+.modal-btn {
+    padding: 12px 26px;
+    border-radius: 999px;
+
+    background: var(--surface-button-dark);
+    border: 1px solid var(--border-soft);
+    color: var(--text-color);
+
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+
+    transition:
+        border-color .25s ease,
+        box-shadow .25s ease,
+        transform .15s ease,
+        background .2s ease;
+}
+
+.modal-btn:hover {
+    border-color: var(--accent);
+    box-shadow:
+        0 0 0 1px var(--accent),
+        0 10px 30px rgba(0,0,0,0.2);
+    transform: translateY(-1px);
+}
+
+.modal-btn:active {
+    transform: translateY(1px);
+}
+
+.modal-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
 }
