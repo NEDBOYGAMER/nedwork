@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}App Corner{% endblock %}
+
+{% block head %}
+    <!--PAGE-->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/app_corner/app_corner.css') }}">
+
+    <script id="app-corner-config" type="application/json">
+        {{ {"appsJsonUrl": url_for('static', filename='data/apps.json'), "userPermissions": user_permissions} | tojson }}
+    </script>
+    <script type="module" src="{{ url_for('static', filename='js/pages/app_corner/app_corner.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+
+    <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+    <aside id="side-nav">
+
+        <div class="nav-top">
+            <div class="logo">Home</div>
+
+            <div class="nav-section">
+                <button class="nav-item">Home</button>
+                <button class="nav-item">Events</button>
+                <button class="nav-item">Tasks</button>
+                <button class="nav-item active">Apps</button>
+            </div>
+
+            <div class="nav-section grow"></div>
+
+            <div class="nav-section">
+                <button class="icon-item" id="about-btn" title="About">ℹ️</button>
+                <button class="icon-item" id="settings-btn" title="Settings">⚙</button>
+                <button class="icon-item" id="account-btn" title="Account">👤</button>
+            </div>
+
+            <div class="nav-bottom">
+                <button class="nav-item danger">Logout</button>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- ── Main content ─────────────────────────────────────────────── -->
+    <main id="content">
+
+        <header class="dash-header">
+            <span class="dash-greeting" id="ac-title">App Corner</span>
+            <span class="dash-greeting" id="ac-subtitle">Find your next app</span>
+        </header>
+
+        <div id="search-wrap">
+            <svg id="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="app-search" placeholder="Search apps…" autocomplete="off">
+            <span id="search-count"></span>
+        </div>
+
+        <div id="app-sections">
+            <!-- Category sections injected by app_corner.js -->
+        </div>
+
+        <div id="no-results" class="hidden">
+            <h3>No apps found</h3>
+            <p>Try a different search term.</p>
+        </div>
+
+    </main>
+
+{% endblock %}
