@@ -1,3 +1,9 @@
+# Before starting to code!!!
+
+```bash
+git pull
+```
+
 # How to Push Your Changes
 
 Follow these steps whenever you want to push your work to the repository.
@@ -29,7 +35,7 @@ git add flask_app/auth path/to/another/file path/to/file3
 Create a commit with a clear and meaningful message describing what you changed.
 
 ```bash
-git commit
+git commit -m "Add user authentication"
 ```
 
 Example commit messages:
