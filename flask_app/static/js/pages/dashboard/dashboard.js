@@ -6,6 +6,7 @@ let user = ""
 
 let widgets = []
 let dashboard_name = ""
+let current_dashboard = localStorage.getItem("current_dashboard") || "main"
 
 document.addEventListener('DOMContentLoaded', () => {
     const cursor = document.getElementById('cursor');
@@ -28,8 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     adjust_headers();
     adjust_grid();
     setup_modal();
-    fill_dashboard()
+    fill_dashboard(current_dashboard)
     setup_listeners()
+    setup_dashboard_switcher()
 
 });
 
@@ -103,18 +105,20 @@ function setup_modal(){
     });
 }
 
-async function fill_dashboard(){
+async function fill_dashboard(name = current_dashboard){
     close_popups()
+    current_dashboard = name
     const grid = document.getElementById("card-grid");
     grid.innerHTML = ""
-    
-    const response = await fetch('/dashboard/api/load/main');
+
+    const response = await fetch(`/dashboard/api/load/${name}`);
     const dashboard = await response.json();
     widgets = dashboard.widgets
     dashboard_name = dashboard.name
     const dashname = document.getElementById("dash-name")
 
     localStorage.setItem("dashboard_name", dashboard_name);
+    localStorage.setItem("current_dashboard", current_dashboard);
     dashname.textContent = "Dashboard: " + dashboard_name
     widgets.forEach(createWidget);
 }
@@ -155,6 +159,76 @@ async function update_widgets() {
     fill_dashboard()
 }
 
+
+function setup_dashboard_switcher(){
+    const dashNameEl = document.getElementById("dash-name")
+    dashNameEl.classList.add("dash-name-clickable")
+
+    dashNameEl.addEventListener("click", (event) => {
+        event.stopPropagation()
+
+        const existing = document.getElementById("dashboard-switcher")
+        if (existing) {
+            existing.remove()
+            return
+        }
+
+        open_dashboard_switcher(dashNameEl)
+    })
+
+    // click anywhere else closes it
+    document.addEventListener("click", () => {
+        document.getElementById("dashboard-switcher")?.remove()
+    })
+}
+
+async function open_dashboard_switcher(anchor){
+    // TODO backend: expects { dashboards: ["main", "work", ...] } - list of
+    // dashboard names owned by the current user.
+    const response = await fetch('/dashboard/api/list/owned');
+    const data = await response.json();
+    const dashboards = data.dashboards || []
+
+    const list = document.createElement("div")
+    list.id = "dashboard-switcher"
+    list.classList.add("dashboard-switcher")
+
+    if (dashboards.length === 0) {
+        const empty = document.createElement("span")
+        empty.classList.add("dashboard-switcher-empty")
+        empty.innerText = "No dashboards found"
+        list.appendChild(empty)
+    }
+
+    dashboards.forEach((name) => {
+        const item = document.createElement("button")
+        item.classList.add("nav-item", "dashboard-switcher-item")
+        if (name === dashboard_name) item.classList.add("active")
+        item.innerText = name
+
+        item.addEventListener("click", (event) => {
+            event.stopPropagation()
+            list.remove()
+            if (name !== dashboard_name) {
+                switch_dashboard(name)
+            }
+        })
+
+        list.appendChild(item)
+    })
+
+    const rect = anchor.getBoundingClientRect()
+    list.style.top = `${rect.bottom + 8}px`
+    list.style.left = `${rect.left}px`
+
+    document.body.appendChild(list)
+}
+
+async function switch_dashboard(name){
+    localStorage.setItem("dashboard_name", name);
+    localStorage.setItem("current_dashboard", name);
+    await fill_dashboard(name)
+}
 
 function setup_listeners() {
     document.addEventListener("widget:update", () => {

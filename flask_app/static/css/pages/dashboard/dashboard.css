@@ -227,6 +227,56 @@
     gap: 3%;
 }
 
+.dash-name-clickable {
+    cursor: pointer;
+    transition: opacity .2s;
+}
+
+.dash-name-clickable:hover {
+    opacity: .7;
+}
+
+.dashboard-switcher {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 180px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0);
+    border-radius: 10px;
+    z-index: 1000;
+    animation: cardIn .2s cubic-bezier(.16, 1, .3, 1);
+}
+
+.dashboard-switcher-item {
+    text-align: right;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    opacity: .35;
+    background-color: #00000000;
+}
+
+.dashboard-switcher-item.active {
+    color: #a3a3ff;
+    background-color: #00000000;
+}
+
+.dashboard-switcher-item:hover {
+    color: #fefeff;
+    opacity: .90;
+    background-color: #00000000;
+}
+
+.dashboard-switcher-empty {
+    padding: 10px 12px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    opacity: .5;
+}
+
 .add_widget_card {
     background: var(--surface-dark);
     border: 1px solid var(--border-soft);
@@ -240,5 +290,3 @@
     transition: border-color .2s, box-shadow .2s;
     min-height: 100px;
 }
-
-

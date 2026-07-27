@@ -13,6 +13,18 @@ def dashboard():
     return render_template('main/dashboard.html')
 
 
+@dashboard_bp.route('/api/list/owned', methods=['GET'])
+def list_owned_dashboards():
+    valid, user = Session.check(request.cookies.get("session_id"))
+
+    if not valid:
+        return render_template('auth/login.html')
+
+    return jsonify({
+        "dashboards": [dashboard.name for dashboard in user.dashboards]
+    })
+
+
 @dashboard_bp.route('/api/load/<dashboardname>', methods=['GET'])
 def load_dashboard(dashboardname):
     valid, user = Session.check(request.cookies.get("session_id"))
@@ -28,6 +40,8 @@ def load_dashboard(dashboardname):
                 "name": dashboard.name,
                 "widgets": dashboard.widgets
             })
+
+    return jsonify({"error": "Dashboard not found"}), 404
 
 
 @dashboard_bp.route('/api/update/update_widget', methods=['POST'])
@@ -57,4 +71,4 @@ def widget_update():
                 "widgets": dashboard.widgets
             })
 
-
+    return jsonify({"error": "Dashboard not found"}), 404

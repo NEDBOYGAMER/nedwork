@@ -1,0 +1,10 @@
+[
+    {
+        "id":  0,
+        "name": "Tierlist",
+        "image": "flask_app/static/img/TierForge.png",
+        "permissions": ["tierforge", "admin"],
+        "url": "/tierforge",
+        "description": "TierForge is a fast and easy tier list maker that lets you rank anything from video games to hot takes in seconds. Just upload your images, customize your tiers, and drag and drop to build crisp, shareable rankings"
+    }
+]
