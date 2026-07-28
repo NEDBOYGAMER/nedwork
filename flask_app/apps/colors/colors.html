@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Palette Generator</title>
+    <link rel="stylesheet" href="/apps/{{ app_name }}/colors.css" />
+    <script src="/apps/{{ app_name }}/colors.js" defer></script>
+</head>
+<body>
+
+<div class="container">
+
+    <header>
+        <h1>🎨 Palette Generator</h1>
+        <p>Create beautiful color palettes instantly.</p>
+    </header>
+
+    <div class="controls">
+        <button id="generate">Generate Palette</button>
+        <button id="copyAll">Copy Palette</button>
+    </div>
+
+    <div id="palette" class="palette"></div>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

@@ -10,12 +10,12 @@
     },
     {
         "id": 1,
-        "name": "TaskFlow",
-        "image": "flask_app/static/img/TierForge.png",
+        "name": "Colors",
+        "image": "flask_app/static/img/Colors.png",
         "permissions": [],
-        "url": "/placeholder",
-        "type": "Organisation",
-        "description": "A simple productivity app for managing tasks, projects, and daily goals."
+        "url": "/colors",
+        "type": "Tool",
+        "description": "A color picker and pallete maker"
     },
     {
         "id": 2,

@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:Inter,sans-serif;
+    background:#111827;
+    color:white;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:40px;
+}
+
+.container{
+    width:min(1200px,100%);
+}
+
+header{
+    text-align:center;
+    margin-bottom:30px;
+}
+
+header h1{
+    font-size:3rem;
+    margin-bottom:10px;
+}
+
+header p{
+    color:#9ca3af;
+}
+
+.controls{
+    display:flex;
+    justify-content:center;
+    gap:15px;
+    margin-bottom:35px;
+    flex-wrap:wrap;
+}
+
+button{
+    border:none;
+    background:#2563eb;
+    color:white;
+    padding:14px 24px;
+    border-radius:14px;
+    font-size:16px;
+    cursor:pointer;
+    transition:.25s;
+    font-weight:600;
+}
+
+button:hover{
+    transform:translateY(-2px);
+    background:#1d4ed8;
+}
+
+.palette{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:20px;
+}
+
+.color-card{
+    background:#1f2937;
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow:0 15px 35px rgba(0,0,0,.3);
+    transition:.25s;
+}
+
+.color-card:hover{
+    transform:translateY(-6px);
+}
+
+.preview{
+    height:180px;
+    width:100%;
+}
+
+.info{
+    padding:18px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+}
+
+input[type=color]{
+    width:100%;
+    height:45px;
+    border:none;
+    cursor:pointer;
+    background:none;
+}
+
+.hex{
+    text-align:center;
+    font-size:18px;
+    font-weight:700;
+    cursor:pointer;
+    letter-spacing:1px;
+}
+
+.copy{
+    width:100%;
+    background:#374151;
+}
+
+.copy:hover{
+    background:#4b5563;
+}
+
+.toast{
+    position:fixed;
+    bottom:30px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#22c55e;
+    color:white;
+    padding:14px 24px;
+    border-radius:12px;
+    opacity:0;
+    transition:.3s;
+    pointer-events:none;
+}
+
+.toast.show{
+    opacity:1;
+}
