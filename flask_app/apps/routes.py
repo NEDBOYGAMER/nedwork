@@ -22,7 +22,7 @@ def dynamic_app(app_name):
         print(f"--> [ERROR] File not found, returning 404!")
         abort(404)
 
-    return render_template(template_relative_path)
+    return render_template(template_relative_path, app_name=app_name)
 
 @apps_bp.route('/<app_name>/<path:filename>')
 def app_static(app_name, filename):

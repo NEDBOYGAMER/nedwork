@@ -133,11 +133,12 @@ main {
   justify-content: center;
   width: 72px;
   min-width: 72px;
+  max-width: 160px;
   gap: 6px;
   cursor: pointer;
   padding: 10px 6px;
   border-right: 1px solid var(--border);
-  transition: background 0.15s;
+  transition: background 0.15s, width 0.15s;
   position: relative;
 }
 .tier-label-wrap:hover { background: var(--surface2); }
@@ -147,9 +148,17 @@ main {
   font-family: var(--font-mono);
   font-size: 1.5rem;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.15;
   text-shadow: 0 0 20px currentColor;
+  text-align: center;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
+
+/* Long tier names shrink to fit instead of blowing out the row */
+.tier-label[data-len="long"] { font-size: 1rem; }
+.tier-label[data-len="very-long"] { font-size: 0.75rem; }
 
 .edit-hint {
   font-size: 0.6rem;

@@ -14,7 +14,6 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(app.instance_path, 'app.db')}"
     db.init_app(app)
 
-    # 1. Import blueprints from their CORRECT respective folders
     from flask_app.main.routes import main_bp
     from flask_app.auth.routes import auth_bp
     from flask_app.settings.routes import settings_bp
@@ -22,8 +21,9 @@ def create_app():
     from flask_app.dashboard.routes import dashboard_bp
     from flask_app.app_corner.routes import app_corner_bp
     from flask_app.event_manager.routes import event_manager_bp
+    from flask_app.apps.routes import apps_bp
 
-    # 2. Register them
+
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(settings_bp, url_prefix='/settings')
@@ -31,5 +31,6 @@ def create_app():
     app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
     app.register_blueprint(app_corner_bp, url_prefix='/app_corner')
     app.register_blueprint(event_manager_bp, url_prefix='/event_manager')
+    app.register_blueprint(apps_bp, url_prefix = "/apps")
 
     return app

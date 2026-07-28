@@ -21,3 +21,6 @@ def get_apps_data():
     with open(json_path, 'r') as f:
         data = json.load(f)
     return jsonify(data)
+
+
+

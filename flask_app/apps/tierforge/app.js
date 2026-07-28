@@ -142,6 +142,12 @@ function makeTierRow(tier) {
   label.className = 'tier-label';
   label.textContent = tier.label;
   label.style.color = tier.color;
+  label.title = tier.label; // full name on hover, in case it's still truncated visually
+  if (tier.label.length > 14) {
+    label.dataset.len = 'very-long';
+  } else if (tier.label.length > 6) {
+    label.dataset.len = 'long';
+  }
 
   const hint = document.createElement('div');
   hint.className = 'edit-hint';

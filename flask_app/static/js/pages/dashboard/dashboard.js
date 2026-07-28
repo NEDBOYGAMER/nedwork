@@ -183,8 +183,6 @@ function setup_dashboard_switcher(){
 }
 
 async function open_dashboard_switcher(anchor){
-    // TODO backend: expects { dashboards: ["main", "work", ...] } - list of
-    // dashboard names owned by the current user.
     const response = await fetch('/dashboard/api/list/owned');
     const data = await response.json();
     const dashboards = data.dashboards || []
