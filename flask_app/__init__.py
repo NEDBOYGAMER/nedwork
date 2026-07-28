@@ -20,6 +20,7 @@ def create_app():
     from flask_app.settings.routes import settings_bp
     from flask_app._00_tests.routes import tests_bp
     from flask_app.dashboard.routes import dashboard_bp
+    from flask_app.app_corner.routes import app_corner_bp
     from flask_app.event_manager.routes import event_manager_bp
 
     # 2. Register them
@@ -28,6 +29,7 @@ def create_app():
     app.register_blueprint(settings_bp, url_prefix='/settings')
     app.register_blueprint(tests_bp, url_prefix='/tests')
     app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
+    app.register_blueprint(app_corner_bp, url_prefix='/app_corner')
     app.register_blueprint(event_manager_bp, url_prefix='/event_manager')
 
     return app
