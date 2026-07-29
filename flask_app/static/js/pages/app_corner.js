@@ -57,23 +57,8 @@ function renderShelfs() {
         createShelf(name="Recent", oneline=true, style = "recent")
     }
     
-    let favApps = appCornerConfig.favorited_apps
-
-    if (favApps.length !== 0){
-        createShelf(name="Favorites", oneline=false, style = "favorite_apps")
-    }
-    
-    
-    let favShelfs = favorited_shelfs
-    
-    
-    favShelfs.forEach((shelf, index) => { // should be sorted when saved the the fisrt is always the first
-        createShelf(name=shelf, oneline=false, style = "favorites")
-    });
-    
-    
     apps.forEach(app => {
-        if (!appCornerConfig.disabled_shelfs && !favShelfs.includes(app.type)){
+        if (!appCornerConfig.disabled_shelfs){
             types.add(app.type);
         }
     });
