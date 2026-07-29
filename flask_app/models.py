@@ -228,11 +228,11 @@ class AppCornerConfig(db.Model):
 
     user = db.relationship("User", back_populates="dashboards")
 
+    shelves = db.Column(db.JSON, nullable=True)
+
     favorited_apps = db.Column(db.JSON, nullable=True)
     disabled_apps = db.Column(db.JSON, nullable=True)
-
-    favorited_shelfs = db.Column(db.JSON, nullable=True)
-    disabled_shelfs = db.Column(db.JSON, nullable=True)
+    disabled_shelves = db.Column(db.JSON, nullable=True)
 
     recent_apps = db.Column(db.JSON, nullable=True)
     show_recent = db.Column(db.bool, nullable=False)

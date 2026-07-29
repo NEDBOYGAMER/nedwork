@@ -1,0 +1,64 @@
+Update my App Corner page.
+
+I want:
+
+A big "App Corner" title that looks cool.
+Add an overlay gradient if possible. Don't modify the existing background itself. If that isn't feasible without changing the current background, simply leave it as-is.
+Shelves that contain the apps, a bit like the Steam Library.
+
+there are: (and they are put in this order)
+
+
+Recent: this shelf just contains the last opened apps, this can be disabled in the same way all other Shelves can
+Favorites: this is just one folder with all the favorited apps, it cant be disabled but only gets shown if at leat one app is favorited
+Shelves: just the normal Shelves in order (as in AppCornerConfig.Shelves)
+then there is an grey sutble expand/collapse arrow, which when clicker the disabled stuff: (they all have a button to restore them) ( by default its colapsed)
+if recent is disabled id would land right here (greyed out)
+then comes the shelf with the disabled apps (greyed out) ( only contains apps that were disabled individually, so not all the apps in a disabled folder land here)
+then come the disabled Shelves (greyed out)
+
+
+
+For the actual app cards:
+
+I want a large image and title.
+The description should take up very little space.
+They should look cool and fit the style of the site.
+The raw images will usually be 1000×600 px. This is not a requirement, just information in case it helps.
+Every app card should show a star and an X when hovered, allowing it to be favorited or disabled.
+If an app has no image, use some kind of placeholder.
+You may delete the placeholder image paths from data.json.
+Just make sure that something is always shown in place of the image.
+Whenever any changes are made, update the backend.
+
+If you have any questions, ask. Otherwise, let's go.
+
+p.s. i have mispelled Shelves mulitple times thouout the code please rewrite that
+p.p.s if my code contains errors or anystuff that doesnt make sense make it better
+
+
+this is the modelf for the appconfig:  you wont need the rest of models.py
+
+
+```python
+class AppCornerConfig(db.Model):
+    __tablename__ = "app_corner_configs"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+    )
+
+    user = db.relationship("User", back_populates="dashboards")
+
+    favorited_apps = db.Column(db.JSON, nullable=True)
+    disabled_apps = db.Column(db.JSON, nullable=True)
+
+    favorited_shelfs = db.Column(db.JSON, nullable=True)
+    disabled_shelfs = db.Column(db.JSON, nullable=True)
+
+    recent_apps = db.Column(db.JSON, nullable=True)
+    show_recent = db.Column(db.bool, nullable=False)
+```
