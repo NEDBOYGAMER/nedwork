@@ -84,7 +84,7 @@ class User(db.Model):
         cascade="all, delete-orphan"
     )
 
-    app_corner_config = db.relationship(
+    app_corner_configs = db.relationship(
         "AppCornerConfig",
         back_populates="user",
         cascade="all, delete-orphan"
@@ -226,11 +226,11 @@ class AppCornerConfig(db.Model):
         db.ForeignKey("users.id"),
     )
 
-    user = db.relationship("User", back_populates="dashboards")
+    user = db.relationship("User", back_populates="app_corner_configs")
 
     shelves = db.Column(db.JSON, nullable=True)
     show_recent = db.Column(db.Boolean, nullable=False)
-    
+
     recent_apps = db.Column(db.JSON, nullable=True)
 
     favorited_apps = db.Column(db.JSON, nullable=True)

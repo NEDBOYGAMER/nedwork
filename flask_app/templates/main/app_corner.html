@@ -10,12 +10,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/sidenav.css') }}">
 
     <script type="module" src="{{ url_for('static', filename='js/pages/app_corner.js') }}"></script>
-
-
-
 {% endblock %}
-<!-- custom cursor -->
-
 
 {% block content %}
 
@@ -23,11 +18,22 @@
 
     {% include "sidenav.html" %}
 
-
     <!-- ── Main content ─────────────────────────────────────────────── -->
-<main id="content">
-    <div id="grid">
 
-    </div>
-</main>
+    <main id="content">
+
+        <!-- Overlay gradient sits above the existing canvas background, below the content -->
+        <div id="bg-overlay" aria-hidden="true"></div>
+
+        <header id="app-corner-header">
+            <h1 id="app-corner-title">App&nbsp;Corner</h1>
+            <p id="app-corner-subtitle" hidden></p>
+        </header>
+
+        <div id="shelves-container">
+            <!-- Shelves are rendered dynamically by app_corner.js -->
+        </div>
+
+    </main>
+
 {% endblock %}

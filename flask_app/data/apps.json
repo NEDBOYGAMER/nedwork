@@ -2,7 +2,7 @@
     {
         "id": 0,
         "name": "TierForge",
-        "image": "flask_app/static/img/apps/TierForge.png",
+        "image": "/static/img/apps/TierForge.png",
         "permissions": ["tierforge", "admin"],
         "url": "/tierforge",
         "type": "Gaming",
@@ -11,7 +11,7 @@
     {
         "id": 1,
         "name": "Colors",
-        "image": "flask_app/static/img/apps/Colors.png",
+        "image": "/static/img/apps/Colors.png",
         "permissions": [],
         "url": "/colors",
         "type": "Tool",
@@ -20,7 +20,6 @@
     {
         "id": 2,
         "name": "PixelPaint",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Creative",
@@ -29,7 +28,6 @@
     {
         "id": 3,
         "name": "QuickCalc",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Tools",
@@ -38,7 +36,6 @@
     {
         "id": 4,
         "name": "CodePad",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Development",
@@ -47,7 +44,6 @@
     {
         "id": 5,
         "name": "NoteNest",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Notes",
@@ -56,7 +52,6 @@
     {
         "id": 6,
         "name": "WeatherNow",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Weather",
@@ -65,7 +60,6 @@
     {
         "id": 7,
         "name": "FitTrack",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Health",
@@ -74,7 +68,6 @@
     {
         "id": 8,
         "name": "QuizMaster",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Education",
@@ -83,7 +76,6 @@
     {
         "id": 9,
         "name": "BudgetBuddy",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Finance",
@@ -92,7 +84,6 @@
     {
         "id": 10,
         "name": "MediaVault",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Media",
@@ -101,7 +92,6 @@
     {
         "id": 11,
         "name": "GameHub",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Gaming",
@@ -110,7 +100,6 @@
     {
         "id": 12,
         "name": "RecipeBox",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Food",
@@ -119,7 +108,6 @@
     {
         "id": 13,
         "name": "TravelMap",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Travel",
@@ -128,7 +116,6 @@
     {
         "id": 14,
         "name": "LinkShelf",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Bookmarks",
@@ -137,7 +124,6 @@
     {
         "id": 15,
         "name": "ChatSpace",
-        "image": "flask_app/static/img/apps/TierForge.png",
         "permissions": [],
         "url": "/placeholder",
         "type": "Communication",

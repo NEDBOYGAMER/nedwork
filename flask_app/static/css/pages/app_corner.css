@@ -1,64 +1,395 @@
-/* Responsive Grid Layout */  
-#grid { /* change to a row for the shelfs*/  
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1.5rem;
-    padding: 2rem;
-    max-width: 1200px;
+/* ────────────────────────────────────────────────────────────────
+   App Corner
+   Tokens carried over from the existing card style:
+   - dark glass cards: rgba(255,255,255,0.05) + blur
+   - accent blue: #007bff / hover #0056b3
+   New tokens introduced here:
+   - accent glow: #4da3ff (lighter blue, used for the title + overlay)
+   - muted text: #9a9a9a (descriptions, disabled labels)
+   ──────────────────────────────────────────────────────────────── */
+
+#content {
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* ── Overlay gradient ─────────────────────────────────────────────
+   Sits above the existing canvas background and below all content.
+   Purely additive — the background canvas itself is untouched. */
+#bg-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0, 123, 255, 0.18), transparent 60%),
+        radial-gradient(ellipse 60% 40% at 100% 0%, rgba(77, 163, 255, 0.12), transparent 55%),
+        linear-gradient(180deg, rgba(5, 6, 10, 0) 0%, rgba(5, 6, 10, 0.35) 100%);
+}
+
+/* ── Header / Title ──────────────────────────────────────────────── */
+#app-corner-header {
+    position: relative;
+    z-index: 1;
+    padding: 3.5rem 2rem 1.5rem;
+    max-width: 1400px;
     margin: 0 auto;
 }
 
-/* App Container Card */
-.app-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 1.5rem;
+#app-corner-title {
+    margin: 0;
+    font-size: clamp(2.75rem, 6vw, 4.5rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    background: linear-gradient(115deg, #ffffff 15%, #9fc9ff 55%, #007bff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 60px rgba(0, 123, 255, 0.35);
+    width: fit-content;
+}
+
+#app-corner-subtitle {
+    margin: 0.6rem 0 0 0.15rem;
+    font-size: 0.95rem;
+    color: #9a9a9a;
+    letter-spacing: 0.02em;
+}
+
+/* ── Shelves container ───────────────────────────────────────────── */
+#shelves-container {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem 4rem;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    gap: 2.5rem;
+}
+
+.shelf {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.shelf-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.shelf-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #f2f2f2;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+
+.shelf-disable-btn,
+.shelf-restore-btn {
+    opacity: 0;
+    transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #aaaaaa;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    line-height: 1;
+    padding: 0.3rem 0.55rem;
+    cursor: pointer;
+}
+
+.shelf-header:hover .shelf-disable-btn {
+    opacity: 1;
+}
+
+.shelf-disable-btn:hover {
+    background: rgba(255, 70, 70, 0.15);
+    border-color: rgba(255, 70, 70, 0.4);
+    color: #ff8080;
+}
+
+.shelf-restore-btn {
+    opacity: 1;
+    color: #9fc9ff;
+    border-color: rgba(77, 163, 255, 0.35);
+}
+
+.shelf-restore-btn:hover {
+    background: rgba(77, 163, 255, 0.15);
+    color: #ffffff;
+}
+
+/* ── Shelf rows (Steam-library style horizontal scroll) ─────────── */
+.shelf-row {
+    display: flex;
+    gap: 1.1rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    padding-bottom: 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.shelf-row::-webkit-scrollbar {
+    height: 6px;
+}
+
+.shelf-row::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 999px;
+}
+
+.shelf-row .app-card {
+    flex: 0 0 auto;
+    width: 240px;
+    scroll-snap-align: start;
+}
+
+/* Compact one-line shelf (Recent) — smaller horizontal cards */
+.shelf--oneline .shelf-row .app-card {
+    width: 190px;
+}
+
+.shelf--oneline .app-card-image {
+    aspect-ratio: 5 / 3;
+}
+
+.shelf--oneline .app-card-desc {
+    display: none;
+}
+
+/* ── App Card ─────────────────────────────────────────────────────── */
+.app-card {
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    overflow: hidden;
     backdrop-filter: blur(10px);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .app-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    border-color: rgba(0, 123, 255, 0.35);
 }
 
-.app-card h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.25rem;
-    color: #ffffff;
-}
-
-.app-card p {
-    font-size: 0.9rem;
-    color: #cccccc;
-    margin-bottom: 1.5rem;
-    line-height: 1.4;
-}
-
-/* Button Styles */
-.app-btn {
-    display: inline-block;
-    text-align: center;
-    padding: 0.6rem 1rem;
-    background-color: #007bff;
-    color: #ffffff;
-    text-decoration: none;
-    border-radius: 6px;
-    font-weight: 600;
-    transition: background-color 0.2s ease;
-}
-
-.app-btn:hover {
-    background-color: #0056b3;
-}
-
-/* Disabled State for Placeholder URLs */
-.app-btn.disabled {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #888888;
+.app-card--placeholder {
     cursor: not-allowed;
+}
+
+.app-card--placeholder:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.app-card-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 3;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(0, 123, 255, 0.18), rgba(255, 255, 255, 0.03));
+}
+
+.app-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.app-card:hover .app-card-image img {
+    transform: scale(1.04);
+}
+
+.app-card-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.4);
+    background:
+        radial-gradient(circle at 30% 20%, rgba(0, 123, 255, 0.25), transparent 60%),
+        rgba(255, 255, 255, 0.03);
+}
+
+.app-card-body {
+    padding: 0.9rem 1rem 1.1rem;
+}
+
+.app-card-body h3 {
+    margin: 0 0 0.3rem 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-card-desc {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: #9a9a9a;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Hover actions: star (favorite) + X (disable) / restore */
+.app-card-actions {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    display: flex;
+    gap: 0.4rem;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.app-card:hover .app-card-actions {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.app-action-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(10, 10, 14, 0.65);
+    backdrop-filter: blur(6px);
+    color: #dddddd;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.favorite-btn:hover,
+.favorite-btn.active {
+    color: #ffd35c;
+    border-color: rgba(255, 211, 92, 0.5);
+    background: rgba(255, 211, 92, 0.12);
+}
+
+.disable-btn:hover {
+    color: #ff8080;
+    border-color: rgba(255, 70, 70, 0.5);
+    background: rgba(255, 70, 70, 0.12);
+}
+
+.restore-btn {
+    color: #9fc9ff;
+}
+
+.restore-btn:hover {
+    color: #ffffff;
+    border-color: rgba(77, 163, 255, 0.5);
+    background: rgba(77, 163, 255, 0.15);
+}
+
+/* ── Disabled state (greyed out) ─────────────────────────────────── */
+.shelf--disabled .shelf-title {
+    color: #777777;
+}
+
+.shelf--disabled .app-card {
+    cursor: default;
+    filter: grayscale(0.85);
+    opacity: 0.55;
+}
+
+.shelf--disabled .app-card:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.shelf--disabled .app-card-actions {
+    opacity: 1;
+    transform: none;
+}
+
+/* ── Collapsible disabled section ────────────────────────────────── */
+#disabled-section {
+    margin-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 1.5rem;
+}
+
+#disabled-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    color: #888888;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 0.25rem 0;
+}
+
+#disabled-toggle:hover {
+    color: #cccccc;
+}
+
+#disabled-toggle .chevron {
+    display: inline-block;
+    transition: transform 0.2s ease;
+    font-size: 0.7rem;
+}
+
+#disabled-section.expanded #disabled-toggle .chevron {
+    transform: rotate(180deg);
+}
+
+.disabled-content {
+    display: none;
+    flex-direction: column;
+    gap: 2rem;
+    margin-top: 1.25rem;
+}
+
+#disabled-section.expanded .disabled-content {
+    display: flex;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    #app-corner-header {
+        padding: 2.25rem 1.25rem 1rem;
+    }
+
+    #shelves-container {
+        padding: 0 1.25rem 3rem;
+    }
+
+    .shelf-row .app-card {
+        width: 200px;
+    }
+
+    .shelf--oneline .shelf-row .app-card {
+        width: 160px;
+    }
 }
