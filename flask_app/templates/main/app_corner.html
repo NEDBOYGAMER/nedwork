@@ -8,8 +8,10 @@
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/app_corner.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/sidenav.css') }}">
+    <script>const STATIC_URL = "{{ url_for('static', filename='') }}";</script>
 
     <script type="module" src="{{ url_for('static', filename='js/pages/app_corner.js') }}"></script>
+
 {% endblock %}
 
 {% block content %}

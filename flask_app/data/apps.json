@@ -2,7 +2,7 @@
     {
         "id": 0,
         "name": "TierForge",
-        "image": "/static/img/apps/TierForge.png",
+        "image": "/tierForge.png",
         "permissions": ["tierforge", "admin"],
         "url": "/tierforge",
         "type": "Gaming",
@@ -11,7 +11,7 @@
     {
         "id": 1,
         "name": "Colors",
-        "image": "/static/img/apps/Colors.png",
+        "image": "/colors.png",
         "permissions": [],
         "url": "/colors",
         "type": "Tool",

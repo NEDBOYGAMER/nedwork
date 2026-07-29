@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Active button
     let activeId = "";
 
-    console.log(window.location.pathname)
     switch (window.location.pathname) {
         case "/dashboard/":
             activeId = "home-btn";
@@ -38,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
     navButtonIds.forEach(id => {
         if (id === activeId){
         document.getElementById(id).classList.add("active")
-        console.log(document.getElementById(id).classList)
         }
         else{
         document.getElementById(id).classList.remove("active")

@@ -345,7 +345,7 @@ function buildCard(app, { disabled = false, cardRestore = false } = {}) {
 
     if (app.image) {
         const img = document.createElement('img');
-        img.src = app.image;
+        img.src = STATIC_URL + "img/apps" + app.image;
         img.alt = app.name;
         img.loading = 'lazy';
         img.addEventListener('error', () => {
@@ -435,7 +435,7 @@ function buildPlaceholder(name) {
 function openApp(app) {
     config.recent_apps = [app.id, ...config.recent_apps.filter(id => id !== app.id)].slice(0, 10);
     saveConfig();
-    window.location.href = app.url;
+    window.location.href = "/apps"+ app.url;
 }
 
 function toggleFavorite(id) {
