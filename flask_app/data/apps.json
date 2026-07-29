@@ -2,16 +2,16 @@
     {
         "id": 0,
         "name": "TierForge",
-        "image": "/tierForge.png",
+        "image": "/tier_forge.png",
         "permissions": ["tierforge", "admin"],
         "url": "/tierforge",
         "type": "Gaming",
-        "description": "TierForge is a fast and easy tier list maker that lets you rank anything from video games to hot takes in seconds. Just upload your images, customize your tiers, and drag and drop to build crisp, shareable rankings."
+        "description": "TierForge is a fast and easy tier list maker that lets you rank anything."
     },
     {
         "id": 1,
         "name": "Colors",
-        "image": "/colors.png",
+        "image": "/colors.svg",
         "permissions": [],
         "url": "/colors",
         "type": "Tool",

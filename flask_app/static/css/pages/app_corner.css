@@ -2,59 +2,40 @@
    App Corner
    Tokens carried over from the existing card style:
    - dark glass cards: rgba(255,255,255,0.05) + blur
-   - accent blue: #007bff / hover #0056b3
-   New tokens introduced here:
-   - accent glow: #4da3ff (lighter blue, used for the title + overlay)
    - muted text: #9a9a9a (descriptions, disabled labels)
+   Accent matched to the rest of the app (login/dashboard indigo-purple):
+   - accent: #6c5fd8 / accent light: #9d90f0
    ──────────────────────────────────────────────────────────────── */
 
 #content {
     position: relative;
     overflow-x: hidden;
-}
-
-/* ── Overlay gradient ─────────────────────────────────────────────
-   Sits above the existing canvas background and below all content.
-   Purely additive — the background canvas itself is untouched. */
-#bg-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background:
-        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0, 123, 255, 0.18), transparent 60%),
-        radial-gradient(ellipse 60% 40% at 100% 0%, rgba(77, 163, 255, 0.12), transparent 55%),
-        linear-gradient(180deg, rgba(5, 6, 10, 0) 0%, rgba(5, 6, 10, 0.35) 100%);
+    --accent: #6c5fd8;
+    --accent-light: #9d90f0;
+    --accent-soft: rgba(108, 95, 216, 0.18);
+    --accent-border: rgba(108, 95, 216, 0.4);
 }
 
 /* ── Header / Title ──────────────────────────────────────────────── */
 #app-corner-header {
     position: relative;
     z-index: 1;
-    padding: 3.5rem 2rem 1.5rem;
+    padding: 2.5rem 2rem 1.25rem;
     max-width: 1400px;
     margin: 0 auto;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 #app-corner-title {
     margin: 0;
-    font-size: clamp(2.75rem, 6vw, 4.5rem);
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-size: 2.05rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
     line-height: 1;
-    background: linear-gradient(115deg, #ffffff 15%, #9fc9ff 55%, #007bff 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    text-shadow: 0 0 60px rgba(0, 123, 255, 0.35);
+    text-transform: uppercase;
+    color: #e8e8e8;
     width: fit-content;
-}
-
-#app-corner-subtitle {
-    margin: 0.6rem 0 0 0.15rem;
-    font-size: 0.95rem;
-    color: #9a9a9a;
-    letter-spacing: 0.02em;
 }
 
 /* ── Shelves container ───────────────────────────────────────────── */
@@ -79,16 +60,31 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .shelf-title {
     margin: 0;
-    font-size: 0.95rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: #f2f2f2;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: #ffffff;
     text-transform: uppercase;
-    opacity: 0.85;
+    opacity: 1;
+    position: relative;
+    padding-left: 0.9rem;
+}
+
+.shelf-title::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.15em;
+    bottom: 0.15em;
+    width: 4px;
+    border-radius: 999px;
+    background: var(--accent);
 }
 
 .shelf-disable-btn,
@@ -117,12 +113,12 @@
 
 .shelf-restore-btn {
     opacity: 1;
-    color: #9fc9ff;
-    border-color: rgba(77, 163, 255, 0.35);
+    color: var(--accent-light);
+    border-color: var(--accent-border);
 }
 
 .shelf-restore-btn:hover {
-    background: rgba(77, 163, 255, 0.15);
+    background: var(--accent-soft);
     color: #ffffff;
 }
 
@@ -148,13 +144,13 @@
 
 .shelf-row .app-card {
     flex: 0 0 auto;
-    width: 240px;
+    width: 320px;
     scroll-snap-align: start;
 }
 
-/* Compact one-line shelf (Recent) — smaller horizontal cards */
+/* Compact one-line shelf (Recent) — still smaller than the main shelves */
 .shelf--oneline .shelf-row .app-card {
-    width: 190px;
+    width: 260px;
 }
 
 .shelf--oneline .app-card-image {
@@ -180,7 +176,7 @@
 .app-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-    border-color: rgba(0, 123, 255, 0.35);
+    border-color: var(--accent-border);
 }
 
 .app-card--placeholder {
@@ -197,7 +193,7 @@
     width: 100%;
     aspect-ratio: 5 / 3;
     overflow: hidden;
-    background: linear-gradient(135deg, rgba(0, 123, 255, 0.18), rgba(255, 255, 255, 0.03));
+    background: linear-gradient(135deg, var(--accent-soft), rgba(255, 255, 255, 0.03));
 }
 
 .app-card-image img {
@@ -222,7 +218,7 @@
     font-weight: 800;
     color: rgba(255, 255, 255, 0.4);
     background:
-        radial-gradient(circle at 30% 20%, rgba(0, 123, 255, 0.25), transparent 60%),
+        radial-gradient(circle at 30% 20%, var(--accent-soft), transparent 60%),
         rgba(255, 255, 255, 0.03);
 }
 
@@ -232,7 +228,7 @@
 
 .app-card-body h3 {
     margin: 0 0 0.3rem 0;
-    font-size: 1.05rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: #ffffff;
     white-space: nowrap;
@@ -242,7 +238,7 @@
 
 .app-card-desc {
     margin: 0;
-    font-size: 0.78rem;
+    font-size: 0.85rem;
     line-height: 1.35;
     color: #9a9a9a;
     display: -webkit-box;
@@ -298,13 +294,13 @@
 }
 
 .restore-btn {
-    color: #9fc9ff;
+    color: var(--accent-light);
 }
 
 .restore-btn:hover {
     color: #ffffff;
-    border-color: rgba(77, 163, 255, 0.5);
-    background: rgba(77, 163, 255, 0.15);
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
 }
 
 /* ── Disabled state (greyed out) ─────────────────────────────────── */
@@ -386,10 +382,10 @@
     }
 
     .shelf-row .app-card {
-        width: 200px;
+        width: 240px;
     }
 
     .shelf--oneline .shelf-row .app-card {
-        width: 160px;
+        width: 200px;
     }
 }

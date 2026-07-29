@@ -3,9 +3,6 @@ import { createBackground } from '../components/background.js';
 /** @type {Array<Object>} */
 let apps = [];
 
-/** @type {Object|null} */
-let currentUser = null;
-
 /** @type {{
  *   shelves: string[],
  *   show_recent: boolean,
@@ -26,19 +23,16 @@ let config = {
 document.addEventListener('DOMContentLoaded', async () => {
     initBackground();
 
-    const [appsData, userConfig, user] = await Promise.all([
+    const [appsData, userConfig] = await Promise.all([
         loadApps(),
         loadUserPreferences(),
-        loadCurrentUser(),
     ]);
 
     apps = Array.isArray(appsData) ? appsData : [];
     if (userConfig && typeof userConfig === 'object') {
         config = { ...config, ...userConfig };
     }
-    currentUser = user;
 
-    renderGreeting();
     syncShelvesWithAvailableTypes();
     render();
 });
@@ -59,18 +53,6 @@ function initBackground() {
 /* ────────────────────────────────────────────────────────────────
    Data loading / persistence
    ──────────────────────────────────────────────────────────────── */
-
-async function loadCurrentUser() {
-    try {
-        const response = await fetch('/auth/api/who');
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-        const info = await response.json();
-        return info.user || null;
-    } catch (error) {
-        console.error('Failed to load current user:', error);
-        return null;
-    }
-}
 
 async function loadApps() {
     try {
@@ -147,19 +129,6 @@ function appsByType(type) {
 /* ────────────────────────────────────────────────────────────────
    Rendering
    ──────────────────────────────────────────────────────────────── */
-
-function renderGreeting() {
-    const subtitle = document.getElementById('app-corner-subtitle');
-    if (!subtitle) return;
-
-    const displayName = currentUser?.username || currentUser?.name || currentUser?.email;
-    if (displayName) {
-        subtitle.textContent = `Welcome back, ${displayName}`;
-        subtitle.hidden = false;
-    } else {
-        subtitle.hidden = true;
-    }
-}
 
 function render() {
     const container = document.getElementById('shelves-container');
@@ -345,7 +314,7 @@ function buildCard(app, { disabled = false, cardRestore = false } = {}) {
 
     if (app.image) {
         const img = document.createElement('img');
-        img.src = STATIC_URL + "img/apps" + app.image;
+        img.src = window.STATIC_URL + "img/apps" + app.image;
         img.alt = app.name;
         img.loading = 'lazy';
         img.addEventListener('error', () => {
@@ -432,9 +401,9 @@ function buildPlaceholder(name) {
    persists to the backend in the background.
    ──────────────────────────────────────────────────────────────── */
 
-function openApp(app) {
+async function openApp(app) {
     config.recent_apps = [app.id, ...config.recent_apps.filter(id => id !== app.id)].slice(0, 10);
-    saveConfig();
+    await saveConfig();
     window.location.href = "/apps"+ app.url;
 }
 

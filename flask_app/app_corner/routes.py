@@ -18,12 +18,7 @@ def _config_to_dict(config):
 
 
 def _get_or_create_config(user):
-    """
-    NOTE: AppCornerConfig.user relationship uses back_populates="dashboards",
-    which means the reverse attribute on User is `user.dashboards` (a list),
-    not `user.app_corner_config`. Adjust this if your User model differs.
-    """
-    config = user.dashboards[0] if getattr(user, "dashboards", None) else None
+    config = user.app_corner_configs[0] if getattr(user, "app_corner_configs", None) else None
 
     if config is None:
         config = AppCornerConfig(
