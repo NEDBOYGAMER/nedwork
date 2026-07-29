@@ -1,5 +1,5 @@
-/* Responsive Grid Layout */
-#grid {
+/* Responsive Grid Layout */  
+#grid { /* change to a row for the shelfs*/  
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 1.5rem;

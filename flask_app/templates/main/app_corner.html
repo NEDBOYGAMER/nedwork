@@ -7,16 +7,27 @@
     <meta property="og:image" content="flask_app/static/img/about/header_img.png">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/app_corner.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/sidenav.css') }}">
+
     <script type="module" src="{{ url_for('static', filename='js/pages/app_corner.js') }}"></script>
+
+
+
 {% endblock %}
 <!-- custom cursor -->
 
 
 {% block content %}
 
-<div id="grid">
+    <!-- ── Sidebar ──────────────────────────────────────────────────── -->
 
-</div>
+    {% include "sidenav.html" %}
 
 
+    <!-- ── Main content ─────────────────────────────────────────────── -->
+<main id="content">
+    <div id="grid">
+
+    </div>
+</main>
 {% endblock %}

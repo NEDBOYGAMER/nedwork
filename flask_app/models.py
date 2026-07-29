@@ -84,6 +84,12 @@ class User(db.Model):
         cascade="all, delete-orphan"
     )
 
+    app_corner_config = db.relationship(
+        "AppCornerConfig",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
     sessions = db.relationship(
         "Session",
         back_populates="user",
@@ -171,8 +177,6 @@ class Permission(db.Model):
     )
 
 
-
-
 class UserPermission(db.Model):
     __tablename__ = "user_permissions"
 
@@ -184,6 +188,7 @@ class UserPermission(db.Model):
 
 
 class Session(db.Model):
+
     __tablename__ = "sessions"
 
     session_id = db.Column(db.String(64), primary_key=True)
@@ -207,3 +212,27 @@ class Session(db.Model):
             return False, None
         else:
             return True, session.user
+
+
+
+
+class AppCornerConfig(db.Model):
+    __tablename__ = "app_corner_configs"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+    )
+
+    user = db.relationship("User", back_populates="dashboards")
+
+    favorited_apps = db.Column(db.JSON, nullable=True)
+    disabled_apps = db.Column(db.JSON, nullable=True)
+
+    favorited_shelfs = db.Column(db.JSON, nullable=True)
+    disabled_shelfs = db.Column(db.JSON, nullable=True)
+
+    recent_apps = db.Column(db.JSON, nullable=True)
+    show_recent = db.Column(db.bool, nullable=False)

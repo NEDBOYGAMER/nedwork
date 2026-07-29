@@ -78,9 +78,17 @@ function setMode(newMode) {
     // CURSOR
     // =========================
     function bindCursorEvents() {
-        document.addEventListener('mousemove', e => {
+        let initialized = false;
+
+        document.addEventListener("mousemove", (e) => {
             mx = e.clientX;
             my = e.clientY;
+
+            if (!initialized) {
+                rx = mx;
+                ry = my;
+                initialized = true;
+            }
         });
 
         document.addEventListener('mousedown', () => {

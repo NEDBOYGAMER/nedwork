@@ -1,5 +1,9 @@
 import { createBackground, colorMap, applyColor } from '../components/background.js';
 
+let apps
+let appCornerConfig
+const types = new Set();
+
 document.addEventListener('DOMContentLoaded', async () => {
     const cursor = document.getElementById('cursor');
     const ring = document.getElementById('cursor-ring');
@@ -12,10 +16,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.warn('Missing background elements');
     }
 
+
+    const appCornerConfig = await loadJsonData();
+
+
+    renderShelfs()
+
+
+
     // Fetch data and render cards
     const appsData = await loadJsonData();
     if (appsData && Array.isArray(appsData)) {
-        renderAppCards(appsData);
+        apps = appsData
+        renderAppCards();
     }
 });
 
@@ -32,44 +45,87 @@ async function loadJsonData() {
     }
 }
 
-function renderAppCards(apps) {
+
+function renderShelfs() {
     const grid = document.getElementById('grid');
     if (!grid) return;
 
-    grid.innerHTML = ''; // Clear existing content
+    grid.innerHTML = '';
+
+    
+    if (appCornerConfig.recent_enabled){
+        createShelf(name="Recent", oneline=true, style = "recent")
+    }
+    
+    let favApps = appCornerConfig.favorited_apps
+
+    if (favApps.length !== 0){
+        createShelf(name="Favorites", oneline=false, style = "favorite_apps")
+    }
+    
+    
+    let favShelfs = favorited_shelfs
+    
+    
+    favShelfs.forEach((shelf, index) => { // should be sorted when saved the the fisrt is always the first
+        createShelf(name=shelf, oneline=false, style = "favorites")
+    });
+    
+    
+    apps.forEach(app => {
+        if (!appCornerConfig.disabled_shelfs && !favShelfs.includes(app.type)){
+            types.add(app.type);
+        }
+    });
+    
+    types.forEach(shelf =>{
+        createShelf(name=shelf, oneline=false, style = "none")
+    })
+
+    let disShelfs = disabled_shelfs
+
+    disShelfs.forEach((shelf, index) => {
+        createShelf(name=shelf, oneline=false, style = "disabled")
+    });
+
+    createShelf(name=shelf, oneline=false, style = "disabled") // contains disabled apps
+
+}
+
+function createShelf(name, oneline, disabled){
+    //make the code for the shelf here
+    // oneline means no grid just one row, so it limited
+}
+
+
+function renderAppCards() {
+    const grid = document.getElementById('grid');
+    if (!grid) return;
+
+
 
     apps.forEach(app => {
-        // Create container
-        const card = document.createElement('div');
-        card.className = 'app-card';
+        
+        //create the card and so on here
+        
+        
+        
+        
+        // add to correct shelf
 
-        // Title
-        const title = document.createElement('h3');
-        title.textContent = app.name;
-        card.appendChild(title);
 
-        // Optional Description (Remove if unwanted)
-        if (app.description) {
-            const desc = document.createElement('p');
-            desc.textContent = app.description;
-            card.appendChild(desc);
+
+        // for disabled apps in the disabled_shelf
+        if (appCornerConfig.disabled_apps.includes(app.name)){
         }
+        
 
-        if (app.url && app.url !== '/placeholder') {
-            const btn = document.createElement('a');
-            
-            // Ensure leading slash to avoid relative path issues
-            btn.href = `/apps${app.url}`; 
-            btn.className = 'app-btn';
-            btn.textContent = 'Open App';
-            card.appendChild(btn);
-        } else {
-            const disabledBtn = document.createElement('span');
-            disabledBtn.className = 'app-btn disabled';
-            disabledBtn.textContent = 'Coming Soon';
-            card.appendChild(disabledBtn);
-        }
 
         grid.appendChild(card);
     });
+}
+
+
+function saveNewConfig(){
+    //figure this out yourself as i have no idea
 }

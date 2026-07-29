@@ -18,9 +18,32 @@ def app_corner_page():
 @app_corner_bp.route('/api/apps-data')
 def get_apps_data():
     json_path = os.path.join(current_app.root_path, 'data', 'apps.json')
-    with open(json_path, 'r') as f:
-        data = json.load(f)
-    return jsonify(data)
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            return jsonify(json.load(f))
+    except Exception:
+        return jsonify({"error": "Apps data not found"}), 404
+
+
+@app_corner_bp.route('/api/user_preferences')
+def get_user_preferences():
+    valid, user = Session.check(request.cookies.get("session_id"))
+
+    if not valid:
+        return redirect(url_for('auth.login_page'))
+
+    return jsonify([user.app_corner_config])
 
 
 
+@app_corner_bp.route('/api/update_user_preferences', methods=["POST"])
+def update_user_preferences():
+    valid, user = Session.check(request.cookies.get("session_id"))
+
+    if not valid:
+        return redirect(url_for('auth.login_page'))
+
+    data = request.get_json()
+
+    user.app_corner_config = data
+    db.session.commit()
