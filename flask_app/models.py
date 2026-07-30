@@ -256,9 +256,9 @@ class AppsConfig(db.Model):
 
     user = db.relationship("User", back_populates="apps_config")
 
-colors_config = db.relationship(
-        "ColorsConfig", 
-        backref="apps_config", 
-        uselist=False, 
+    colors_config = db.relationship(   # <-- indent this into the class
+        "ColorsConfig",
+        backref="apps_config",
+        uselist=False,
         cascade="all, delete-orphan"
     )

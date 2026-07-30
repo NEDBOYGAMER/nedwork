@@ -7,23 +7,22 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/apps/{{ app_name }}/colors.css" />
-<script src="/apps/{{ app_name }}/colors.js" defer></script>
+<script src="/apps/{{ app_name }}/colors.js" type="module" defer></script>
 </head>
 <body>
 
 <header>
   <div class="header-left">
+    <button class="icon-btn small" id="sidebar-toggle-btn" title="Toggle library panel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+    </button>
     <div class="logo"><span class="dot"></span>Colors</div>
-    <div class="hint">Click a hex code to edit &middot; drag a swatch to slide it into place</div>
+    <span class="hint" id="active-palette-label">Unsaved palette</span>
   </div>
   <div class="header-right">
     <button class="btn" id="save-btn" title="Save palette">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
       Save
-    </button>
-    <button class="btn" id="load-btn" title="Load palette">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Load
     </button>
 
     <div class="dropdown-wrap" id="export-wrap">
@@ -44,11 +43,36 @@
   </div>
 </header>
 
-<main id="palette-container"></main>
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Library</span>
+      <button class="tree-action-btn" id="new-top-btn" title="New library / project / palette">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-tree" id="sidebar-tree"></div>
+  </aside>
+
+  <main id="palette-container"></main>
+</div>
+
 <div class="empty-msg">Hover the edge between two colors to insert a new one</div>
 
 <canvas id="export-canvas" style="display:none;"></canvas>
 
-<script src="script.js"></script>
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <h3 id="modal-title"></h3>
+    <div id="modal-fields"></div>
+    <div class="modal-actions">
+      <button class="btn" id="modal-cancel" type="button">Cancel</button>
+      <button class="btn primary" id="modal-confirm" type="button">Create</button>
+    </div>
+  </div>
+</div>
+
+<div class="header-toast" id="header-toast"></div>
+
 </body>
 </html>

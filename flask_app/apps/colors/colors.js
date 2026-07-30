@@ -105,6 +105,16 @@ function generatePalette(count){
 let palette = generatePalette(5);
 let draggedId = null;
 
+// name of the palette currently loaded in the editor, e.g. "Brand/Website/Primary",
+// or null if it hasn't been saved anywhere yet.
+let currentPaletteName = null;
+
+// flat dict mirroring the server: { "Library/Project/Palette": [{hex, locked}, ...] }
+let flatPalettes = {};
+
+// which folder keys ("Library" or "Library/Project") are collapsed in the tree
+const collapsedKeys = new Set();
+
 const container = document.getElementById('palette-container');
 
 /* ---- FLIP animation helper for sliding reorders/inserts ---- */
@@ -368,19 +378,418 @@ function regenerate(){
 }
 
 /* ============================================================
-   SAVE / LOAD — hook up your own persistence here.
+   HEADER TOAST (small "Saved" confirmation)
    ============================================================ */
-document.getElementById('save-btn').addEventListener('click', ()=>{
-  // TODO: implement saving the current `palette` array (e.g. to an
-  // account, database, or export file). Browser localStorage/sessionStorage
-  // cannot be used inside this sandbox, so wire this up to your own
-  // backend or storage solution.
-  console.log('Save clicked — palette to persist:', palette);
+const headerToast = document.getElementById('header-toast');
+let headerToastTimer = null;
+function flashHeaderToast(message){
+  headerToast.textContent = message;
+  headerToast.classList.add('show');
+  clearTimeout(headerToastTimer);
+  headerToastTimer = setTimeout(()=> headerToast.classList.remove('show'), 1600);
+}
+
+function updateActivePaletteLabel(){
+  const label = document.getElementById('active-palette-label');
+  label.textContent = currentPaletteName ? currentPaletteName.split('/').join(' / ') : 'Unsaved palette';
+  label.title = label.textContent;
+}
+
+/* ============================================================
+   GENERIC MODAL — used for "save as" and "new palette" prompts
+   ============================================================ */
+const modalOverlay = document.getElementById('modal-overlay');
+const modalTitleEl = document.getElementById('modal-title');
+const modalFieldsEl = document.getElementById('modal-fields');
+const modalConfirmBtn = document.getElementById('modal-confirm');
+const modalCancelBtn = document.getElementById('modal-cancel');
+
+function openModal(title, fieldLabels, confirmLabel){
+  return new Promise((resolve)=>{
+    modalTitleEl.textContent = title;
+    modalConfirmBtn.textContent = confirmLabel || 'Create';
+    modalFieldsEl.innerHTML = '';
+
+    const inputs = fieldLabels.map((label)=>{
+      const wrap = document.createElement('label');
+      wrap.className = 'modal-field';
+      const span = document.createElement('span');
+      span.textContent = label;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.maxLength = 60;
+      wrap.appendChild(span);
+      wrap.appendChild(input);
+      modalFieldsEl.appendChild(wrap);
+      return input;
+    });
+
+    modalOverlay.classList.add('open');
+    if(inputs[0]) setTimeout(()=> inputs[0].focus(), 30);
+
+    function cleanup(result){
+      modalOverlay.classList.remove('open');
+      modalConfirmBtn.removeEventListener('click', onConfirm);
+      modalCancelBtn.removeEventListener('click', onCancel);
+      modalOverlay.removeEventListener('mousedown', onOverlayClick);
+      document.removeEventListener('keydown', onKeydown);
+      resolve(result);
+    }
+    function onConfirm(){
+      cleanup(inputs.map(i=>i.value.trim()));
+    }
+    function onCancel(){ cleanup(null); }
+    function onOverlayClick(e){ if(e.target === modalOverlay) cleanup(null); }
+    function onKeydown(e){
+      if(e.key === 'Escape'){ cleanup(null); }
+      if(e.key === 'Enter'){ e.preventDefault(); onConfirm(); }
+    }
+
+    modalConfirmBtn.addEventListener('click', onConfirm);
+    modalCancelBtn.addEventListener('click', onCancel);
+    modalOverlay.addEventListener('mousedown', onOverlayClick);
+    document.addEventListener('keydown', onKeydown);
+  });
+}
+
+/* ============================================================
+   BACKEND — list / save / delete
+   Adjust API_BASE if this app isn't served at a URL where
+   "list", "save", "delete" resolve directly next to this page.
+   ============================================================ */
+const API_BASE = '';
+
+async function fetchPalettes(){
+  try{
+    const res = await fetch(API_BASE + 'list', { credentials: 'same-origin' });
+    if(res.redirected){ window.location.href = res.url; return; }
+    if(!res.ok) throw new Error('Failed to load palettes');
+    const data = await res.json();
+    flatPalettes = data.palettes || {};
+  } catch(err){
+    console.error(err);
+    flatPalettes = {};
+  }
+  renderTree();
+}
+
+async function savePaletteToServer(name, colorsArr){
+  const cleanColors = colorsArr.map(c=>({ hex: c.hex, locked: !!c.locked }));
+  const res = await fetch(API_BASE + 'save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ name, palette: cleanColors })
+  });
+  if(!res.ok){
+    const err = await res.json().catch(()=>({}));
+    alert('Save failed: ' + (err.error || res.statusText));
+    throw new Error('save failed');
+  }
+  flatPalettes[name] = cleanColors;
+  return res.json();
+}
+
+async function deletePathOnServer(name){
+  const res = await fetch(API_BASE + 'delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ name })
+  });
+  if(!res.ok){
+    const err = await res.json().catch(()=>({}));
+    alert('Delete failed: ' + (err.error || res.statusText));
+    throw new Error('delete failed');
+  }
+  return res.json();
+}
+
+/* ============================================================
+   SIDEBAR TREE
+   ============================================================ */
+function buildTree(flat){
+  const tree = {};
+  Object.keys(flat).forEach(fullName=>{
+    const parts = fullName.split('/');
+    if(parts.length !== 3) return;
+    const [lib, proj, pal] = parts;
+    tree[lib] = tree[lib] || {};
+    tree[lib][proj] = tree[lib][proj] || {};
+    tree[lib][proj][pal] = flat[fullName];
+  });
+  return tree;
+}
+
+function caretSvg(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>`; }
+function folderSvg(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>`; }
+function plusSvg(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>`; }
+function trashSvg(){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"/></svg>`; }
+
+function toggleCollapse(key){
+  if(collapsedKeys.has(key)) collapsedKeys.delete(key);
+  else collapsedKeys.add(key);
+  renderTree();
+}
+
+function smallActionBtn(svg, title, onClick){
+  const btn = document.createElement('button');
+  btn.className = 'tree-action-btn';
+  btn.type = 'button';
+  btn.title = title;
+  btn.innerHTML = svg;
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
+function treeRow(opts){
+  const row = document.createElement('div');
+  row.className = 'tree-row' + (opts.active ? ' active' : '');
+  row.style.paddingLeft = (10 + opts.depth*16) + 'px';
+
+  if(!opts.leaf){
+    const caret = document.createElement('span');
+    caret.className = 'tree-caret' + (opts.collapsedState ? ' collapsed' : '');
+    caret.innerHTML = caretSvg();
+    row.appendChild(caret);
+  }
+
+  const icon = document.createElement('span');
+  if(opts.leaf){
+    icon.className = 'palette-dot';
+    icon.style.background = opts.swatchColor;
+  } else {
+    icon.className = 'tree-icon';
+    icon.innerHTML = folderSvg();
+  }
+  row.appendChild(icon);
+
+  const label = document.createElement('span');
+  label.className = 'tree-label';
+  label.textContent = opts.label;
+  label.title = opts.label;
+  row.appendChild(label);
+
+  const actions = document.createElement('span');
+  actions.className = 'tree-actions';
+  if(opts.onAdd){
+    actions.appendChild(smallActionBtn(plusSvg(), opts.addTitle, (e)=>{ e.stopPropagation(); opts.onAdd(); }));
+  }
+  if(opts.onDelete){
+    actions.appendChild(smallActionBtn(trashSvg(), opts.deleteTitle, (e)=>{ e.stopPropagation(); opts.onDelete(); }));
+  }
+  row.appendChild(actions);
+
+  row.addEventListener('click', ()=>{
+    if(opts.onToggle) opts.onToggle();
+    if(opts.onSelect) opts.onSelect();
+  });
+
+  return row;
+}
+
+function emptyRow(text, small){
+  const el = document.createElement('div');
+  el.className = 'tree-empty' + (small ? ' small' : '');
+  el.textContent = text;
+  return el;
+}
+
+function renderTree(){
+  const root = document.getElementById('sidebar-tree');
+  root.innerHTML = '';
+  const tree = buildTree(flatPalettes);
+  const libNames = Object.keys(tree).sort((a,b)=>a.localeCompare(b));
+
+  if(libNames.length === 0){
+    root.appendChild(emptyRow('No palettes yet — click + to create one'));
+    return;
+  }
+  libNames.forEach(lib=> root.appendChild(buildLibraryNode(lib, tree[lib])));
+}
+
+function buildLibraryNode(lib, projects){
+  const key = lib;
+  const collapsed = collapsedKeys.has(key);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-node';
+
+  const row = treeRow({
+    depth: 0,
+    collapsedState: collapsed,
+    label: lib,
+    onToggle: ()=> toggleCollapse(key),
+    onAdd: ()=> createNewPalette([lib]),
+    addTitle: 'New project + palette',
+    onDelete: ()=> handleDelete(lib, `library "${lib}" and everything inside it`),
+    deleteTitle: 'Delete library'
+  });
+  wrap.appendChild(row);
+
+  const children = document.createElement('div');
+  children.className = 'tree-children' + (collapsed ? ' hidden' : '');
+  const projNames = Object.keys(projects).sort((a,b)=>a.localeCompare(b));
+  projNames.forEach(proj=> children.appendChild(buildProjectNode(lib, proj, projects[proj])));
+  wrap.appendChild(children);
+
+  return wrap;
+}
+
+function buildProjectNode(lib, proj, palettes){
+  const key = `${lib}/${proj}`;
+  const collapsed = collapsedKeys.has(key);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-node';
+
+  const row = treeRow({
+    depth: 1,
+    collapsedState: collapsed,
+    label: proj,
+    onToggle: ()=> toggleCollapse(key),
+    onAdd: ()=> createNewPalette([lib, proj]),
+    addTitle: 'New palette',
+    onDelete: ()=> handleDelete(key, `project "${proj}" and everything inside it`),
+    deleteTitle: 'Delete project'
+  });
+  wrap.appendChild(row);
+
+  const children = document.createElement('div');
+  children.className = 'tree-children' + (collapsed ? ' hidden' : '');
+  const palNames = Object.keys(palettes).sort((a,b)=>a.localeCompare(b));
+  palNames.forEach(pal=> children.appendChild(buildPaletteLeaf(lib, proj, pal, palettes[pal])));
+  wrap.appendChild(children);
+
+  return wrap;
+}
+
+function buildPaletteLeaf(lib, proj, pal, colorsArr){
+  const fullName = `${lib}/${proj}/${pal}`;
+  return treeRow({
+    depth: 2,
+    leaf: true,
+    active: fullName === currentPaletteName,
+    swatchColor: (colorsArr && colorsArr[0]) ? colorsArr[0].hex : '#888',
+    label: pal,
+    onSelect: ()=> loadPaletteIntoEditor(fullName, colorsArr),
+    onDelete: ()=> handleDelete(fullName, `palette "${pal}"`),
+    deleteTitle: 'Delete palette'
+  });
+}
+
+function loadPaletteIntoEditor(fullName, colorsArr){
+  if(!Array.isArray(colorsArr) || colorsArr.length === 0) return;
+  palette = colorsArr.map(c=> ({ id: nextId(), hex: c.hex, locked: !!c.locked }));
+  currentPaletteName = fullName;
+  render();
+  renderTree();
+  updateActivePaletteLabel();
+}
+
+async function handleDelete(pathKey, label){
+  if(!confirm(`Delete ${label}? This cannot be undone.`)) return;
+  try{
+    await deletePathOnServer(pathKey);
+  } catch(err){
+    return;
+  }
+  const prefix = pathKey + '/';
+  Object.keys(flatPalettes).forEach(k=>{
+    if(k === pathKey || k.startsWith(prefix)){
+      delete flatPalettes[k];
+      if(k === currentPaletteName) currentPaletteName = null;
+    }
+  });
+  updateActivePaletteLabel();
+  renderTree();
+}
+
+/* creates a brand-new default palette under the given prefix parts
+   (0, 1, or 2 already-known Library/Project names) and immediately
+   saves it + loads it into the editor */
+async function createNewPalette(prefixParts){
+  const allLabels = ['Library name','Project name','Palette name'];
+  const neededLabels = allLabels.slice(prefixParts.length);
+
+  const title = prefixParts.length === 0
+    ? 'New palette'
+    : `New palette in "${prefixParts.join(' / ')}"`;
+
+  const values = await openModal(title, neededLabels, 'Create');
+  if(!values) return;
+
+  const allParts = [...prefixParts, ...values];
+  if(allParts.some(p=>!p || p.includes('/'))){
+    alert('Each name must be non-empty and cannot contain "/"');
+    return;
+  }
+
+  const fullName = allParts.join('/');
+  if(flatPalettes[fullName]){
+    alert('A palette with that exact name already exists.');
+    return;
+  }
+
+  const newColors = generatePalette(5);
+  try{
+    await savePaletteToServer(fullName, newColors);
+  } catch(err){
+    return;
+  }
+  collapsedKeys.delete(prefixParts[0]);
+  collapsedKeys.delete(prefixParts.slice(0,2).join('/'));
+  loadPaletteIntoEditor(fullName, flatPalettes[fullName]);
+  flashHeaderToast('Palette created');
+}
+
+async function saveCurrentAs(){
+  const values = await openModal('Save palette as', ['Library name','Project name','Palette name'], 'Save');
+  if(!values) return;
+
+  if(values.some(p=>!p || p.includes('/'))){
+    alert('Each name must be non-empty and cannot contain "/"');
+    return;
+  }
+
+  const fullName = values.join('/');
+  if(flatPalettes[fullName] && !confirm(`"${fullName.split('/').join(' / ')}" already exists. Overwrite it?`)){
+    return;
+  }
+
+  try{
+    await savePaletteToServer(fullName, palette);
+  } catch(err){
+    return;
+  }
+  currentPaletteName = fullName;
+  updateActivePaletteLabel();
+  renderTree();
+  flashHeaderToast('Saved');
+}
+
+/* ============================================================
+   SAVE button, SIDEBAR toggle, top-level "new" button
+   ============================================================ */
+document.getElementById('save-btn').addEventListener('click', async ()=>{
+  if(currentPaletteName){
+    try{
+      await savePaletteToServer(currentPaletteName, palette);
+    } catch(err){
+      return;
+    }
+    renderTree();
+    flashHeaderToast('Saved');
+  } else {
+    saveCurrentAs();
+  }
 });
-document.getElementById('load-btn').addEventListener('click', ()=>{
-  // TODO: implement loading a previously saved palette and calling
-  // `palette = loadedPalette; render();`
-  console.log('Load clicked — implement retrieval of a saved palette here');
+
+document.getElementById('new-top-btn').addEventListener('click', ()=> createNewPalette([]));
+
+const sidebar = document.getElementById('sidebar');
+document.getElementById('sidebar-toggle-btn').addEventListener('click', ()=>{
+  sidebar.classList.toggle('collapsed');
 });
 
 /* ============================================================
@@ -468,3 +877,5 @@ document.getElementById('generate-btn').addEventListener('click', regenerate);
 
 /* initial render */
 render();
+updateActivePaletteLabel();
+fetchPalettes();
