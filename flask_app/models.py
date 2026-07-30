@@ -1,5 +1,7 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from flask_app.apps.app_models import *
+
 from . import db
 import random
 import string
@@ -95,6 +97,14 @@ class User(db.Model):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+
+    apps_config = db.relationship(
+        "AppsConfig",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+
 
 
 
@@ -236,3 +246,19 @@ class AppCornerConfig(db.Model):
     favorited_apps = db.Column(db.JSON, nullable=True)
     disabled_apps = db.Column(db.JSON, nullable=True)
     disabled_shelves = db.Column(db.JSON, nullable=True)
+
+
+class AppsConfig(db.Model):
+    __tablename__ = "apps_configs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    user = db.relationship("User", back_populates="apps_config")
+
+colors_config = db.relationship(
+        "ColorsConfig", 
+        backref="apps_config", 
+        uselist=False, 
+        cascade="all, delete-orphan"
+    )

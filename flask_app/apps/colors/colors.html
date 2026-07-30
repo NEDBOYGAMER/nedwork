@@ -1,29 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Palette Generator</title>
-    <link rel="stylesheet" href="/apps/{{ app_name }}/colors.css" />
-    <script src="/apps/{{ app_name }}/colors.js" defer></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Colors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/apps/{{ app_name }}/colors.css" />
+<script src="/apps/{{ app_name }}/colors.js" defer></script>
 </head>
 <body>
 
-<div class="container">
+<header>
+  <div class="header-left">
+    <div class="logo"><span class="dot"></span>Colors</div>
+    <div class="hint">Click a hex code to edit &middot; drag a swatch to slide it into place</div>
+  </div>
+  <div class="header-right">
+    <button class="btn" id="save-btn" title="Save palette">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+      Save
+    </button>
+    <button class="btn" id="load-btn" title="Load palette">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Load
+    </button>
 
-    <header>
-        <h1>🎨 Palette Generator</h1>
-        <p>Create beautiful color palettes instantly.</p>
-    </header>
-
-    <div class="controls">
-        <button id="generate">Generate Palette</button>
-        <button id="copyAll">Copy Palette</button>
+    <div class="dropdown-wrap" id="export-wrap">
+      <button class="btn" id="export-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M20 21H4a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1h1"/><path d="M19 14h1a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1"/></svg>
+        Export
+      </button>
+      <div class="dropdown-menu">
+        <button class="dropdown-item" data-export="full">Full <span class="sub">Colors edge to edge</span></button>
+        <button class="dropdown-item" data-export="palette">Palette <span class="sub">Rounded, spaced swatches</span></button>
+      </div>
     </div>
 
-    <div id="palette" class="palette"></div>
+    <button class="btn primary" id="generate-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+      Generate
+    </button>
+  </div>
+</header>
 
-</div>
+<main id="palette-container"></main>
+<div class="empty-msg">Hover the edge between two colors to insert a new one</div>
+
+<canvas id="export-canvas" style="display:none;"></canvas>
 
 <script src="script.js"></script>
 </body>
