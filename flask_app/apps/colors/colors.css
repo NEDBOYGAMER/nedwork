@@ -40,10 +40,12 @@ header{
   align-items:center;
   gap:8px;
 }
-.logo .dot{
-  width:10px; height:10px; border-radius:50%;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+.logo-icon{
+  width:20px; height:20px;
+  border-radius:5px;
+  object-fit:contain;
   display:inline-block;
+  flex-shrink:0;
 }
 .hint{
   font-size:12px;
@@ -153,17 +155,21 @@ header{
 .sidebar-header{
   display:flex;
   align-items:center;
-  justify-content:space-between;
-  padding: 14px 14px 10px 16px;
+  gap: 6px;
+  padding: 10px 10px 10px 8px;
   flex-shrink:0;
 }
 .sidebar-title{
+  flex: 1 1 auto;
   font-family:'Space Grotesk', sans-serif;
   font-weight:700;
   font-size: 13px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.5);
+}
+.sidebar-header .icon-btn.small{
+  margin-right: 0;
 }
 .sidebar-tree{
   flex:1;
@@ -296,8 +302,14 @@ main{
   padding-bottom: 34px;
   outline:none;
   will-change: transform;
+  touch-action: pan-y;
 }
-.color-panel.dragging{ opacity:0.35; cursor:grabbing; }
+.color-panel.dragging{
+  cursor:grabbing;
+  z-index: 30;
+  box-shadow: 0 20px 45px rgba(0,0,0,0.35);
+  touch-action: none;
+}
 .color-panel.entering{ opacity:0; transform: scale(0.92); }
 
 .panel-top{
@@ -454,6 +466,26 @@ main{
   color: rgba(255,255,255,0.4);
   font-size: 12px;
   z-index: 5;
+}
+
+/* ---------------- FLOATING SIDEBAR REOPEN BUTTON ---------------- */
+.floating-sidebar-btn{
+  position: fixed;
+  top: calc(var(--header-h) + 14px);
+  right: 14px;
+  z-index: 60;
+  opacity: 0;
+  transform: translateX(8px);
+  pointer-events: none;
+  transition: opacity 200ms ease, transform 200ms ease;
+  background: rgba(20,22,26,0.85);
+  color: #fff;
+}
+.floating-sidebar-btn:hover{ background: rgba(20,22,26,0.95); }
+.floating-sidebar-btn.visible{
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
 /* ---------------- MODAL (create / save-as) ---------------- */

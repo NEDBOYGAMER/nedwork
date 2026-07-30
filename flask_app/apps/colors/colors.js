@@ -103,7 +103,6 @@ function generatePalette(count){
    STATE
    ============================================================ */
 let palette = generatePalette(5);
-let draggedId = null;
 
 // name of the palette currently loaded in the editor, e.g. "Brand/Website/Primary",
 // or null if it hasn't been saved anywhere yet.
@@ -115,14 +114,54 @@ let flatPalettes = {};
 // which folder keys ("Library" or "Library/Project") are collapsed in the tree
 const collapsedKeys = new Set();
 
+/* ------------------------------------------------------------
+   VIRTUAL FOLDERS
+   Libraries/projects are otherwise only inferred from the keys of
+   saved palettes ("Library/Project/Palette") — there's no separate
+   record of a folder that has no palette in it. That means an empty
+   folder would just vanish from the tree the moment it has nothing
+   under it (e.g. right after creating it, or after deleting the
+   last project/palette inside it). To keep folders around even when
+   they're empty, we track a small set of "known" folders client-side,
+   persisted in localStorage so it survives reloads.
+   ------------------------------------------------------------ */
+const VIRTUAL_FOLDERS_KEY = 'colors_app_virtual_folders_v1';
+
+function loadVirtualFolders(){
+  try{
+    const raw = localStorage.getItem(VIRTUAL_FOLDERS_KEY);
+    if(raw === null) return null; // never persisted before — first-ever load
+    const parsed = JSON.parse(raw);
+    return {
+      libraries: Array.isArray(parsed.libraries) ? parsed.libraries : [],
+      projects: Array.isArray(parsed.projects) ? parsed.projects : []
+    };
+  } catch(err){
+    return null;
+  }
+}
+
+function saveVirtualFolders(){
+  try{
+    localStorage.setItem(VIRTUAL_FOLDERS_KEY, JSON.stringify({
+      libraries: [...virtualLibraries],
+      projects: [...virtualProjects]
+    }));
+  } catch(err){ /* ignore — worst case folders just don't persist across reloads */ }
+}
+
+const storedVirtualFolders = loadVirtualFolders();
+// first-ever load: seed "main/main" as the default landing folder, without
+// saving anything real to the server for it (see fetchPalettes() below)
+const virtualLibraries = new Set(storedVirtualFolders ? storedVirtualFolders.libraries : ['main']);
+const virtualProjects = new Set(storedVirtualFolders ? storedVirtualFolders.projects : ['main/main']);
+if(!storedVirtualFolders) saveVirtualFolders();
+
 // current "directory" location in the library tree: [] | [lib] | [lib,proj] | [lib,proj,pal].
 // Drives what the header "+" button creates, and is kept in sync with whatever
-// is selected/open in the sidebar.
-let selectedPath = [];
-
-// the palette this app auto-creates for a brand-new (never-saved-anything)
-// account, seeded from whatever was generated on load — see fetchPalettes()
-const DEFAULT_PALETTE_KEY = 'main/main/new_palette';
+// is selected/open in the sidebar. Defaults into "main/main" if that folder
+// still exists, so there's somewhere sensible for Save to land by default.
+let selectedPath = virtualProjects.has('main/main') ? ['main', 'main'] : [];
 
 const container = document.getElementById('palette-container');
 
@@ -160,6 +199,88 @@ function withSlide(mutationFn){
   });
 }
 
+/* ---- custom drag-to-reorder ----
+   Deliberately not using native HTML5 drag/drop: that API renders its own
+   translucent "ghost" image that follows the cursor separately from the
+   actual element, which is exactly the effect we don't want. Instead we
+   track the pointer directly and transform the real panel, so the color
+   itself is what visibly slides. Neighboring panels shift by exactly one
+   panel-width in the opposite direction, and only once the cursor crosses
+   a neighbor's midpoint (Math.round of the distance dragged, in panel
+   widths) — so it settles into place instead of flickering back and forth. */
+let dragState = null;
+
+function beginDrag(e, panel, originalIndex){
+  e.preventDefault();
+
+  const panels = [...container.querySelectorAll('.color-panel')];
+  const panelWidth = panel.getBoundingClientRect().width;
+
+  dragState = {
+    panel,
+    panels,
+    originalIndex,
+    currentIndex: originalIndex,
+    panelWidth,
+    startX: e.clientX,
+    pointerId: e.pointerId
+  };
+
+  panel.classList.add('dragging');
+  panel.style.transition = 'none';
+  panels.forEach(p=>{
+    if(p !== panel) p.style.transition = 'transform 180ms cubic-bezier(.4,0,.2,1)';
+  });
+
+  panel.setPointerCapture(e.pointerId);
+  panel.addEventListener('pointermove', onDragMove);
+  panel.addEventListener('pointerup', onDragEnd);
+  panel.addEventListener('pointercancel', onDragEnd);
+}
+
+function onDragMove(e){
+  if(!dragState || e.pointerId !== dragState.pointerId) return;
+  const { panel, panels, originalIndex, panelWidth, startX } = dragState;
+
+  const deltaX = e.clientX - startX;
+  panel.style.transform = `translateX(${deltaX}px)`;
+
+  let targetIndex = originalIndex + Math.round(deltaX / panelWidth);
+  targetIndex = Math.max(0, Math.min(panels.length - 1, targetIndex));
+
+  if(targetIndex !== dragState.currentIndex){
+    dragState.currentIndex = targetIndex;
+    panels.forEach((p, i)=>{
+      if(p === panel) return;
+      let shift = 0;
+      if(originalIndex < targetIndex && i > originalIndex && i <= targetIndex) shift = -1;
+      else if(originalIndex > targetIndex && i >= targetIndex && i < originalIndex) shift = 1;
+      p.style.transform = shift ? `translateX(${shift * panelWidth}px)` : '';
+    });
+  }
+}
+
+function onDragEnd(e){
+  if(!dragState || e.pointerId !== dragState.pointerId) return;
+  const { panel, panels, originalIndex, currentIndex } = dragState;
+
+  panel.releasePointerCapture(e.pointerId);
+  panel.removeEventListener('pointermove', onDragMove);
+  panel.removeEventListener('pointerup', onDragEnd);
+  panel.removeEventListener('pointercancel', onDragEnd);
+
+  panel.classList.remove('dragging');
+  panels.forEach(p=>{ p.style.transition = ''; p.style.transform = ''; });
+
+  dragState = null;
+
+  if(currentIndex !== originalIndex){
+    const moved = palette.splice(originalIndex, 1)[0];
+    palette.splice(currentIndex, 0, moved);
+    render();
+  }
+}
+
 function render(){
   container.innerHTML = '';
   palette.forEach((color, i)=>{
@@ -185,35 +306,17 @@ function buildPanel(color, index){
   const panel = document.createElement('div');
   panel.className = 'color-panel';
   panel.style.backgroundColor = color.hex;
-  panel.draggable = true;
   panel.dataset.id = color.id;
 
   const textColor = contrastTextColor(color.hex);
   panel.style.color = textColor;
 
   /* ---- sliding drag reorder ---- */
-  panel.addEventListener('dragstart', (e)=>{
-    draggedId = color.id;
-    panel.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', color.id);
+  panel.addEventListener('pointerdown', (e)=>{
+    if(e.button !== 0) return;
+    if(e.target.closest('button, input, .panel-actions, .top-row')) return;
+    beginDrag(e, panel, palette.findIndex(c=>c.id===color.id));
   });
-  panel.addEventListener('dragend', ()=>{
-    panel.classList.remove('dragging');
-    draggedId = null;
-  });
-  panel.addEventListener('dragover', (e)=>{
-    e.preventDefault();
-    if(draggedId === null || draggedId === color.id) return;
-    const fromIndex = palette.findIndex(c=>c.id===draggedId);
-    const toIndex = palette.findIndex(c=>c.id===color.id);
-    if(fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
-    withSlide(()=>{
-      const moved = palette.splice(fromIndex,1)[0];
-      palette.splice(toIndex,0,moved);
-    });
-  });
-  panel.addEventListener('drop', (e)=> e.preventDefault());
 
   /* ---- top area: lock + paint(edit color) + name ---- */
   const top = document.createElement('div');
@@ -247,7 +350,10 @@ function buildPanel(color, index){
   colorInput.addEventListener('input', ()=>{
     color.hex = colorInput.value.toUpperCase();
     updatePanelColor(panel, color);
+    hexInput.value = color.hex.replace('#','');
+    nameEl.textContent = nearestColorName(color.hex);
   });
+  colorInput.addEventListener('change', ()=> autosaveIfSaved());
   paintBtn.addEventListener('click', ()=> colorInput.click());
 
   topRow.appendChild(lockBtn);
@@ -279,10 +385,12 @@ function buildPanel(color, index){
   function commitHexEdit(){
     const candidate = normalizeHex(hexInput.value);
     if(isValidHex(candidate)){
+      const changed = candidate !== color.hex;
       color.hex = candidate;
       updatePanelColor(panel, color);
       nameEl.textContent = nearestColorName(color.hex);
       hexInput.value = color.hex.replace('#','');
+      if(changed) autosaveIfSaved();
     } else {
       hexInput.value = color.hex.replace('#',''); // revert
     }
@@ -396,6 +504,19 @@ function flashHeaderToast(message){
   headerToast.classList.add('show');
   clearTimeout(headerToastTimer);
   headerToastTimer = setTimeout(()=> headerToast.classList.remove('show'), 1600);
+}
+
+/* Editing a color (hex field or the native picker) auto-saves on exit —
+   but only if this palette has already been saved somewhere. An unsaved
+   palette stays unsaved; editing it doesn't implicitly create a save. */
+async function autosaveIfSaved(){
+  if(!currentPaletteName) return;
+  try{
+    await savePaletteToServer(currentPaletteName, palette);
+    flashHeaderToast('Saved');
+  } catch(err){
+    // savePaletteToServer already surfaces an alert on failure
+  }
 }
 
 function updateActivePaletteLabel(){
@@ -519,25 +640,13 @@ async function fetchPalettes(){
     flatPalettes = {};
   }
 
-  // brand-new account with nothing saved at all yet: turn the palette that
-  // was already generated on page load into their first real palette,
-  // filed under Library "main" / Project "main" / "new_palette", so
-  // there's always somewhere real to land instead of an empty tree.
-  if(Object.keys(flatPalettes).length === 0){
-    try{
-      await savePaletteToServer(DEFAULT_PALETTE_KEY, palette);
-    } catch(err){
-      // save failed (e.g. offline) — fall through to an empty tree, user can retry via Save
-    }
-  }
+  // The palette generated on page load is just a starting point in the
+  // editor — it's intentionally NOT saved to the server automatically.
+  // The "main/main" folder is still shown (and used as the Save default)
+  // via the virtual-folder tracking above, even though nothing real has
+  // been saved into it yet.
 
   collapseAllFolders();
-
-  if(currentPaletteName === null && flatPalettes[DEFAULT_PALETTE_KEY] && Object.keys(flatPalettes).length === 1){
-    loadPaletteIntoEditor(DEFAULT_PALETTE_KEY, flatPalettes[DEFAULT_PALETTE_KEY]);
-    return;
-  }
-
   renderTree();
 }
 
@@ -596,6 +705,17 @@ function buildTree(flat){
     tree[lib][proj] = tree[lib][proj] || {};
     tree[lib][proj][pal] = flat[fullName];
   });
+
+  // fold in folders that exist but have nothing saved under them yet
+  virtualLibraries.forEach(lib=>{
+    tree[lib] = tree[lib] || {};
+  });
+  virtualProjects.forEach(key=>{
+    const [lib, proj] = key.split('/');
+    tree[lib] = tree[lib] || {};
+    tree[lib][proj] = tree[lib][proj] || {};
+  });
+
   return tree;
 }
 
@@ -800,6 +920,27 @@ async function handleDelete(pathKey, label){
       if(k === currentPaletteName) currentPaletteName = null;
     }
   });
+
+  const parts = pathKey.split('/');
+  if(parts.length === 1){
+    // deleting a whole library: it and its projects go away — nothing above it to preserve
+    virtualLibraries.delete(pathKey);
+    [...virtualProjects].forEach(p=>{
+      if(p === pathKey || p.startsWith(prefix)) virtualProjects.delete(p);
+    });
+  } else if(parts.length === 2){
+    // deleting a project: only the project itself disappears — its library
+    // must NOT backpropagate away just because it's now empty
+    virtualProjects.delete(pathKey);
+    virtualLibraries.add(parts[0]);
+  } else {
+    // deleting a single palette: its project and library must survive
+    // even if this was the last palette in them
+    virtualLibraries.add(parts[0]);
+    virtualProjects.add(`${parts[0]}/${parts[1]}`);
+  }
+  saveVirtualFolders();
+
   const selKey = selectedPath.join('/');
   if(selectedPath.length && (selKey === pathKey || selKey.startsWith(prefix))){
     selectedPath = [];
@@ -819,7 +960,6 @@ async function handleDelete(pathKey, label){
    rather than prompted for. */
 const LEVEL_LABELS = ['Library name', 'Project name', 'Palette name'];
 const LEVEL_WORDS = ['library', 'project', 'palette'];
-const LEVEL_DEFAULTS = [null, 'main', 'new_palette'];
 
 async function createNewPalette(prefixParts){
   const levelIndex = prefixParts.length;
@@ -836,11 +976,43 @@ async function createNewPalette(prefixParts){
     return;
   }
 
-  const allParts = [...prefixParts, name];
-  while(allParts.length < 3){
-    allParts.push(LEVEL_DEFAULTS[allParts.length]);
+  const existingTree = buildTree(flatPalettes);
+
+  // creating a bare library — just the folder, nothing forced beneath it
+  if(levelIndex === 0){
+    if(virtualLibraries.has(name) || existingTree[name]){
+      alert('A library with that name already exists.');
+      return;
+    }
+    virtualLibraries.add(name);
+    saveVirtualFolders();
+    collapsedKeys.delete(name);
+    selectPath([name]);
+    flashHeaderToast('Library created');
+    return;
   }
 
+  // creating a bare project inside an existing library — same idea
+  if(levelIndex === 1){
+    const [lib] = prefixParts;
+    const projKey = `${lib}/${name}`;
+    if(virtualProjects.has(projKey) || (existingTree[lib] && existingTree[lib][name])){
+      alert('A project with that name already exists.');
+      return;
+    }
+    virtualLibraries.add(lib);
+    virtualProjects.add(projKey);
+    saveVirtualFolders();
+    collapsedKeys.delete(lib);
+    collapsedKeys.delete(projKey);
+    selectPath([lib, name]);
+    flashHeaderToast('Project created');
+    return;
+  }
+
+  // levelIndex === 2: an actual palette, which is the only level that's
+  // ever really saved to the server
+  const allParts = [...prefixParts, name];
   const fullName = allParts.join('/');
   if(flatPalettes[fullName]){
     alert('A palette with that exact name already exists.');
@@ -853,10 +1025,13 @@ async function createNewPalette(prefixParts){
   } catch(err){
     return;
   }
+  virtualLibraries.add(allParts[0]);
+  virtualProjects.add(allParts.slice(0,2).join('/'));
+  saveVirtualFolders();
   collapsedKeys.delete(allParts[0]);
   collapsedKeys.delete(allParts.slice(0,2).join('/'));
   loadPaletteIntoEditor(fullName, flatPalettes[fullName]);
-  flashHeaderToast(`${LEVEL_WORDS[levelIndex][0].toUpperCase()}${LEVEL_WORDS[levelIndex].slice(1)} created`);
+  flashHeaderToast('Palette created');
 }
 
 /* Saving an unsaved palette: only asks for whatever part of the
@@ -921,9 +1096,15 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
 document.getElementById('new-top-btn').addEventListener('click', contextualAdd);
 
 const sidebar = document.getElementById('sidebar');
-document.getElementById('sidebar-toggle-btn').addEventListener('click', ()=>{
-  sidebar.classList.toggle('collapsed');
-});
+const sidebarOpenBtn = document.getElementById('sidebar-open-btn');
+
+function setSidebarCollapsed(collapsed){
+  sidebar.classList.toggle('collapsed', collapsed);
+  sidebarOpenBtn.classList.toggle('visible', collapsed);
+}
+
+document.getElementById('sidebar-toggle-btn').addEventListener('click', ()=> setSidebarCollapsed(true));
+sidebarOpenBtn.addEventListener('click', ()=> setSidebarCollapsed(false));
 
 /* ============================================================
    EXPORT
