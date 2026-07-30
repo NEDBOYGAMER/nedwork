@@ -115,6 +115,15 @@ let flatPalettes = {};
 // which folder keys ("Library" or "Library/Project") are collapsed in the tree
 const collapsedKeys = new Set();
 
+// current "directory" location in the library tree: [] | [lib] | [lib,proj] | [lib,proj,pal].
+// Drives what the header "+" button creates, and is kept in sync with whatever
+// is selected/open in the sidebar.
+let selectedPath = [];
+
+// the palette this app auto-creates for a brand-new (never-saved-anything)
+// account, seeded from whatever was generated on load — see fetchPalettes()
+const DEFAULT_PALETTE_KEY = 'main/main/new_palette';
+
 const container = document.getElementById('palette-container');
 
 /* ---- FLIP animation helper for sliding reorders/inserts ---- */
@@ -391,8 +400,45 @@ function flashHeaderToast(message){
 
 function updateActivePaletteLabel(){
   const label = document.getElementById('active-palette-label');
-  label.textContent = currentPaletteName ? currentPaletteName.split('/').join(' / ') : 'Unsaved palette';
+  if(currentPaletteName){
+    label.textContent = currentPaletteName.split('/').join(' / ');
+  } else if(selectedPath.length){
+    label.textContent = selectedPath.join(' / ') + ' — no palette open';
+  } else {
+    label.textContent = 'Unsaved palette';
+  }
   label.title = label.textContent;
+}
+
+/* updates the header "+" button's tooltip/behavior to reflect what it will
+   create given the current selection: nothing selected -> new library,
+   a library selected -> new project, a project or palette selected -> new palette */
+function updateNewButtonTitle(){
+  const btn = document.getElementById('new-top-btn');
+  if(!btn) return;
+  const depth = Math.min(2, selectedPath.length);
+  const kind = ['New library', 'New project', 'New palette'][depth];
+  btn.title = selectedPath.length ? `${kind} in "${selectedPath.slice(0, depth).join(' / ')}"` : kind;
+}
+
+function pathEquals(a, b){
+  return a.length === b.length && a.every((v,i)=> v === b[i]);
+}
+
+/* sets the current selection (used for tree highlighting and as the
+   context for the header "+" button), then re-renders what depends on it */
+function selectPath(path){
+  selectedPath = path;
+  updateNewButtonTitle();
+  updateActivePaletteLabel();
+  renderTree();
+}
+
+/* the header "+" button: creates a project if a library is selected, a
+   palette if a project (or a palette within it) is selected, or falls
+   back to creating a brand-new library if nothing is selected */
+function contextualAdd(){
+  createNewPalette(selectedPath.slice(0, Math.min(2, selectedPath.length)));
 }
 
 /* ============================================================
@@ -454,10 +500,12 @@ function openModal(title, fieldLabels, confirmLabel){
 
 /* ============================================================
    BACKEND — list / save / delete
-   Adjust API_BASE if this app isn't served at a URL where
-   "list", "save", "delete" resolve directly next to this page.
+   Uses the absolute app base path set in colors.html (window.APP_BASE,
+   e.g. "/apps/colors/") rather than a relative '' base — a relative base
+   resolves against the *current page URL*, which silently breaks
+   depending on whether that URL has a trailing slash.
    ============================================================ */
-const API_BASE = '';
+const API_BASE = window.APP_BASE || './';
 
 async function fetchPalettes(){
   try{
@@ -470,7 +518,37 @@ async function fetchPalettes(){
     console.error(err);
     flatPalettes = {};
   }
+
+  // brand-new account with nothing saved at all yet: turn the palette that
+  // was already generated on page load into their first real palette,
+  // filed under Library "main" / Project "main" / "new_palette", so
+  // there's always somewhere real to land instead of an empty tree.
+  if(Object.keys(flatPalettes).length === 0){
+    try{
+      await savePaletteToServer(DEFAULT_PALETTE_KEY, palette);
+    } catch(err){
+      // save failed (e.g. offline) — fall through to an empty tree, user can retry via Save
+    }
+  }
+
+  collapseAllFolders();
+
+  if(currentPaletteName === null && flatPalettes[DEFAULT_PALETTE_KEY] && Object.keys(flatPalettes).length === 1){
+    loadPaletteIntoEditor(DEFAULT_PALETTE_KEY, flatPalettes[DEFAULT_PALETTE_KEY]);
+    return;
+  }
+
   renderTree();
+}
+
+/* folds up every library and project node so the tree starts collapsed
+   when the app is first opened */
+function collapseAllFolders(){
+  const tree = buildTree(flatPalettes);
+  Object.keys(tree).forEach(lib=>{
+    collapsedKeys.add(lib);
+    Object.keys(tree[lib]).forEach(proj=> collapsedKeys.add(`${lib}/${proj}`));
+  });
 }
 
 async function savePaletteToServer(name, colorsArr){
@@ -572,9 +650,6 @@ function treeRow(opts){
 
   const actions = document.createElement('span');
   actions.className = 'tree-actions';
-  if(opts.onAdd){
-    actions.appendChild(smallActionBtn(plusSvg(), opts.addTitle, (e)=>{ e.stopPropagation(); opts.onAdd(); }));
-  }
   if(opts.onDelete){
     actions.appendChild(smallActionBtn(trashSvg(), opts.deleteTitle, (e)=>{ e.stopPropagation(); opts.onDelete(); }));
   }
@@ -595,6 +670,25 @@ function emptyRow(text, small){
   return el;
 }
 
+/* a persistent (not hover-only) row at the bottom of a list that creates a
+   new sibling at that exact level, regardless of what's currently selected */
+function addRow(depth, label, onClick){
+  const row = document.createElement('button');
+  row.type = 'button';
+  row.className = 'tree-row tree-add-row';
+  row.style.paddingLeft = (10 + depth*16) + 'px';
+  const icon = document.createElement('span');
+  icon.className = 'tree-icon add-icon';
+  icon.innerHTML = plusSvg();
+  const text = document.createElement('span');
+  text.className = 'tree-label';
+  text.textContent = label;
+  row.appendChild(icon);
+  row.appendChild(text);
+  row.addEventListener('click', onClick);
+  return row;
+}
+
 function renderTree(){
   const root = document.getElementById('sidebar-tree');
   root.innerHTML = '';
@@ -602,10 +696,11 @@ function renderTree(){
   const libNames = Object.keys(tree).sort((a,b)=>a.localeCompare(b));
 
   if(libNames.length === 0){
-    root.appendChild(emptyRow('No palettes yet — click + to create one'));
-    return;
+    root.appendChild(emptyRow('No libraries yet'));
+  } else {
+    libNames.forEach(lib=> root.appendChild(buildLibraryNode(lib, tree[lib])));
   }
-  libNames.forEach(lib=> root.appendChild(buildLibraryNode(lib, tree[lib])));
+  root.appendChild(addRow(0, 'New library', ()=> createNewPalette([])));
 }
 
 function buildLibraryNode(lib, projects){
@@ -618,10 +713,10 @@ function buildLibraryNode(lib, projects){
   const row = treeRow({
     depth: 0,
     collapsedState: collapsed,
+    active: pathEquals(selectedPath, [lib]),
     label: lib,
     onToggle: ()=> toggleCollapse(key),
-    onAdd: ()=> createNewPalette([lib]),
-    addTitle: 'New project + palette',
+    onSelect: ()=> selectPath([lib]),
     onDelete: ()=> handleDelete(lib, `library "${lib}" and everything inside it`),
     deleteTitle: 'Delete library'
   });
@@ -631,6 +726,7 @@ function buildLibraryNode(lib, projects){
   children.className = 'tree-children' + (collapsed ? ' hidden' : '');
   const projNames = Object.keys(projects).sort((a,b)=>a.localeCompare(b));
   projNames.forEach(proj=> children.appendChild(buildProjectNode(lib, proj, projects[proj])));
+  children.appendChild(addRow(1, 'New project', ()=> createNewPalette([lib])));
   wrap.appendChild(children);
 
   return wrap;
@@ -646,10 +742,10 @@ function buildProjectNode(lib, proj, palettes){
   const row = treeRow({
     depth: 1,
     collapsedState: collapsed,
+    active: pathEquals(selectedPath, [lib, proj]),
     label: proj,
     onToggle: ()=> toggleCollapse(key),
-    onAdd: ()=> createNewPalette([lib, proj]),
-    addTitle: 'New palette',
+    onSelect: ()=> selectPath([lib, proj]),
     onDelete: ()=> handleDelete(key, `project "${proj}" and everything inside it`),
     deleteTitle: 'Delete project'
   });
@@ -659,6 +755,7 @@ function buildProjectNode(lib, proj, palettes){
   children.className = 'tree-children' + (collapsed ? ' hidden' : '');
   const palNames = Object.keys(palettes).sort((a,b)=>a.localeCompare(b));
   palNames.forEach(pal=> children.appendChild(buildPaletteLeaf(lib, proj, pal, palettes[pal])));
+  children.appendChild(addRow(2, 'New palette', ()=> createNewPalette([lib, proj])));
   wrap.appendChild(children);
 
   return wrap;
@@ -682,6 +779,8 @@ function loadPaletteIntoEditor(fullName, colorsArr){
   if(!Array.isArray(colorsArr) || colorsArr.length === 0) return;
   palette = colorsArr.map(c=> ({ id: nextId(), hex: c.hex, locked: !!c.locked }));
   currentPaletteName = fullName;
+  selectedPath = fullName.split('/');
+  updateNewButtonTitle();
   render();
   renderTree();
   updateActivePaletteLabel();
@@ -701,28 +800,45 @@ async function handleDelete(pathKey, label){
       if(k === currentPaletteName) currentPaletteName = null;
     }
   });
+  const selKey = selectedPath.join('/');
+  if(selectedPath.length && (selKey === pathKey || selKey.startsWith(prefix))){
+    selectedPath = [];
+  }
+  updateNewButtonTitle();
   updateActivePaletteLabel();
   renderTree();
 }
 
-/* creates a brand-new default palette under the given prefix parts
-   (0, 1, or 2 already-known Library/Project names) and immediately
-   saves it + loads it into the editor */
+/* Creates a new library / project / palette depending on how many parts
+   are already known from prefixParts (0 = creating a library, 1 = a
+   project, 2 = a palette). Only ever prompts for ONE name — the thing
+   actually being created — never for the "where". If the new item needs
+   levels deeper than what was asked (e.g. a brand-new library also needs
+   a project and a starter palette to exist in this data model), those
+   are auto-named ("main" for a project, "new_palette" for a palette)
+   rather than prompted for. */
+const LEVEL_LABELS = ['Library name', 'Project name', 'Palette name'];
+const LEVEL_WORDS = ['library', 'project', 'palette'];
+const LEVEL_DEFAULTS = [null, 'main', 'new_palette'];
+
 async function createNewPalette(prefixParts){
-  const allLabels = ['Library name','Project name','Palette name'];
-  const neededLabels = allLabels.slice(prefixParts.length);
+  const levelIndex = prefixParts.length;
+  const title = levelIndex === 0
+    ? 'New library'
+    : `New ${LEVEL_WORDS[levelIndex]} in "${prefixParts.join(' / ')}"`;
 
-  const title = prefixParts.length === 0
-    ? 'New palette'
-    : `New palette in "${prefixParts.join(' / ')}"`;
-
-  const values = await openModal(title, neededLabels, 'Create');
+  const values = await openModal(title, [LEVEL_LABELS[levelIndex]], 'Create');
   if(!values) return;
 
-  const allParts = [...prefixParts, ...values];
-  if(allParts.some(p=>!p || p.includes('/'))){
-    alert('Each name must be non-empty and cannot contain "/"');
+  const name = values[0];
+  if(!name || name.includes('/')){
+    alert('Name must be non-empty and cannot contain "/"');
     return;
+  }
+
+  const allParts = [...prefixParts, name];
+  while(allParts.length < 3){
+    allParts.push(LEVEL_DEFAULTS[allParts.length]);
   }
 
   const fullName = allParts.join('/');
@@ -737,14 +853,26 @@ async function createNewPalette(prefixParts){
   } catch(err){
     return;
   }
-  collapsedKeys.delete(prefixParts[0]);
-  collapsedKeys.delete(prefixParts.slice(0,2).join('/'));
+  collapsedKeys.delete(allParts[0]);
+  collapsedKeys.delete(allParts.slice(0,2).join('/'));
   loadPaletteIntoEditor(fullName, flatPalettes[fullName]);
-  flashHeaderToast('Palette created');
+  flashHeaderToast(`${LEVEL_WORDS[levelIndex][0].toUpperCase()}${LEVEL_WORDS[levelIndex].slice(1)} created`);
 }
 
+/* Saving an unsaved palette: only asks for whatever part of the
+   Library/Project/Palette path isn't already implied by where you
+   currently are in the tree (selectedPath). Standing in a project and
+   hitting Save only asks for the palette's name; standing nowhere asks
+   for all three, same as before. */
 async function saveCurrentAs(){
-  const values = await openModal('Save palette as', ['Library name','Project name','Palette name'], 'Save');
+  const prefixParts = selectedPath.slice(0, Math.min(2, selectedPath.length));
+  const neededLabels = LEVEL_LABELS.slice(prefixParts.length);
+
+  const title = prefixParts.length === 0
+    ? 'Save palette as'
+    : `Save palette in "${prefixParts.join(' / ')}"`;
+
+  const values = await openModal(title, neededLabels, 'Save');
   if(!values) return;
 
   if(values.some(p=>!p || p.includes('/'))){
@@ -752,7 +880,8 @@ async function saveCurrentAs(){
     return;
   }
 
-  const fullName = values.join('/');
+  const allParts = [...prefixParts, ...values];
+  const fullName = allParts.join('/');
   if(flatPalettes[fullName] && !confirm(`"${fullName.split('/').join(' / ')}" already exists. Overwrite it?`)){
     return;
   }
@@ -762,7 +891,11 @@ async function saveCurrentAs(){
   } catch(err){
     return;
   }
+  collapsedKeys.delete(allParts[0]);
+  collapsedKeys.delete(allParts.slice(0,2).join('/'));
   currentPaletteName = fullName;
+  selectedPath = allParts;
+  updateNewButtonTitle();
   updateActivePaletteLabel();
   renderTree();
   flashHeaderToast('Saved');
@@ -785,7 +918,7 @@ document.getElementById('save-btn').addEventListener('click', async ()=>{
   }
 });
 
-document.getElementById('new-top-btn').addEventListener('click', ()=> createNewPalette([]));
+document.getElementById('new-top-btn').addEventListener('click', contextualAdd);
 
 const sidebar = document.getElementById('sidebar');
 document.getElementById('sidebar-toggle-btn').addEventListener('click', ()=>{
@@ -878,4 +1011,5 @@ document.getElementById('generate-btn').addEventListener('click', regenerate);
 /* initial render */
 render();
 updateActivePaletteLabel();
+updateNewButtonTitle();
 fetchPalettes();

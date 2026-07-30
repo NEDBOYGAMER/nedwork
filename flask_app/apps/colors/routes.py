@@ -20,7 +20,12 @@ def _require_user():
 
 
 def _get_or_create_colors_config(user):
-    """Every user gets exactly one AppsConfig + ColorsConfig row, created lazily."""
+    """Every user gets exactly one AppsConfig + ColorsConfig row, created lazily.
+
+    Note: `colors_config` is a relationship, not a physical column on
+    apps_configs — the foreign key lives on the colors_configs side
+    (colors_configs.apps_config_id), which is why you won't see a
+    colors_config column when browsing the apps_configs table directly."""
     apps_config = user.apps_config
     if apps_config is None:
         apps_config = AppsConfig(user_id=user.id)
