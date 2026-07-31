@@ -8,13 +8,6 @@ export class Widget {
         this.widgets = null
         this.dashboard_name = null
         this.content = null
-        // Old saves won't have a "size" field at all - default to a single
-        // grid cell (1x1) so they render exactly as they always have.
-        const savedSize = config.size || {}
-        this.size = {
-            w: savedSize.w || 1,
-            h: savedSize.h || 1
-        }
     }
 
     buildShell() {
@@ -22,8 +15,6 @@ export class Widget {
         this.card.classList.add("card")
         this.card.draggable = true
         this.card.dataset.widgetId = this.id
-        this.card.style.setProperty("--w", this.size.w)
-        this.card.style.setProperty("--h", this.size.h)
         let grid = document.getElementById("card-grid");
         grid.appendChild(this.card)
 
@@ -41,7 +32,6 @@ export class Widget {
         this.getInfos()
     
         this.setUpContext()
-        this.setUpResize()
     }
 
     async getInfos(){
@@ -102,85 +92,6 @@ export class Widget {
             
         })
 
-    }
-
-    // Drag the little grip in the card's bottom-right corner to resize it
-    // by whole grid cells - same grid the drag-to-reorder feature uses.
-    // Sizing is stored as {w, h} in cells and clamped to a sane range.
-    setUpResize(){
-        const MIN_SPAN = 1
-        const MAX_SPAN = 3
-
-        this.resizeHandle = document.createElement("div")
-        this.resizeHandle.classList.add("resize-handle")
-        this.card.appendChild(this.resizeHandle)
-
-        let startX, startY, startW, startH, cellWidth, cellHeight, gap
-
-        const onPointerMove = (event) => {
-            const dx = event.clientX - startX
-            const dy = event.clientY - startY
-
-            const deltaCols = Math.round(dx / (cellWidth + gap))
-            const deltaRows = Math.round(dy / (cellHeight + gap))
-
-            const newW = Math.min(MAX_SPAN, Math.max(MIN_SPAN, startW + deltaCols))
-            const newH = Math.min(MAX_SPAN, Math.max(MIN_SPAN, startH + deltaRows))
-
-            if (newW !== this.size.w || newH !== this.size.h) {
-                this.size = { w: newW, h: newH }
-                this.card.style.setProperty("--w", newW)
-                this.card.style.setProperty("--h", newH)
-            }
-        }
-
-        const onPointerUp = () => {
-            document.removeEventListener("pointermove", onPointerMove)
-            document.removeEventListener("pointerup", onPointerUp)
-            this.card.classList.remove("resizing")
-            this.saveSize()
-        }
-
-        this.resizeHandle.addEventListener("pointerdown", (event) => {
-            event.preventDefault()
-            event.stopPropagation()
-
-            startX = event.clientX
-            startY = event.clientY
-            startW = this.size.w
-            startH = this.size.h
-
-            // Derive one cell's pixel size from the card's current box,
-            // since it currently spans startW/startH cells already.
-            const rect = this.card.getBoundingClientRect()
-            gap = parseFloat(getComputedStyle(document.getElementById("card-grid")).columnGap) || 16
-            cellWidth = (rect.width - (startW - 1) * gap) / startW
-            cellHeight = (rect.height - (startH - 1) * gap) / startH
-
-            this.card.classList.add("resizing")
-            document.addEventListener("pointermove", onPointerMove)
-            document.addEventListener("pointerup", onPointerUp)
-        })
-    }
-
-    async saveSize(){
-        if (!this.widgets) return
-
-        const target = this.widgets.find(w => w.id === this.id)
-        if (!target) return
-
-        target.size = { ...this.size }
-
-        await fetch('/dashboard/api/update/update_widget', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: this.dashboard_name,
-                widgets: this.widgets
-            })
-        })
     }
 
     async deleteWidget() {    

@@ -243,7 +243,7 @@ function setup_drag_and_drop() {
         // widget (text inputs, buttons, dropdowns, links, etc) - only the
         // card chrome itself should initiate a reorder.
         const interactive = event.target.closest(
-            "input, textarea, button, select, a, .dropdown, .resize-handle, [contenteditable='true']"
+            "input, textarea, button, select, a, .dropdown, [contenteditable='true']"
         );
         if (interactive) {
             event.preventDefault();
