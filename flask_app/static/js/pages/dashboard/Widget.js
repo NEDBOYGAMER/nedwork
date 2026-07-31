@@ -13,6 +13,8 @@ export class Widget {
     buildShell() {
         this.card = document.createElement("div")
         this.card.classList.add("card")
+        this.card.draggable = true
+        this.card.dataset.widgetId = this.id
         let grid = document.getElementById("card-grid");
         grid.appendChild(this.card)
 

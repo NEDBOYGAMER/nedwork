@@ -232,4 +232,74 @@ function setup_listeners() {
     document.addEventListener("widget:update", () => {
         fill_dashboard()
     })
+    setup_drag_and_drop()
+}
+
+function setup_drag_and_drop() {
+    const grid = document.getElementById("card-grid");
+
+    grid.addEventListener("dragstart", (event) => {
+        // Don't hijack drags that start on interactive controls inside a
+        // widget (text inputs, buttons, dropdowns, links, etc) - only the
+        // card chrome itself should initiate a reorder.
+        const interactive = event.target.closest(
+            "input, textarea, button, select, a, .dropdown, [contenteditable='true']"
+        );
+        if (interactive) {
+            event.preventDefault();
+            return;
+        }
+
+        const card = event.target.closest(".card");
+        if (!card) return;
+
+        card.classList.add("dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", card.dataset.widgetId);
+    });
+
+    grid.addEventListener("dragover", (event) => {
+        event.preventDefault();
+
+        const dragging = grid.querySelector(".card.dragging");
+        const target = event.target.closest(".card");
+        if (!dragging || !target || target === dragging) return;
+
+        const rect = target.getBoundingClientRect();
+        const isPastMidpoint = event.clientX > rect.left + rect.width / 2;
+
+        if (isPastMidpoint) {
+            target.after(dragging);
+        } else {
+            target.before(dragging);
+        }
+    });
+
+    grid.addEventListener("drop", (event) => {
+        event.preventDefault();
+    });
+
+    grid.addEventListener("dragend", (event) => {
+        const card = event.target.closest(".card");
+        card?.classList.remove("dragging");
+        persist_widget_order();
+    });
+}
+
+async function persist_widget_order() {
+    const grid = document.getElementById("card-grid");
+    const orderedIds = Array.from(grid.children).map((card) => card.dataset.widgetId);
+
+    widgets.sort((a, b) => orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
+
+    await fetch('/dashboard/api/update/update_widget', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            name: dashboard_name,
+            widgets: widgets
+        })
+    });
 }
