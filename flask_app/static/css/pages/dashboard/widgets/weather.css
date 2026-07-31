@@ -1,18 +1,20 @@
 .weather-widget {
     padding: 20px 16px 18px;
-    gap: 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
 }
 
 .weather-icon {
     font-size: 40px;
     line-height: 1;
-    margin-top: 4px;
 }
 
 .weather-temp {
     font-size: 28px;
     font-weight: 700;
-    margin: 6px 0 0;
+    margin: 0;
 }
 
 .weather-condition {
@@ -26,13 +28,13 @@
     letter-spacing: 1px;
     text-transform: uppercase;
     opacity: .4;
-    margin-top: 8px;
+    margin-top: 4px;
 }
 
 .weather-details {
     display: flex;
     gap: 14px;
-    margin-top: 10px;
+    margin-top: 6px;
 }
 
 .weather-detail {
