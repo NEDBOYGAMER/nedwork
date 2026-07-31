@@ -7,6 +7,7 @@ export class Widget {
         this.card = null
         this.widgets = null
         this.dashboard_name = null
+        this.content = null
     }
 
     buildShell() {
@@ -21,6 +22,10 @@ export class Widget {
             titleEl.innerText = this.title
             this.card.appendChild(titleEl)
         }
+
+        this.content = document.createElement("div")
+        this.content.classList.add("widget-content")
+        this.card.appendChild(this.content)
 
         this.getInfos()
     

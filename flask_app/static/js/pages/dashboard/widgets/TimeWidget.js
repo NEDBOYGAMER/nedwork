@@ -29,7 +29,7 @@ export class TimeWidget extends Widget {
 
     build(){
         this.buildShell()
-        this.card.classList.add("time-widget")
+        this.content.classList.add("time-widget")
 
         if (this.show_time){
             this.timeEl = this.buildField("clock", "time")
@@ -50,7 +50,7 @@ export class TimeWidget extends Widget {
         const el = document.createElement("h3")
         el.classList.add(cssClass)
         el.classList.add(fieldName === this.primary ? "field-primary" : "field-secondary")
-        this.card.appendChild(el)
+        this.content.appendChild(el)
         return el
     }
 

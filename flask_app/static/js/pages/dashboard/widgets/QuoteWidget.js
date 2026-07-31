@@ -240,19 +240,19 @@ export class QuoteWidget extends Widget {
 
     build() {
         this.buildShell()
-        this.card.classList.add("quote-widget", `font-${this.font}`)
+        this.content.classList.add("quote-widget", `font-${this.font}`)
 
         this.badgeEl = document.createElement("span")
         this.badgeEl.classList.add("quote-badge")
-        this.card.appendChild(this.badgeEl)
+        this.content.appendChild(this.badgeEl)
 
         this.textEl = document.createElement("blockquote")
         this.textEl.classList.add("quote-text")
-        this.card.appendChild(this.textEl)
+        this.content.appendChild(this.textEl)
 
         this.sourceEl = document.createElement("cite")
         this.sourceEl.classList.add("quote-source")
-        this.card.appendChild(this.sourceEl)
+        this.content.appendChild(this.sourceEl)
 
         this.load()
     }

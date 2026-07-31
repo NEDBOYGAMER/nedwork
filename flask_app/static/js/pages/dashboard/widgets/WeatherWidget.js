@@ -53,35 +53,35 @@ export class WeatherWidget extends Widget {
 
     build() {
         this.buildShell()
-        this.card.classList.add("weather-widget")
+        this.content.classList.add("weather-widget")
 
         this.iconEl = document.createElement("div")
         this.iconEl.classList.add("weather-icon")
-        this.card.appendChild(this.iconEl)
+        this.content.appendChild(this.iconEl)
 
         this.tempEl = document.createElement("h3")
         this.tempEl.classList.add("weather-temp")
-        this.card.appendChild(this.tempEl)
+        this.content.appendChild(this.tempEl)
 
         this.conditionEl = document.createElement("span")
         this.conditionEl.classList.add("weather-condition")
-        this.card.appendChild(this.conditionEl)
+        this.content.appendChild(this.conditionEl)
 
         this.locationEl = document.createElement("span")
         this.locationEl.classList.add("weather-location")
-        this.card.appendChild(this.locationEl)
+        this.content.appendChild(this.locationEl)
 
         if (this.show_humidity || this.show_wind) {
             this.detailsEl = document.createElement("div")
             this.detailsEl.classList.add("weather-details")
-            this.card.appendChild(this.detailsEl)
+            this.content.appendChild(this.detailsEl)
         }
 
         this.refresh()
         this.refreshTimer = setInterval(() => this.refresh(), REFRESH_MS)
 
         // Widget.deleteWidget() dispatches this on the card - use it to stop polling
-        this.card.addEventListener("widget:update", () => {
+        this.content.addEventListener("widget:update", () => {
             clearInterval(this.refreshTimer)
         })
     }

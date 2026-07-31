@@ -67,7 +67,7 @@ function autosaveState() {
         id: t.id,
         label: t.label,
         color: t.color,
-        images: t.images.map(i => ({ id: i.id, src: i.src, name: i.name })),
+        images: [],
       })),
       pool: pool.map(i => ({ id: i.id, src: i.src, name: i.name })),
       settings,

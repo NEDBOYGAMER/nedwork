@@ -38,7 +38,7 @@ export class TimerWidget extends Widget {
 
     build() {
         this.buildShell()
-        this.card.classList.add("timer-widget")
+        this.content.classList.add("timer-widget")
 
         this.ringEl = document.createElement("div")
         this.ringEl.classList.add("timer-ring")
@@ -51,7 +51,7 @@ export class TimerWidget extends Widget {
 
         ringInner.appendChild(this.displayEl)
         this.ringEl.appendChild(ringInner)
-        this.card.appendChild(this.ringEl)
+        this.content.appendChild(this.ringEl)
 
         const controls = document.createElement("div")
         controls.classList.add("timer-controls")
@@ -67,9 +67,9 @@ export class TimerWidget extends Widget {
 
         controls.appendChild(this.toggleBtn)
         controls.appendChild(resetBtn)
-        this.card.appendChild(controls)
+        this.content.appendChild(controls)
 
-        this.card.addEventListener("widget:update", () => {
+        this.content.addEventListener("widget:update", () => {
             clearInterval(this.tickTimer)
         })
 
@@ -108,7 +108,7 @@ export class TimerWidget extends Widget {
 
         this.displayEl.innerText = formatTime(remaining)
         this.toggleBtn.innerText = this.isRunning ? "Pause" : "Start"
-        this.card.classList.toggle("timer-done", !this.isRunning && remaining <= 0)
+        this.content.classList.toggle("timer-done", !this.isRunning && remaining <= 0)
     }
 
     toggle() {

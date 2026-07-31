@@ -94,6 +94,12 @@ header{
 .icon-btn.small:hover{ background: rgba(255,255,255,0.16); }
 .icon-btn.small svg{ width:16px; height:16px; }
 
+#close-app-btn{
+  text-decoration: none;
+  margin-right: 0;
+}
+#close-app-btn:hover{ background: rgba(255,90,90,0.25); }
+
 .dropdown-wrap{ position:relative; }
 .dropdown-menu{
   position:absolute;
