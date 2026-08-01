@@ -14,15 +14,24 @@
         "image": "/colors.svg",
         "permissions": [],
         "url": "/colors",
-        "type": "Tool",
+        "type": "Tools",
         "description": "A color picker and pallete maker"
+    },
+        {
+        "id": 2,
+        "name": "PolyWars",
+        "image": "/placeholder",
+        "permissions": [],
+        "url": "/polywars",
+        "type": "Games",
+        "description": "A board with places to buy on each side. Friend must pay rent"
     },
     {
         "id": 2,
         "name": "PixelPaint",
         "permissions": [],
         "url": "/placeholder",
-        "type": "Creative",
+        "type": "Tools",
         "description": "An online drawing and pixel art editor with intuitive tools and layers."
     },
     {
@@ -46,7 +55,7 @@
         "name": "NoteNest",
         "permissions": [],
         "url": "/placeholder",
-        "type": "Notes",
+        "type": "Organizing",
         "description": "Keep your notes, ideas, and reminders organized in one place."
     },
     {
@@ -54,7 +63,7 @@
         "name": "WeatherNow",
         "permissions": [],
         "url": "/placeholder",
-        "type": "Weather",
+        "type": "Information",
         "description": "View current weather conditions and forecasts in a clean interface."
     },
     {
@@ -78,7 +87,7 @@
         "name": "BudgetBuddy",
         "permissions": [],
         "url": "/placeholder",
-        "type": "Finance",
+        "type": "Organizing",
         "description": "Track expenses, budgets, and savings with simple visual reports."
     },
     {
@@ -94,7 +103,7 @@
         "name": "GameHub",
         "permissions": [],
         "url": "/placeholder",
-        "type": "Gaming",
+        "type": "Games",
         "description": "Discover game recommendations, stats, and community rankings."
     },
     {
@@ -102,7 +111,7 @@
         "name": "RecipeBox",
         "permissions": [],
         "url": "/placeholder",
-        "type": "Food",
+        "type": "Information",
         "description": "Save, organize, and share your favorite recipes with ease."
     },
     {
@@ -110,7 +119,7 @@
         "name": "TravelMap",
         "permissions": [],
         "url": "/placeholder",
-        "type": "Travel",
+        "type": "Organizing",
         "description": "Plan trips, bookmark destinations, and build travel itineraries."
     },
     {
@@ -118,7 +127,7 @@
         "name": "LinkShelf",
         "permissions": [],
         "url": "/placeholder",
-        "type": "Bookmarks",
+        "type": "Organizing",
         "description": "Save, organize, and quickly access your favorite websites."
     },
     {

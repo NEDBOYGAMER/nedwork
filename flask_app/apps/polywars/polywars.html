@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polywars</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/apps/{{ app_name }}/polywars.css" />
+<script>window.APP_BASE = "/apps/{{ app_name }}/";</script>
+<script src="/apps/{{ app_name }}/polywars.js" type="module" defer></script>
+</head>
+<body>
+
+<div class="crt-overlay"></div>
+
+<!-- ============ SCREEN: HOME (create / join) ============ -->
+<section id="screen-home" class="screen active">
+  <div class="home-wrap">
+    <div class="brand">
+      <span class="brand-mark">◆</span>
+      <h1>POLYWARS</h1>
+      <p class="tagline">Claim streets. Hold the line. Push the front.</p>
+    </div>
+
+    <div class="home-cards">
+      <div class="card">
+        <h2><span class="num">01</span> Found a campaign</h2>
+        <label for="create-name">Commander name</label>
+        <input id="create-name" type="text" maxlength="20" placeholder="e.g. Vega">
+        <button id="btn-create" class="btn btn-primary">Create campaign</button>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">02</span> Join with a code</h2>
+        <label for="join-name">Commander name</label>
+        <input id="join-name" type="text" maxlength="20" placeholder="e.g. Kestrel">
+        <label for="join-code">Campaign code</label>
+        <input id="join-code" type="text" maxlength="5" placeholder="A1B2C" style="text-transform:uppercase; letter-spacing:.2em; font-family:'JetBrains Mono',monospace;">
+        <button id="btn-join" class="btn btn-primary">Join campaign</button>
+      </div>
+    </div>
+
+    <p id="home-error" class="error-msg"></p>
+  </div>
+</section>
+
+<!-- ============ SCREEN: LOBBY ============ -->
+<section id="screen-lobby" class="screen">
+  <div class="lobby-wrap">
+    <p class="eyebrow">Campaign code — share this</p>
+    <div class="code-display" id="lobby-code">-----</div>
+
+    <div class="lobby-players">
+      <h2>Commanders</h2>
+      <ul id="lobby-player-list"></ul>
+    </div>
+
+    <button id="btn-start" class="btn btn-primary">Start campaign</button>
+    <p id="lobby-hint" class="hint">Waiting for the host to start…</p>
+  </div>
+</section>
+
+<!-- ============ SCREEN: GAME ============ -->
+<section id="screen-game" class="screen">
+  <header class="game-header">
+    <div class="ghdr-left">
+      <span class="brand-mark small">◆</span>
+      <span class="ghdr-title">POLYWARS</span>
+      <span class="ghdr-code">CODE <b id="ghdr-code-val">-----</b></span>
+    </div>
+    <div class="ghdr-right">
+      <span id="ghdr-pot">War chest $0</span>
+      <span id="ghdr-round">Round 1</span>
+    </div>
+  </header>
+
+  <main class="game-main">
+    <div class="board-wrap">
+      <div id="board" class="board"></div>
+    </div>
+
+    <aside class="side-panel">
+      <div class="panel-block" id="turn-block">
+        <h3>Turn</h3>
+        <div id="turn-indicator" class="turn-indicator">—</div>
+        <div class="dice-row">
+          <div class="die" id="die1">–</div>
+          <div class="die" id="die2">–</div>
+        </div>
+        <button id="btn-roll" class="btn btn-primary btn-block">Roll dice</button>
+        <div id="buy-box" class="buy-box hidden">
+          <p id="buy-text"></p>
+          <button id="btn-buy" class="btn btn-secondary btn-block">Claim territory</button>
+        </div>
+        <button id="btn-end" class="btn btn-ghost btn-block">End turn</button>
+      </div>
+
+      <div class="panel-block">
+        <h3>Commanders</h3>
+        <ul id="player-list" class="player-list"></ul>
+      </div>
+
+      <div class="panel-block legend-block">
+        <h3>Special fields</h3>
+        <ul class="legend-list">
+          <li><span class="legend-swatch legend-supply"></span> Supply Drop — free bonus money</li>
+          <li><span class="legend-swatch legend-skirmish"></span> Skirmish — pay tax into the war chest</li>
+          <li><span class="legend-swatch legend-artillery"></span> Artillery Support — strike an enemy tile</li>
+          <li><span class="legend-swatch legend-stronghold"></span> Stronghold — collect the war chest</li>
+        </ul>
+      </div>
+
+      <div class="panel-block log-block">
+        <h3>Field report</h3>
+        <ul id="log-list" class="log-list"></ul>
+      </div>
+    </aside>
+  </main>
+
+  <div id="winner-banner" class="winner-banner hidden">
+    <div class="winner-inner">
+      <p class="eyebrow">Campaign complete</p>
+      <h2 id="winner-text">—</h2>
+      <button id="btn-new-game" class="btn btn-primary">New campaign</button>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
