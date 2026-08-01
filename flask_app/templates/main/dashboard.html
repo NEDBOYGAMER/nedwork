@@ -1,99 +1,66 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+{% extends "base.html" %}
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+{% block title %}Dashboard{% endblock %}
 
-    <!--BASIC-->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/global/colors.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/basic.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/bg.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/context_menu.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/sidenav.css') }}">
+{#
+  Dashboard is a "big app" (sidenav) and is card/grid-based with visible
+  page margins, so it keeps base.html's default sidenav and ambient
+  background as-is - no overrides needed for either block.
+#}
 
-    <!--PAGE-->
+{% block extra_head %}
+    <!-- Page-specific styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/widget.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/modal.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/context_menu.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/settings.css') }}">
-    
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/widgets/time.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/widgets/notes.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/widgets/weather.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/widgets/timer.css') }}">
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+{% endblock %}
 
-    <script type="module" src="{{ url_for('static', filename='js/pages/dashboard/dashboard.js') }}"></script>
-</head>
+{% block content %}
 
-<body>
+    <header class="dash-header">
+        <span class="dash-greeting" id="dash-greeting">Welcome</span>
+        <span class="dash-greeting dash-name-clickable" id="dash-name">Dashboard</span>
+    </header>
 
-    <div id="cursor"></div>
-    <div id="cursor-ring"></div>
-    <canvas id="bg-canvas"></canvas>
+    <div id="card-grid">
+        <!-- Cards injected by dashboard.js -->
+    </div>
 
-    <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+    <button id="add-widget-btn" class="btn btn-primary add-widget-btn">
+        <span class="btn-icon">+</span> Add widget
+    </button>
 
-    {% include "sidenav.html" %}
-
-
-    <!-- ── Main content ─────────────────────────────────────────────── -->
-    <main id="content">
-
-        <header class="dash-header">
-            <span class="dash-greeting" id="dash-greeting">Welcome</span>
-            <span class="dash-greeting" id="dash-name">Dashboard</span>
-        </header>
-
-        <div id="card-grid">
-            <!-- Cards injected by dashboard.js -->
-        </div>
-
-        <button id="add-widget-btn" class="add-widget-btn">
-            <span class="btn-icon">+</span> ADD WIDGET
-        </button>
-
-    </main>
-
-    <div id="modal-menu" class="modal">
-        <div class="modal-content">
+    <div id="modal-menu" class="modal-backdrop">
+        <div class="modal">
             <span id="closeMenuBtn" class="close-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
             </span>
-            <span>
-                <h3>Add Widget</h3>
-            </span>
+            <h3>Add widget</h3>
 
             <div id="add_wiget_grid">
-                <div id="add_time_widget" class="add_widget_card"><h2>Time</h2></div>
-                <div id="add_timer_widget" class="add_widget_card"><h2>Timer</h2></div>
-                <div id="add_notes_widget" class="add_widget_card"><h2>Notes</h2></div>
-                <div id="add_weather_widget" class="add_widget_card"><h2>Weather</h2></div>
-                <div id="add_quote_widget" class="add_widget_card"><h2>Quote</h2></div>
+                <div id="add_time_widget" class="add_widget_card"><h4>Time</h4></div>
+                <div id="add_timer_widget" class="add_widget_card"><h4>Timer</h4></div>
+                <div id="add_notes_widget" class="add_widget_card"><h4>Notes</h4></div>
+                <div id="add_weather_widget" class="add_widget_card"><h4>Weather</h4></div>
+                <div id="add_quote_widget" class="add_widget_card"><h4>Quote</h4></div>
             </div>
-            
         </div>
     </div>
 
+{% endblock %}
 
-
-
-
-
-</body>
-</html>
-
-
-
-
-
-
+{% block extra_scripts %}
+    <script type="module" src="{{ url_for('static', filename='js/pages/dashboard/dashboard.js') }}"></script>
+{% endblock %}

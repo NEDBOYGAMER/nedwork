@@ -1,4 +1,3 @@
-import { createBackground } from '../../components/background.js';
 import { WIDGET_DEFAULTS } from "./widget_default.js";
 import { createWidget } from "./widget_registry.js";
 
@@ -9,23 +8,6 @@ let dashboard_name = ""
 let current_dashboard = localStorage.getItem("current_dashboard") || "main"
 
 document.addEventListener('DOMContentLoaded', () => {
-    const cursor = document.getElementById('cursor');
-    const ring = document.getElementById('cursor-ring');
-    const canvas = document.getElementById('bg-canvas');
-
-    if (!cursor || !ring || !canvas) {
-        console.warn('Missing background elements');
-        return;
-    }
-
-    const background = createBackground({
-        cursor,
-        ring,
-        canvas
-    });
-
-    background.start();
-
     adjust_headers();
     adjust_grid();
     setup_modal();

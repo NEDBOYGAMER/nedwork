@@ -1,207 +1,110 @@
+/* ==========================================================================
+   dashboard.css
+   Page-specific layout for the dashboard: header, widget grid, the
+   floating "add widget" button, and the dashboard switcher popover.
+   Buttons, modal, cards and inputs reuse the shared classes from
+   ui-elements.css - nothing here redefines those.
+   ========================================================================== */
+
 .dash-header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    padding: 28px 28px 0;
+    padding: var(--space-6) var(--space-6) 0;
 }
 
 .dash-greeting {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    opacity: .35;
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+#dash-name {
+    color: var(--text);
 }
 
 #card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 16px;
-    padding: 20px 28px 100px;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-6) 100px;
     align-content: start;
     min-height: 100px;
 }
 
-/* global scrollbar styling */
-* {
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-soft) transparent;
-}
-
-::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-}
-
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--border-soft);
-    border-radius: 2px;
-}
-
-
+/* ==========================================================================
+   Floating "add widget" button
+   ========================================================================== */
 
 .add-widget-btn {
-  /* 1. Core Floating Position (Bottom Right) */
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  z-index: 1000;
-
-  /* 2. Style matching your dashboard */
-  background-color: rgba(16, 16, 24, 0.75); /* Dark translucent background */
-  color: #a3a3ff; /* Matching your purple/blue accent dot color */
-  border: 1px solid rgba(163, 163, 255, 0.3); /* Subtle accent border */
-  border-radius: 6px; /* Matching the card corner rounds */
-  padding: 12px 20px;
-  
-  /* Typography to match the sci-fi tech font look */
-  font-family: 'Courier New', Courier, monospace; /* Use your specific font family here */
-  font-size: 14px;
-  font-weight: bold;
-  letter-spacing: 2px;
-  cursor: pointer;
-  
-  /* Backdrop blur for that premium UI glass effect over the grid dots */
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  
-  /* Smooth tech transitions */
-  transition: all 0.25s ease;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    position: fixed;
+    bottom: var(--space-6);
+    right: var(--space-6);
+    z-index: 100;
+    box-shadow: 0 8px 24px var(--shadow);
 }
 
-/* Accent Icon Spacing */
 .btn-icon {
-  margin-right: 8px;
-  font-size: 16px;
+    font-size: 16px;
+    line-height: 1;
 }
 
-/* Cyberpunk Hover State */
-.add-widget-btn:hover {
-  color: #ffffff;
-  background-color: rgba(163, 163, 255, 0.2); /* Fills with accent color tint */
-  border-color: #a3a3ff; /* Brightens the border */
-  /* Neon glow effect */
-  box-shadow: 0 0 15px rgba(163, 163, 255, 0.4), 0 4px 20px rgba(0, 0, 0, 0.5);
-  text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
-  transform: translateY(-2px); /* Subtle float up */
-}
-
-/* Click State */
-.add-widget-btn:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 5px rgba(163, 163, 255, 0.2);
-}
-
-/* The dark background overlay */
-.modal {
-  display: none; /* Hidden by default */
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.2); /* Semi-transparent black */
-  backdrop-filter: blur(3px);
-  z-index: 1000; /* Ensures it sits on top of everything else */
-  justify-content: center;
-  align-items: center;
-}
-
-/* The actual menu box */
-.modal-content {
-    background-color: var(--surface-dark);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    margin-left: 20vw;
-    margin-right: 20vw;
-    padding: 1%;
-    backdrop-filter: blur(3px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75);
-    border-radius: 20px;
-    min-width: 30vw;
-}
-
-/* Close Button (X) */
-.close-btn {
-  position: absolute;
-  top: 10px;
-  right: 15px;
-  cursor: pointer;
-  color: #808080;
-  min-height: 5px;
-  min-width: 5px;
-}
-
-#add_wiget_grid {
-    display: grid;
-    grid-template-columns: 30% 30% 30%;
-    gap: 3%;
-}
+/* ==========================================================================
+   Dashboard switcher popover (click the dashboard name)
+   ========================================================================== */
 
 .dash-name-clickable {
     cursor: pointer;
-    transition: opacity .2s;
+    transition: opacity .15s ease;
 }
 
 .dash-name-clickable:hover {
-    opacity: .7;
+    opacity: .75;
 }
 
 .dashboard-switcher {
     position: fixed;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-1);
     min-width: 180px;
-    padding: 8px;
-    background: rgba(255, 255, 255, 0);
-    border-radius: 10px;
-    z-index: 1000;
+    padding: var(--space-2);
+    background: var(--surface-strong);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px var(--shadow);
+    z-index: 100;
     animation: cardIn .2s cubic-bezier(.16, 1, .3, 1);
 }
 
 .dashboard-switcher-item {
-    text-align: right;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    opacity: .35;
-    background-color: #00000000;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: transparent;
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
 }
 
 .dashboard-switcher-item.active {
-    color: #a3a3ff;
-    background-color: #00000000;
+    color: var(--accent);
+    background: var(--accent-soft);
 }
 
 .dashboard-switcher-item:hover {
-    color: #fefeff;
-    opacity: .90;
-    background-color: #00000000;
+    color: var(--text);
+    background: var(--surface-hover);
 }
 
 .dashboard-switcher-empty {
     padding: 10px 12px;
-    font-size: 11px;
-    letter-spacing: 1px;
-    opacity: .5;
+    font-size: 13px;
+    color: var(--text-muted);
 }
 
-.add_widget_card {
-    background: var(--surface-dark);
-    border: 1px solid var(--border-soft);
-    border-radius: 16px;
-    overflow: hidden;
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(14px);
-    display: flex;
-    flex-direction: column;
-    animation: cardIn .25s cubic-bezier(.16, 1, .3, 1);
-    transition: border-color .2s, box-shadow .2s;
-    min-height: 100px;
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
 }

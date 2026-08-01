@@ -134,11 +134,11 @@ export class Widget {
         const draft = structuredClone(target)
 
         const overlay = document.createElement("div")
-        overlay.classList.add("modal")
+        overlay.classList.add("modal-backdrop")
         overlay.id = "settings-modal"
 
         const content = document.createElement("div")
-        content.classList.add("modal-content")
+        content.classList.add("modal")
         overlay.appendChild(content)
 
         const header = document.createElement("div")
@@ -168,12 +168,12 @@ export class Widget {
         content.appendChild(actions)
 
         const cancelBtn = document.createElement("button")
-        cancelBtn.classList.add("modal-btn")
+        cancelBtn.classList.add("btn", "btn-secondary")
         cancelBtn.type = "button"
         cancelBtn.innerText = "Cancel"
 
         const saveBtn = document.createElement("button")
-        saveBtn.classList.add("modal-btn", "primary")
+        saveBtn.classList.add("btn", "btn-primary")
         saveBtn.type = "button"
         saveBtn.innerText = "Save"
 
