@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-accent="violet">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nedwork — Style Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --font-display:'Space Grotesk', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+
+    --radius-sm:10px;
+    --radius-md:14px;
+    --radius-pill:999px;
+
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px; --sp-8:64px;
+
+    --success:#22C58B; --warning:#E8A23D; --danger:#E5484D; --info:#4EA1F3;
+  }
+
+  html[data-theme="dark"]{
+    --bg:#0A0C14; --surface:#12141F; --surface-2:#1A1D2B; --line:#262A3B;
+    --text:#ECEEF5; --text-muted:#8A8FA6;
+    --shadow:none;
+    --line-alpha: rgba(38,42,59,.55);
+  }
+  html[data-theme="light"]{
+    --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#F0F1F7; --line:#E3E5EE;
+    --text:#14161F; --text-muted:#6B7086;
+    --shadow:0 1px 2px rgba(20,22,31,.04), 0 8px 24px rgba(20,22,31,.06);
+    --line-alpha: rgba(227,229,238,.9);
+  }
+
+  html[data-accent="violet"]{ --accent:#6C5CE7; --accent-soft:rgba(108,92,231,.14); --accent-ink:#FFFFFF; }
+  html[data-accent="green"]{ --accent:#22C58B; --accent-soft:rgba(34,197,139,.14); --accent-ink:#06251A; }
+  html[data-accent="red"]{ --accent:#E5484D; --accent-soft:rgba(229,72,77,.14); --accent-ink:#FFFFFF; }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased; transition:background .25s ease, color .25s ease;
+    min-height:100vh;
+  }
+
+  /* ambient background — quiet dot grid + drifting accent glow */
+  .ambient{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+  .ambient::before{
+    content:''; position:absolute; inset:0;
+    background-image: radial-gradient(var(--line-alpha) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity:.35;
+  }
+  .orb{
+    position:absolute; width:520px; height:520px; border-radius:50%;
+    background: radial-gradient(circle at 30% 30%, var(--accent), transparent 70%);
+    opacity:.10; filter:blur(10px);
+    animation: drift 22s ease-in-out infinite alternate;
+    top:-120px; right:-80px;
+  }
+  @keyframes drift{
+    from{ transform:translate(0,0) scale(1); }
+    to{ transform:translate(-60px, 90px) scale(1.15); }
+  }
+
+  a{ color:inherit; }
+
+  /* ===== Shell ===== */
+  .shell{ position:relative; z-index:1; display:flex; min-height:100vh; }
+
+  .sidebar{
+    width:240px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--line);
+    padding:var(--sp-5) var(--sp-4); display:flex; flex-direction:column; gap:var(--sp-6);
+  }
+  .brand{ display:flex; align-items:center; gap:var(--sp-2); }
+  .brand-mark{
+    width:32px; height:32px; border-radius:var(--radius-sm); background:var(--accent-soft);
+    color:var(--accent); display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:700; font-size:16px;
+  }
+  .brand-name{ font-family:var(--font-display); font-weight:600; font-size:17px; }
+
+  .nav{ display:flex; flex-direction:column; gap:2px; }
+  .nav-item{
+    display:flex; align-items:center; gap:var(--sp-3); padding:10px var(--sp-3);
+    border-radius:var(--radius-sm); font-size:14px; font-weight:500; color:var(--text-muted);
+    cursor:pointer; user-select:none; transition:.15s ease;
+  }
+  .nav-item:hover{ background:var(--surface-2); color:var(--text); }
+  .nav-item.active{ background:var(--accent-soft); color:var(--accent); }
+  .nav-dot{ width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.7; }
+
+  .nav-section-label{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.06em; color:var(--text-muted);
+    text-transform:uppercase; padding:0 var(--sp-3); margin-bottom:2px; opacity:.7;
+  }
+
+  .main{ flex:1; min-width:0; }
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:var(--sp-4) var(--sp-6); border-bottom:1px solid var(--line);
+    background:var(--surface); position:sticky; top:0; z-index:5;
+  }
+  .topbar h1{ font-family:var(--font-display); font-size:18px; margin:0; font-weight:600; }
+  .topbar-controls{ display:flex; align-items:center; gap:var(--sp-4); }
+
+  .content{ padding:var(--sp-6); max-width:1180px; margin:0 auto; }
+
+  section.block{ margin-bottom:var(--sp-8); }
+  .block-head{ margin-bottom:var(--sp-5); }
+  .block-head .eyebrow{
+    font-family:var(--font-mono); font-size:12px; color:var(--accent); text-transform:uppercase;
+    letter-spacing:.04em; margin-bottom:var(--sp-1); display:block;
+  }
+  .block-head h2{ font-family:var(--font-display); font-size:24px; margin:0 0 6px; font-weight:600; }
+  .block-head p{ color:var(--text-muted); margin:0; font-size:14px; max-width:640px; line-height:1.6; }
+
+  .grid{ display:grid; gap:var(--sp-4); }
+  .grid-4{ grid-template-columns:repeat(4, 1fr); }
+  .grid-3{ grid-template-columns:repeat(3, 1fr); }
+  .grid-2{ grid-template-columns:repeat(2, 1fr); }
+  @media (max-width: 900px){ .grid-4,.grid-3,.grid-2{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width: 620px){ .grid-4,.grid-3,.grid-2{ grid-template-columns:1fr; } .sidebar{ display:none; } }
+
+  /* ===== Card ===== */
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md);
+    padding:var(--sp-5); box-shadow:var(--shadow);
+  }
+  .card .eyebrow{
+    font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em;
+    margin:0 0 var(--sp-3);
+  }
+
+  /* ===== Color swatches ===== */
+  .swatch{
+    border-radius:var(--radius-md); border:1px solid var(--line); overflow:hidden; cursor:pointer;
+    position:relative; height:120px; display:flex; align-items:flex-end; padding:var(--sp-3);
+    transition:transform .15s ease;
+  }
+  .swatch:hover{ transform:translateY(-2px); }
+  .swatch span{
+    font-family:var(--font-mono); font-size:12px; background:rgba(0,0,0,.35); color:#fff;
+    padding:3px 8px; border-radius:var(--radius-pill);
+  }
+  .swatch-copied::after{
+    content:'copied'; position:absolute; top:8px; right:8px; font-family:var(--font-mono);
+    font-size:10px; background:rgba(0,0,0,.5); color:#fff; padding:2px 6px; border-radius:6px;
+  }
+
+  /* ===== Type scale ===== */
+  .type-row{ display:flex; align-items:baseline; gap:var(--sp-5); padding:var(--sp-3) 0; border-bottom:1px solid var(--line); }
+  .type-row:last-child{ border-bottom:none; }
+  .type-row .label{ width:110px; flex-shrink:0; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); }
+  .type-sample-display{ font-family:var(--font-display); font-weight:600; }
+  .type-sample-body{ font-family:var(--font-body); }
+  .type-sample-mono{ font-family:var(--font-mono); }
+
+  /* ===== Buttons ===== */
+  .btn{
+    font-family:var(--font-body); font-weight:500; font-size:14px; border-radius:var(--radius-sm);
+    border:1px solid transparent; padding:10px 18px; cursor:pointer; display:inline-flex; align-items:center;
+    gap:8px; transition:.15s ease; line-height:1;
+  }
+  .btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .btn-primary{ background:var(--accent); color:var(--accent-ink); }
+  .btn-primary:hover{ filter:brightness(1.08); }
+  .btn-secondary{ background:var(--surface-2); color:var(--text); border-color:var(--line); }
+  .btn-secondary:hover{ border-color:var(--accent); }
+  .btn-ghost{ background:transparent; color:var(--text-muted); }
+  .btn-ghost:hover{ color:var(--text); background:var(--surface-2); }
+  .btn-danger{ background:var(--danger); color:#fff; }
+  .btn-danger:hover{ filter:brightness(1.08); }
+  .btn-sm{ padding:6px 12px; font-size:13px; }
+  .btn-lg{ padding:13px 24px; font-size:15px; }
+  .btn[disabled]{ opacity:.4; cursor:not-allowed; }
+  .btn-row{ display:flex; flex-wrap:wrap; gap:var(--sp-3); align-items:center; }
+
+  /* ===== Forms ===== */
+  .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:var(--sp-4); }
+  .field label{ font-size:13px; color:var(--text-muted); font-weight:500; }
+  .field input[type="text"], .field input[type="email"], .field select, .field textarea{
+    font-family:var(--font-body); font-size:14px; background:var(--surface-2); color:var(--text);
+    border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px 12px; outline:none;
+    transition:.15s ease; width:100%;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{
+    border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);
+  }
+  .hint{ font-size:12px; color:var(--text-muted); }
+
+  .checkbox-row, .radio-row{ display:flex; align-items:center; gap:8px; font-size:14px; margin-bottom:8px; }
+  .checkbox-row input, .radio-row input{ accent-color:var(--accent); width:16px; height:16px; }
+
+  .switch{ position:relative; width:42px; height:24px; flex-shrink:0; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .switch-track{
+    position:absolute; inset:0; background:var(--surface-2); border:1px solid var(--line);
+    border-radius:var(--radius-pill); cursor:pointer; transition:.2s ease;
+  }
+  .switch-track::before{
+    content:''; position:absolute; width:16px; height:16px; left:3px; top:2.5px;
+    background:var(--text-muted); border-radius:50%; transition:.2s ease;
+  }
+  .switch input:checked + .switch-track{ background:var(--accent-soft); border-color:var(--accent); }
+  .switch input:checked + .switch-track::before{ transform:translateX(18px); background:var(--accent); }
+
+  /* ===== Badges / chips ===== */
+  .badge{
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+    padding:4px 10px; border-radius:var(--radius-pill); font-family:var(--font-mono);
+  }
+  .badge-accent{ background:var(--accent-soft); color:var(--accent); }
+  .badge-success{ background:rgba(34,197,139,.14); color:var(--success); }
+  .badge-warning{ background:rgba(232,162,61,.14); color:var(--warning); }
+  .badge-danger{ background:rgba(229,72,77,.14); color:var(--danger); }
+  .badge-neutral{ background:var(--surface-2); color:var(--text-muted); }
+
+  .tier-row{ display:flex; align-items:center; gap:0; border-radius:var(--radius-md); overflow:hidden; border:1px solid var(--line); }
+  .tier-label{ width:64px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:18px; height:64px; color:#fff; }
+  .tier-body{ flex:1; background:var(--surface); min-height:64px; display:flex; align-items:center; padding:0 var(--sp-4); gap:8px; color:var(--text-muted); font-size:13px; }
+
+  /* ===== Widget cards (dashboard) ===== */
+  .widget{ text-align:center; }
+  .widget .eyebrow{ text-align:left; }
+  .widget-value{ font-family:var(--font-mono); font-size:34px; font-weight:600; margin:var(--sp-2) 0; }
+  .widget-sub{ color:var(--text-muted); font-size:13px; }
+  .widget-actions{ display:flex; justify-content:center; gap:8px; margin-top:var(--sp-4); }
+  .quote-tag{ font-family:var(--font-display); font-weight:600; font-size:14px; margin-bottom:var(--sp-2); }
+  .quote-text{ font-size:15px; line-height:1.6; }
+  .quote-author{ margin-top:var(--sp-3); font-size:12px; color:var(--text-muted); font-family:var(--font-mono); }
+
+  /* ===== Tabs ===== */
+  .tabs{ display:flex; gap:var(--sp-2); border-bottom:1px solid var(--line); margin-bottom:var(--sp-4); }
+  .tab{
+    padding:10px 4px; font-size:14px; color:var(--text-muted); cursor:pointer; position:relative;
+    font-weight:500; margin-right:var(--sp-4);
+  }
+  .tab.active{ color:var(--text); }
+  .tab.active::after{ content:''; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--accent); border-radius:2px; }
+  .tab-panel{ display:none; font-size:14px; color:var(--text-muted); line-height:1.6; }
+  .tab-panel.active{ display:block; }
+
+  /* ===== Table ===== */
+  table{ width:100%; border-collapse:collapse; font-size:14px; }
+  th{ text-align:left; font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.03em; padding:10px 12px; border-bottom:1px solid var(--line); font-weight:600; }
+  td{ padding:12px; border-bottom:1px solid var(--line); }
+  tr:last-child td{ border-bottom:none; }
+
+  /* ===== Alerts ===== */
+  .alert{ display:flex; gap:12px; padding:var(--sp-4); border-radius:var(--radius-sm); border:1px solid var(--line); font-size:14px; align-items:flex-start; margin-bottom:var(--sp-3); }
+  .alert-icon{ font-family:var(--font-mono); font-weight:700; flex-shrink:0; }
+  .alert-info{ background:rgba(78,161,243,.08); border-color:rgba(78,161,243,.3); }
+  .alert-success{ background:rgba(34,197,139,.08); border-color:rgba(34,197,139,.3); }
+  .alert-warning{ background:rgba(232,162,61,.08); border-color:rgba(232,162,61,.3); }
+  .alert-danger{ background:rgba(229,72,77,.08); border-color:rgba(229,72,77,.3); }
+
+  /* ===== Toast ===== */
+  .toast-container{ position:fixed; bottom:24px; right:24px; display:flex; flex-direction:column; gap:8px; z-index:100; }
+  .toast{
+    background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent);
+    padding:12px 16px; border-radius:var(--radius-sm); font-size:13px; box-shadow:0 8px 24px rgba(0,0,0,.25);
+    animation:slideIn .2s ease; min-width:220px;
+  }
+  @keyframes slideIn{ from{ transform:translateX(20px); opacity:0; } to{ transform:translateX(0); opacity:1; } }
+
+  /* ===== Modal ===== */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:50;
+  }
+  .modal-backdrop.open{ display:flex; }
+  .modal{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md);
+    padding:var(--sp-5); width:380px; max-width:90vw;
+  }
+  .modal h3{ font-family:var(--font-display); margin:0 0 8px; font-size:18px; }
+  .modal p{ color:var(--text-muted); font-size:14px; line-height:1.6; margin:0 0 var(--sp-4); }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; }
+
+  /* ===== Tooltip ===== */
+  .tooltip-wrap{ position:relative; display:inline-block; }
+  .tooltip-wrap .tooltip{
+    position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%);
+    background:var(--text); color:var(--bg); font-size:12px; padding:6px 10px; border-radius:6px;
+    white-space:nowrap; opacity:0; pointer-events:none; transition:.15s ease;
+  }
+  .tooltip-wrap:hover .tooltip{ opacity:1; }
+
+  /* progress */
+  .progress{ height:8px; border-radius:var(--radius-pill); background:var(--surface-2); overflow:hidden; }
+  .progress-fill{ height:100%; background:var(--accent); border-radius:var(--radius-pill); transition:width .3s ease; }
+
+  /* topbar controls */
+  .theme-toggle{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted); }
+  .accent-picker{ display:flex; gap:6px; }
+  .accent-dot{
+    width:20px; height:20px; border-radius:50%; cursor:pointer; border:2px solid transparent;
+    transition:.15s ease;
+  }
+  .accent-dot.active{ border-color:var(--text); }
+  .avatar{ width:32px; height:32px; border-radius:50%; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:13px; font-weight:700; }
+
+  code.inline{ font-family:var(--font-mono); font-size:12px; background:var(--surface-2); padding:2px 6px; border-radius:5px; color:var(--accent); }
+
+  footer{ text-align:center; padding:var(--sp-7) var(--sp-5); color:var(--text-muted); font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="ambient"><div class="orb"></div></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">N</div>
+      <div class="brand-name">Nedwork</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section-label">Hub</div>
+      <div class="nav-item"><span class="nav-dot"></span> Home</div>
+      <div class="nav-item"><span class="nav-dot"></span> Events</div>
+      <div class="nav-item"><span class="nav-dot"></span> Tasks</div>
+      <div class="nav-item"><span class="nav-dot"></span> Apps</div>
+    </nav>
+    <nav class="nav">
+      <div class="nav-section-label">Docs</div>
+      <div class="nav-item active"><span class="nav-dot"></span> Style Guide</div>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>Style Guide</h1>
+      <div class="topbar-controls">
+        <div class="theme-toggle">
+          <span id="theme-label">Dark</span>
+          <label class="switch">
+            <input type="checkbox" id="theme-switch">
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <div class="accent-picker">
+          <div class="accent-dot active" data-accent="violet" style="background:#6C5CE7" title="Violet"></div>
+          <div class="accent-dot" data-accent="green" style="background:#22C58B" title="Green"></div>
+          <div class="accent-dot" data-accent="red" style="background:#E5484D" title="Red"></div>
+        </div>
+        <div class="avatar">A</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- COLOR -->
+      <section class="block" id="color">
+        <div class="block-head">
+          <span class="eyebrow">01 · Foundations</span>
+          <h2>Color</h2>
+          <p>Two themes, one shared accent system. Click any swatch to copy its hex. Switch theme and accent above — every component on this page reads the same variables.</p>
+        </div>
+        <div class="grid grid-4">
+          <div class="swatch" style="background:var(--bg); color:var(--text);" data-hex="var(--bg)"><span>bg</span></div>
+          <div class="swatch" style="background:var(--surface); color:var(--text); border:1px solid var(--line);" data-hex="var(--surface)"><span>surface</span></div>
+          <div class="swatch" style="background:var(--surface-2); color:var(--text);" data-hex="var(--surface-2)"><span>surface-2</span></div>
+          <div class="swatch" style="background:var(--accent); color:var(--accent-ink);" data-hex="var(--accent)"><span>accent</span></div>
+        </div>
+      </section>
+
+      <!-- TYPOGRAPHY -->
+      <section class="block" id="type">
+        <div class="block-head">
+          <span class="eyebrow">01 · Foundations</span>
+          <h2>Typography</h2>
+          <p>Space Grotesk for display, Inter for body and UI, JetBrains Mono for data. Techy silhouette, approachable reading experience.</p>
+        </div>
+        <div class="card">
+          <div class="type-row"><span class="label">Display / 32</span><span class="type-sample-display" style="font-size:32px;">Bring order to the chaos</span></div>
+          <div class="type-row"><span class="label">Display / 24</span><span class="type-sample-display" style="font-size:24px;">Section heading</span></div>
+          <div class="type-row"><span class="label">Body / 16</span><span class="type-sample-body" style="font-size:16px;">Everything you and your friends need, in one place.</span></div>
+          <div class="type-row"><span class="label">Body / 14</span><span class="type-sample-body" style="font-size:14px; color:var(--text-muted);">Muted body text for descriptions and helper copy.</span></div>
+          <div class="type-row"><span class="label">Mono / data</span><span class="type-sample-mono" style="font-size:20px;">00:16:06</span></div>
+        </div>
+      </section>
+
+      <!-- BUTTONS -->
+      <section class="block" id="buttons">
+        <div class="block-head">
+          <span class="eyebrow">02 · Components</span>
+          <h2>Buttons</h2>
+          <p>One radius, one type family, four intents. No uppercase, no letter-spacing.</p>
+        </div>
+        <div class="card">
+          <div class="btn-row" style="margin-bottom:var(--sp-4);">
+            <button class="btn btn-primary">Primary action</button>
+            <button class="btn btn-secondary">Secondary</button>
+            <button class="btn btn-ghost">Ghost</button>
+            <button class="btn btn-danger">Delete</button>
+            <button class="btn btn-primary" disabled>Disabled</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary btn-sm">Small</button>
+            <button class="btn btn-primary">Default</button>
+            <button class="btn btn-primary btn-lg">Large</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- FORMS -->
+      <section class="block" id="forms">
+        <div class="block-head">
+          <span class="eyebrow">02 · Components</span>
+          <h2>Form elements</h2>
+          <p>Filled surface-2 fields, accent glow on focus, sentence-case labels.</p>
+        </div>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="field">
+              <label for="fname">Display name</label>
+              <input type="text" id="fname" placeholder="Alice">
+            </div>
+            <div class="field">
+              <label for="femail">Email</label>
+              <input type="email" id="femail" placeholder="name@example.com">
+              <span class="hint">We'll only use this for login recovery.</span>
+            </div>
+            <div class="field">
+              <label for="frole">Default landing app</label>
+              <select id="frole">
+                <option>Home</option>
+                <option>TierForge</option>
+                <option>Colors</option>
+              </select>
+            </div>
+          </div>
+          <div class="card">
+            <div class="checkbox-row"><input type="checkbox" id="c1" checked><label for="c1">Email notifications</label></div>
+            <div class="checkbox-row"><input type="checkbox" id="c2"><label for="c2">Weekly digest</label></div>
+            <div class="radio-row"><input type="radio" name="bg" id="r1" checked><label for="r1">Grid background</label></div>
+            <div class="radio-row"><input type="radio" name="bg" id="r2"><label for="r2">No background</label></div>
+            <div style="margin-top:var(--sp-4); display:flex; align-items:center; gap:12px;">
+              <label class="switch"><input type="checkbox" checked><span class="switch-track"></span></label>
+              <span style="font-size:14px;">Show ambient glow</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DASHBOARD WIDGETS -->
+      <section class="block" id="widgets">
+        <div class="block-head">
+          <span class="eyebrow">03 · Patterns</span>
+          <h2>Dashboard widgets</h2>
+          <p>The hub's home-screen cards, restyled onto the shared card system — same radius, border and eyebrow label as everything else.</p>
+        </div>
+        <div class="grid grid-4">
+          <div class="card widget">
+            <p class="eyebrow">Time</p>
+            <div class="widget-value" id="clock">00:00:00</div>
+            <div class="widget-sub">Sunday · 02.08.2026</div>
+          </div>
+          <div class="card widget">
+            <p class="eyebrow">Timer</p>
+            <div class="widget-value" id="timerVal">05:00</div>
+            <div class="widget-actions">
+              <button class="btn btn-secondary btn-sm" onclick="startTimer()">Start</button>
+              <button class="btn btn-ghost btn-sm" onclick="resetTimer()">Reset</button>
+            </div>
+          </div>
+          <div class="card widget">
+            <p class="eyebrow">Weather</p>
+            <div class="widget-value" style="font-size:28px;">22°C</div>
+            <div class="widget-sub">Clear sky · Zurich, Switzerland</div>
+          </div>
+          <div class="card">
+            <p class="quote-tag" style="color:var(--accent);">Haiku</p>
+            <p class="quote-text">Don't worry spiders<br>I keep house casually<br>dust gathers in peace</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- BADGES / TIERS -->
+      <section class="block" id="badges">
+        <div class="block-head">
+          <span class="eyebrow">03 · Patterns</span>
+          <h2>Badges, tags &amp; tier rows</h2>
+          <p>One pill shape shared by status badges and TierForge's tier labels.</p>
+        </div>
+        <div class="card" style="margin-bottom:var(--sp-4);">
+          <div class="btn-row">
+            <span class="badge badge-accent">Accent</span>
+            <span class="badge badge-success">Online</span>
+            <span class="badge badge-warning">Pending</span>
+            <span class="badge badge-danger">Failed</span>
+            <span class="badge badge-neutral">Archived</span>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div class="tier-row">
+            <div class="tier-label" style="background:#C0392B;">S</div>
+            <div class="tier-body">Drag items here</div>
+          </div>
+          <div class="tier-row">
+            <div class="tier-label" style="background:#D68910;">A</div>
+            <div class="tier-body">Drag items here</div>
+          </div>
+          <div class="tier-row">
+            <div class="tier-label" style="background:var(--accent);">B</div>
+            <div class="tier-body">Drag items here</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TABS -->
+      <section class="block" id="tabs">
+        <div class="block-head">
+          <span class="eyebrow">04 · Navigation</span>
+          <h2>Tabs</h2>
+          <p>Underline style, accent-colored active indicator.</p>
+        </div>
+        <div class="card">
+          <div class="tabs">
+            <div class="tab active" data-tab="t1">Overview</div>
+            <div class="tab" data-tab="t2">Members</div>
+            <div class="tab" data-tab="t3">Settings</div>
+          </div>
+          <div class="tab-panel active" id="t1">This app is shared with 4 friends and has 12 upcoming events.</div>
+          <div class="tab-panel" id="t2">Alice (owner), Ben, Charlie, Dana.</div>
+          <div class="tab-panel" id="t3">Visibility, notifications, and integrations live here.</div>
+        </div>
+      </section>
+
+      <!-- TABLE -->
+      <section class="block" id="table">
+        <div class="block-head">
+          <span class="eyebrow">04 · Navigation</span>
+          <h2>Table</h2>
+          <p>For lists inside apps — events, tasks, saved palettes.</p>
+        </div>
+        <div class="card" style="padding:0; overflow:hidden;">
+          <table>
+            <thead><tr><th>App</th><th>Owner</th><th>Status</th><th>Updated</th></tr></thead>
+            <tbody>
+              <tr><td>TierForge — Best RPGs</td><td>Alice</td><td><span class="badge badge-success">Active</span></td><td class="hint">2h ago</td></tr>
+              <tr><td>Colors — Sunset palette</td><td>Ben</td><td><span class="badge badge-neutral">Draft</span></td><td class="hint">1d ago</td></tr>
+              <tr><td>Movie Night Tier List</td><td>Charlie</td><td><span class="badge badge-warning">Pending</span></td><td class="hint">3d ago</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ALERTS / TOASTS -->
+      <section class="block" id="feedback">
+        <div class="block-head">
+          <span class="eyebrow">05 · Feedback</span>
+          <h2>Alerts, toasts &amp; modal</h2>
+          <p>System colors are fixed regardless of accent, so warnings always read as warnings.</p>
+        </div>
+        <div class="card" style="margin-bottom:var(--sp-4);">
+          <div class="alert alert-info"><span class="alert-icon">i</span><div>Colors syncs your library automatically — no need to save manually.</div></div>
+          <div class="alert alert-success"><span class="alert-icon">✓</span><div>Palette saved to your library.</div></div>
+          <div class="alert alert-warning"><span class="alert-icon">!</span><div>This tier list hasn't been edited in 30 days.</div></div>
+          <div class="alert alert-danger" style="margin-bottom:0;"><span class="alert-icon">✕</span><div>Couldn't upload image — file too large.</div></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="showToast()">Trigger a toast</button>
+          <button class="btn btn-secondary" onclick="openModal()">Open a modal</button>
+          <div class="tooltip-wrap">
+            <button class="btn btn-ghost">Hover for tooltip <span class="tooltip">This explains the control</span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROGRESS -->
+      <section class="block" id="progress">
+        <div class="block-head">
+          <span class="eyebrow">05 · Feedback</span>
+          <h2>Progress</h2>
+        </div>
+        <div class="card">
+          <div class="progress" style="margin-bottom:var(--sp-3);"><div class="progress-fill" style="width:72%;"></div></div>
+          <div class="progress"><div class="progress-fill" style="width:35%;"></div></div>
+        </div>
+      </section>
+
+      <footer>Nedwork Design System — v1.0 · tokens live in CSS custom properties, see <code class="inline">:root</code></footer>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <h3>Delete this palette?</h3>
+    <p>This can't be undone. "Sunset palette" will be permanently removed from your library.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="closeModal()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+  // Theme toggle
+  const themeSwitch = document.getElementById('theme-switch');
+  const themeLabel = document.getElementById('theme-label');
+  themeSwitch.addEventListener('change', () => {
+    const t = themeSwitch.checked ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    themeLabel.textContent = t === 'dark' ? 'Dark' : 'Light';
+  });
+
+  // Accent picker
+  document.querySelectorAll('.accent-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      document.documentElement.setAttribute('data-accent', dot.dataset.accent);
+      document.querySelectorAll('.accent-dot').forEach(d => d.classList.remove('active'));
+      dot.classList.add('active');
+    });
+  });
+
+  // Swatch copy
+  document.querySelectorAll('.swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      const computed = getComputedStyle(sw).backgroundColor;
+      navigator.clipboard?.writeText(computed).catch(()=>{});
+      sw.classList.add('swatch-copied');
+      setTimeout(() => sw.classList.remove('swatch-copied'), 900);
+    });
+  });
+
+  // Clock
+  function tickClock(){
+    const el = document.getElementById('clock');
+    if(!el) return;
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    el.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  // Timer
+  let timerSeconds = 300, timerInterval = null;
+  function renderTimer(){
+    const m = Math.floor(timerSeconds/60), s = timerSeconds%60;
+    document.getElementById('timerVal').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  function startTimer(){
+    if(timerInterval) return;
+    timerInterval = setInterval(() => {
+      if(timerSeconds > 0){ timerSeconds--; renderTimer(); }
+      else { clearInterval(timerInterval); timerInterval = null; }
+    }, 1000);
+  }
+  function resetTimer(){
+    clearInterval(timerInterval); timerInterval = null; timerSeconds = 300; renderTimer();
+  }
+  renderTimer();
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Modal
+  function openModal(){ document.getElementById('modalBackdrop').classList.add('open'); }
+  function closeModal(){ document.getElementById('modalBackdrop').classList.remove('open'); }
+  document.getElementById('modalBackdrop').addEventListener('click', e => {
+    if(e.target.id === 'modalBackdrop') closeModal();
+  });
+
+  // Toast
+  function showToast(){
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = 'Saved successfully.';
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+</script>
+
+</body>
+</html>
