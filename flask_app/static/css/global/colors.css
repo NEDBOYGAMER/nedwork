@@ -1,89 +1,58 @@
 :root {
-    /* ===== System tokens (shared across all pages) ===== */
-
-    /* Background */
-    --bg-gradient-top: #040a1f;
-    --bg-gradient-bottom: #04040a;
-
-    /* Text */
-    --text: whitesmoke;
-    --text-muted: rgba(245, 245, 245, 0.6);
-
-    /* Accent */
-    --accent: #515ada;
-    --accent-soft: rgba(81, 90, 218, 0.14);
-    --accent-ink: #0b0d12;
-
-    /* Surfaces */
-    --surface: #18181856;
-    --surface-2: #2e2e3679;
-    --surface-strong: rgba(10, 12, 18, 0.92);
-    --surface-hover: rgba(255, 255, 255, 0.06);
-
-    /* Lines / elevation */
-    --line: rgba(255, 255, 255, 0.08);
-    --shadow: rgba(0, 0, 0, 0.4);
-
-    /* System status colors */
-    --danger: #ff4d4d;
-    --success: rgb(26, 192, 26);
-
-    /* ===== Page-specific effects (not part of the universal system) ===== */
-
-    /* Custom cursor / glow ring */
-    --cursor-mode: lighten;
-    --contrast: #ffffff;
-    --cursor-ring: rgba(81, 90, 218, 0.5);
-    --cursor-ring-hover: rgba(255, 255, 255, 0.3);
-
-    /* Glitch text effect */
-    --glitch-red: red;
-    --glitch-cyan: cyan;
-
-    /* Animated dot-grid background */
-    --glow1: rgba(81, 90, 218, 0.07);
-    --glow2: rgba(0, 0, 0, 0);
-    --dots: rgb(142, 146, 211);
-    --dot-falloff: 0.6;
+    /* ===== System status colors — fixed regardless of theme or accent ===== */
+    --success: #22C58B;
+    --warning: #E8A23D;
+    --danger:  #E5484D;
+    --info:    #4EA1F3;
 }
 
+/* ===== Theme: dark (default) ===== */
+:root,
+[data-theme="dark"] {
+    --bg: #0A0C14;
+    --surface: #12141F;
+    --surface-2: #1A1D2B;
+    --surface-strong: #12141F;
+    --surface-hover: rgba(255, 255, 255, 0.06);
+    --line: #262A3B;
+    --line-alpha: rgba(38, 42, 59, 0.55);
+    --text: #ECEEF5;
+    --text-muted: #8A8FA6;
 
+    /* Dark theme is border-only elevation - no shadows read on dark surfaces */
+    --shadow: none;
+}
+
+/* ===== Theme: light ===== */
 [data-theme="light"] {
-    /* ===== System tokens ===== */
-
-    --bg-gradient-top: #ffffff;
-    --bg-gradient-bottom: #a2a2b1;
-
-    --text: rgb(0, 0, 0);
-    --text-muted: rgba(0, 0, 0, 0.55);
-
-    --accent: #bd5f29;
-    --accent-soft: rgba(189, 95, 41, 0.14);
-    --accent-ink: #ffffff;
-
-    --surface: #afa79556;
-    --surface-2: #b89e9979;
-    --surface-strong: rgba(255, 245, 240, 0.95);
+    --bg: #F6F7FB;
+    --surface: #FFFFFF;
+    --surface-2: #F0F1F7;
+    --surface-strong: #FFFFFF;
     --surface-hover: rgba(0, 0, 0, 0.05);
+    --line: #E3E5EE;
+    --line-alpha: rgba(227, 229, 238, 0.9);
+    --text: #14161F;
+    --text-muted: #6B7086;
 
-    --line: rgba(0, 0, 0, 0.08);
-    --shadow: rgba(0, 0, 0, 0.15);
+    --shadow: 0 1px 2px rgba(20, 22, 31, 0.04), 0 8px 24px rgba(20, 22, 31, 0.06);
+}
 
-    --danger: #d93030;
-    --success: rgb(26, 192, 26);
+/* ===== Accent — identical hex in both themes, switched via data-accent ===== */
+[data-accent="violet"] {
+    --accent: #6C5CE7;
+    --accent-soft: rgba(108, 92, 231, 0.14);
+    --accent-ink: #FFFFFF;
+}
 
-    /* ===== Page-specific effects ===== */
+[data-accent="green"] {
+    --accent: #22C58B;
+    --accent-soft: rgba(34, 197, 139, 0.14);
+    --accent-ink: #06251A;
+}
 
-    --cursor-mode: darken;
-    --contrast: #000000;
-    --cursor-ring: rgba(70, 54, 33, 0.568);
-    --cursor-ring-hover: rgba(165, 165, 165, 0.3);
-
-    --glitch-red: rgb(255, 217, 0);
-    --glitch-cyan: rgb(255, 60, 0);
-
-    --glow1: rgba(31, 24, 21, 0.105);
-    --glow2: rgba(0, 0, 0, 0);
-    --dots: rgb(32, 26, 24);
-    --dot-falloff: 1.1;
+[data-accent="red"] {
+    --accent: #E5484D;
+    --accent-soft: rgba(229, 72, 77, 0.14);
+    --accent-ink: #FFFFFF;
 }

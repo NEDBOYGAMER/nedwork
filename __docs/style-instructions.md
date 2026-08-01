@@ -15,9 +15,13 @@ Dark:
 --bg: #0A0C14
 --surface: #12141F
 --surface-2: #1A1D2B
+--surface-strong: #12141F
+--surface-hover: rgba(255,255,255,.06)
 --line: #262A3B
+--line-alpha: rgba(38,42,59,.55)
 --text: #ECEEF5
 --text-muted: #8A8FA6
+--shadow: none
 ```
 
 Light:
@@ -25,10 +29,18 @@ Light:
 --bg: #F6F7FB
 --surface: #FFFFFF
 --surface-2: #F0F1F7
+--surface-strong: #FFFFFF
+--surface-hover: rgba(0,0,0,.05)
 --line: #E3E5EE
+--line-alpha: rgba(227,229,238,.9)
 --text: #14161F
 --text-muted: #6B7086
+--shadow: 0 1px 2px rgba(20,22,31,.04), 0 8px 24px rgba(20,22,31,.06)
 ```
+
+`--line-alpha` is a translucent version of `--line`, used only for the ambient dot grid (§4) — `--line` itself stays a solid 1px border color and is never watered down for that purpose. `--surface-strong` exists for elevated/floating surfaces that sit above other content; in practice it's currently identical to `--surface` in both themes, kept as its own variable so it can diverge later without a find-and-replace. `--surface-hover` is for finer-grained hover effects (skeleton loaders, scrollbar thumbs) — shared interactive components (ghost buttons, nav items) hover to `--surface-2` directly instead, see §11.
+
+`--shadow` is defined once per theme and used as-is (`box-shadow: var(--shadow)`) — it resolves to `none` in dark and to the real elevation shadow in light, so components never need theme-specific shadow logic of their own.
 
 **Accent — must be switchable between three options, identical hex in both themes:**
 ```
@@ -80,16 +92,18 @@ Applies to every component on every page — this is what makes different apps f
   - `999px` (full pill) — badges, tags, toggles, avatars
 - Borders: every card, panel, and input gets a `1px solid var(--line)` border.
 - Elevation:
-  - Dark theme: border only, no shadows (shadows don't read on dark backgrounds — border is the elevation cue).
-  - Light theme: add `box-shadow: 0 1px 2px rgba(20,22,31,.04), 0 8px 24px rgba(20,22,31,.06)` to raised elements (cards, modals, dropdowns).
+  - Implement as a single `--shadow` token (see §1) and apply it uniformly: `box-shadow: var(--shadow)`.
+  - Dark theme: `--shadow` is `none` — border is the elevation cue, shadows don't read on dark backgrounds.
+  - Light theme: `--shadow` carries the real elevation shadow, applied to raised elements (cards, modals, dropdowns, toasts).
+  - Never write a component-specific box-shadow value or branch on theme in a component's own CSS — the token already does that.
 
 ---
 
 ## 4. Background / ambient layer
 
 **Default for any page that is primarily navigational, informational, or dashboard-like** (i.e. has surrounding chrome, cards, empty page space around content): apply an ambient background —
-- A faint dot grid: `radial-gradient(var(--line) 1px, transparent 1px)`, 24px pitch, ~30–35% opacity.
-- One soft-focus circular glow in `--accent`, ~500px, opacity ≤10%, positioned off to one side, optionally slow-drifting (15–25s ease-in-out loop). It must sit behind all content, fixed, and never be visually competing with foreground elements.
+- A faint dot grid: `radial-gradient(var(--line-alpha) 1px, transparent 1px)`, 24px pitch, ~35% opacity. Use `--line-alpha` (a translucent version of `--line`), not `--line` itself — the grid needs a softer dot than a solid border color gives.
+- Exactly one soft-focus circular glow, tinted from `--accent` (e.g. `radial-gradient(circle at 30% 30%, var(--accent), transparent 70%)`), ~520px, opacity ~10%, positioned off to one side (e.g. top-right), optionally slow-drifting (15–25s ease-in-out loop). One glow element only — don't add a second static blob for extra depth, it reads as clutter and isn't in the reference look. It must sit behind all content, fixed, and never visually compete with foreground elements.
 
 **Exception — skip the ambient background entirely when the page's content is the visual field itself**, i.e. any full-bleed, content-fills-the-viewport tool where the work surface *is* the background (e.g. a canvas, board, or edge-to-edge layout with no visible page margins). In that case use a flat `var(--bg)` with no dot grid and no glow — the ambient layer only makes sense where there's empty space around content for it to live in.
 
@@ -164,6 +178,7 @@ These appear across apps whenever something needs confirming or explaining, so t
 ## 11. General principles to apply when something isn't covered above
 
 - Reuse an existing token before introducing a new one. If a new color, spacing value, or radius seems necessary, question it first — the scale in this document should cover the vast majority of cases.
+- Hover fill for shared interactive components (ghost buttons, nav items, and similar low-emphasis controls) is `--surface-2` directly, not a dedicated hover-only tint. `--surface-hover` still exists for finer effects (skeleton loaders, scrollbar thumbs) but isn't the default hover treatment.
 - Any interactive element gets a visible `focus-visible` state (accent outline) — never remove focus outlines without replacing them.
 - System colors (success/warning/danger/info) always mean the same thing and are never swapped for the theme accent.
 - If a page's nature genuinely requires deviating from a rule here (as with the background exception in §4), state the exception and why, rather than silently ignoring the system.
