@@ -1,0 +1,728 @@
+/* ==========================================================================
+   ui-elements.css
+   Default styles for every shared UI element.
+   Depends on colors.css being loaded first (uses its custom properties).
+   ========================================================================== */
+
+/* Optional — load these three if not already included in the page:
+   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+*/
+
+:root {
+    /* Type */
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    /* Spacing scale — use these, don't invent one-off values */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+    --space-8: 64px;
+
+    /* Radius scale */
+    --radius-sm: 10px;   /* buttons, inputs, small controls */
+    --radius-md: 14px;   /* cards, panels, modals */
+    --radius-pill: 999px; /* badges, tags, toggles, avatars */
+}
+
+
+/* ==========================================================================
+   Reset / base
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-body);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+}
+
+h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.15;
+    margin: 0 0 var(--space-3);
+}
+
+h1 { font-size: 32px; }
+h2 { font-size: 24px; }
+h3 { font-size: 20px; }
+h4 { font-size: 16px; }
+
+p {
+    line-height: 1.5;
+    margin: 0 0 var(--space-3);
+}
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+code, kbd {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: var(--surface-2);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 5px;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid var(--line);
+    margin: var(--space-5) 0;
+}
+
+::selection {
+    background: var(--accent-soft);
+    color: var(--text);
+}
+
+/* Scrollbar (webkit) */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--surface-2);
+    border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--surface-hover);
+}
+
+/* Consistent focus language across every interactive element */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+
+/* ==========================================================================
+   Page background
+   Default: ambient gradient + dot grid + glow, for any page with visible
+   space around its content (dashboards, tool chrome, marketing pages).
+
+   Exception: full-bleed / canvas-style pages (the content itself fills the
+   viewport edge to edge, e.g. an editing surface or board) should skip this
+   and instead set body background to var(--bg-gradient-bottom) flat, with
+   no ::before dot grid and no .glow element.
+   ========================================================================== */
+
+body {
+    background: linear-gradient(to bottom, var(--bg-gradient-top), var(--bg-gradient-bottom));
+    position: relative;
+}
+
+/* pages that opt out of the ambient layer (see base.html body_class block) */
+body.no-ambient::before {
+    display: none;
+}
+body.no-ambient {
+    background: var(--bg-gradient-bottom);
+}
+
+body::before {
+    /* dot grid */
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: radial-gradient(var(--dots) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: calc(0.35 * var(--dot-falloff));
+}
+
+.ambient-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.glow {
+    position: fixed;
+    z-index: 0;
+    pointer-events: none;
+    width: 520px;
+    height: 520px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, var(--glow1), var(--glow2) 70%);
+    filter: blur(10px);
+}
+
+/* optional slow movement for a glow element — add alongside .glow */
+.glow-drift {
+    animation: glow-drift 22s ease-in-out infinite alternate;
+}
+
+@keyframes glow-drift {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(-60px, 90px) scale(1.15); }
+}
+
+/* anything meant to sit above the ambient layer */
+.surface-layer {
+    position: relative;
+    z-index: 1;
+}
+
+
+/* ==========================================================================
+   Layout helpers
+   ========================================================================== */
+
+.container {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 var(--space-5);
+}
+
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+
+/* ==========================================================================
+   Card
+   ========================================================================== */
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: var(--space-5);
+    box-shadow: 0 1px 2px var(--shadow);
+}
+
+.card .eyebrow {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0 0 var(--space-3);
+}
+
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.btn {
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    padding: 10px 18px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: filter .15s ease, background .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+}
+.btn-primary:hover { filter: brightness(1.08); }
+
+.btn-secondary {
+    background: var(--surface-2);
+    color: var(--text);
+    border-color: var(--line);
+}
+.btn-secondary:hover { border-color: var(--accent); }
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+}
+.btn-ghost:hover {
+    color: var(--text);
+    background: var(--surface-hover);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: #ffffff;
+}
+.btn-danger:hover { filter: brightness(1.08); }
+
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn-lg { padding: 13px 24px; font-size: 15px; }
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+
+/* ==========================================================================
+   Form elements
+   ========================================================================== */
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: var(--space-4);
+}
+
+.field label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.field .hint {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+select,
+textarea {
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    width: 100%;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 90px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* error state — toggle this class on an input to flag it */
+input.wrong,
+select.wrong,
+textarea.wrong {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px rgba(229, 72, 77, .14);
+    animation: field-shake .25s ease;
+}
+
+@keyframes field-shake {
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: var(--text-muted);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
+}
+
+.checkbox-row,
+.radio-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+/* Toggle switch — wrap a checkbox: <label class="switch"><input type="checkbox"><span class="switch-track"></span></label> */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 24px;
+    flex-shrink: 0;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.switch-track {
+    position: absolute;
+    inset: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease;
+}
+.switch-track::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    left: 3px;
+    top: 2.5px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    transition: transform .2s ease, background .2s ease;
+}
+.switch input:checked + .switch-track {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+}
+.switch input:checked + .switch-track::before {
+    transform: translateX(18px);
+    background: var(--accent);
+}
+
+
+/* ==========================================================================
+   Tabs
+   ========================================================================== */
+
+.tabs {
+    display: flex;
+    gap: var(--space-4);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: var(--space-4);
+}
+
+.tab {
+    padding: 10px 2px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    position: relative;
+}
+
+.tab.active {
+    color: var(--text);
+}
+
+.tab.active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+}
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+
+/* ==========================================================================
+   Badges / tags
+   ========================================================================== */
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+}
+
+.badge-accent  { background: var(--accent-soft); color: var(--accent); }
+.badge-success { background: rgba(34, 197, 139, .14); color: var(--success); }
+.badge-danger  { background: rgba(229, 72, 77, .14); color: var(--danger); }
+.badge-neutral { background: var(--surface-2); color: var(--text-muted); }
+
+/* numeric/code badges use mono */
+.badge-mono { font-family: var(--font-mono); }
+
+
+/* ==========================================================================
+   Avatar
+   ========================================================================== */
+
+.avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+
+/* ==========================================================================
+   Alerts
+   ========================================================================== */
+
+.alert {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: var(--space-4);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    font-size: 14px;
+    margin-bottom: var(--space-3);
+}
+
+.alert-icon {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.alert-success { background: rgba(34, 197, 139, .08); border-color: rgba(34, 197, 139, .3); }
+.alert-danger  { background: rgba(229, 72, 77, .08);  border-color: rgba(229, 72, 77, .3); }
+.alert-neutral { background: var(--surface); }
+
+
+/* ==========================================================================
+   Toast
+   ========================================================================== */
+
+.toast-container {
+    position: fixed;
+    bottom: var(--space-5);
+    right: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100;
+}
+
+.toast {
+    background: var(--surface-strong);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    min-width: 220px;
+    box-shadow: 0 8px 24px var(--shadow);
+    animation: toast-in .2s ease;
+}
+
+@keyframes toast-in {
+    from { transform: translateX(20px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+}
+
+
+/* ==========================================================================
+   Modal
+   ========================================================================== */
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+}
+
+.modal-backdrop.open { display: flex; }
+
+.modal {
+    background: var(--surface-strong);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: var(--space-5);
+    width: 380px;
+    max-width: 90vw;
+}
+
+.modal h3 { font-size: 18px; margin-bottom: 8px; }
+.modal p  { color: var(--text-muted); font-size: 14px; margin-bottom: var(--space-4); }
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+
+/* ==========================================================================
+   Tooltip — wrap: <span class="tooltip-wrap">trigger<span class="tooltip">text</span></span>
+   ========================================================================== */
+
+.tooltip-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip-wrap .tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--contrast);
+    color: var(--bg-gradient-bottom);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s ease;
+}
+
+.tooltip-wrap:hover .tooltip {
+    opacity: 1;
+}
+
+
+/* ==========================================================================
+   Table
+   ========================================================================== */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+}
+
+td {
+    padding: 12px;
+    border-bottom: 1px solid var(--line);
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+
+/* ==========================================================================
+   Progress bar
+   ========================================================================== */
+
+.progress {
+    height: 8px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: var(--radius-pill);
+    transition: width .3s ease;
+}
+
+
+/* ==========================================================================
+   Spinner (loading state)
+   ========================================================================== */
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--surface-2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+
+/* ==========================================================================
+   Skeleton (loading placeholder)
+   ========================================================================== */
+
+.skeleton {
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-hover) 50%, var(--surface-2) 75%);
+    background-size: 200% 100%;
+    border-radius: var(--radius-sm);
+    animation: skeleton-sweep 1.4s ease infinite;
+}
+
+@keyframes skeleton-sweep {
+    from { background-position: 200% 0; }
+    to   { background-position: -200% 0; }
+}
+
+
+/* ==========================================================================
+   Empty state
+   ========================================================================== */
+
+.empty-state {
+    text-align: center;
+    padding: var(--space-7) var(--space-5);
+    color: var(--text-muted);
+}
+
+.empty-state h3 {
+    color: var(--text);
+    margin-bottom: var(--space-2);
+}

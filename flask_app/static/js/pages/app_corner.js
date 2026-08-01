@@ -1,5 +1,3 @@
-import { createBackground } from '../components/background.js';
-
 /** @type {Array<Object>} */
 let apps = [];
 
@@ -21,7 +19,6 @@ let config = {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
-    initBackground();
 
     const [appsData, userConfig] = await Promise.all([
         loadApps(),
@@ -37,18 +34,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     render();
 });
 
-function initBackground() {
-    const cursor = document.getElementById('cursor');
-    const ring = document.getElementById('cursor-ring');
-    const canvas = document.getElementById('bg-canvas');
-
-    if (cursor && ring && canvas) {
-        const background = createBackground({ cursor, ring, canvas });
-        background.start();
-    } else {
-        console.warn('Missing background elements');
-    }
-}
 
 /* ────────────────────────────────────────────────────────────────
    Data loading / persistence

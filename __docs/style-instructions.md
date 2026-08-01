@@ -167,3 +167,15 @@ These appear across apps whenever something needs confirming or explaining, so t
 - Any interactive element gets a visible `focus-visible` state (accent outline) — never remove focus outlines without replacing them.
 - System colors (success/warning/danger/info) always mean the same thing and are never swapped for the theme accent.
 - If a page's nature genuinely requires deviating from a rule here (as with the background exception in §4), state the exception and why, rather than silently ignoring the system.
+
+
+
+
+## 12. Use of provided ressources
+
+- in flask_app/static/css/global there is a colors.css and a ui-elements.css file
+- if these files were not included in the commit, make a reamark about it
+- only using them can you make the same look as the other pages
+- in templates/ there is a base.html which serves as the ground base for all sites
+- base.html allows for blocking and the background and side nav, only the "big apps" have side nav's, if you're unsure wheter the site is a "big" one ask
+- the background can generally stay enabled except when you think it doesnt make sense

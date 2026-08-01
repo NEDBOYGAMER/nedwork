@@ -1,0 +1,26 @@
+{#
+  partials/background.html
+
+  Ambient background layer: dot grid (from ui-elements.css body::before,
+  no markup needed) + drifting glow blobs (markup below).
+
+  Usage in a Flask/Jinja template:
+
+    <body>
+      {% include "partials/background.html" %}
+      <div class="surface-layer">
+        ... rest of the page ...
+      </div>
+    </body>
+
+  Requires colors.css and ui-elements.css to already be loaded on the page.
+
+  Skip this include entirely on full-bleed / canvas-style pages (the
+  content-fills-the-viewport exception) — just don't include it, and add
+  `body::before { display: none; }` for that page/template.
+#}
+
+<div class="ambient-bg" aria-hidden="true">
+    <div class="glow glow-drift" style="width:520px; height:520px; top:-120px; right:-160px;"></div>
+    <div class="glow" style="width:380px; height:380px; bottom:-100px; left:-140px; opacity:.6;"></div>
+</div>

@@ -1,40 +1,27 @@
-import { createBackground } from '../components/background.js';
-
-let state = "login"
+let state = "login";
 
 document.addEventListener('DOMContentLoaded', () => {
-    const cursor = document.getElementById('cursor');
-    const ring = document.getElementById('cursor-ring');
-    const canvas = document.getElementById('bg-canvas');
-
-    if (!cursor || !ring || !canvas) {
-        console.warn('Missing background elements');
-        return;
-    }
-
-    const background = createBackground({
-        cursor,
-        ring,
-        canvas
+    document.querySelectorAll('#authTabs .tab').forEach(tab => {
+        tab.addEventListener('click', () => switchTab(tab.dataset.tab));
     });
 
-    background.start();
-
-    loadLogin()
-
+    loadLogin();
 });
-
 
 document.addEventListener('keydown', (e) => {
-    if (e.code === "Enter"){
-        if (state == "login"){
-            login()
-        }
-        else if (state == "register"){
-            register()
-        }
+    if (e.code === "Enter") {
+        if (state === "login") login();
+        else if (state === "register") register();
     }
 });
+
+function switchTab(name) {
+    document.querySelectorAll('#authTabs .tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === name);
+    });
+    if (name === "login") loadLogin();
+    else loadRegister();
+}
 
 async function register() {
     const username = document.getElementById('username')?.value;
@@ -47,7 +34,7 @@ async function register() {
         return;
     }
 
-    if (password != passwordRepeat){
+    if (password !== passwordRepeat) {
         const passwordEl = document.getElementById('password');
         const repeatEl = document.getElementById('password-repeat');
         passwordEl.classList.add("wrong");
@@ -61,23 +48,10 @@ async function register() {
     }
 
     try {
-
-        console.log(JSON.stringify({
-                username: username,
-                password: password,
-                email: email
-            }))
-
         const response = await fetch("/auth/api/register", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                username: username,
-                password: password,
-                email: email
-            })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password, email })
         });
 
         if (!response.ok) {
@@ -93,9 +67,6 @@ async function register() {
     }
 }
 
-
-
-
 async function login() {
     const response = await fetch("/auth/api/login", {
         method: "POST",
@@ -109,157 +80,73 @@ async function login() {
     if (!response.ok) {
         const text = await response.text();
         console.error("Login failed:", response.status, text);
+        const passwordEl = document.getElementById('password');
+        passwordEl?.classList.add("wrong");
+        setTimeout(() => passwordEl?.classList.remove("wrong"), 800);
         return;
     }
 
     const data = await response.json();
     if (data.success) {
-    window.location.href = '/dashboard';
-    }
-    else {
+        window.location.href = '/dashboard';
+    } else {
         console.log("Invalid username or password");
     }
 }
 
+function field(labelText, { id, type = "text", placeholder = "" } = {}) {
+    const wrap = document.createElement('div');
+    wrap.className = 'field';
 
-function loadLogin() {
-    state = "login"
-    const container = document.getElementById("container")
-    container.innerHTML = ""
+    const label = document.createElement('label');
+    label.setAttribute('for', id);
+    label.textContent = labelText;
 
-    const title = document.createElement("h2")
-    const usernameLabel = document.createElement("h3")
-    const usernameInput = document.createElement("input")
-    const passwordLabel = document.createElement("h3")
-    const passwordInput = document.createElement("input")
-    const buttons = document.createElement("div")
-    const loginButton = document.createElement("button")
-    const registerButton = document.createElement("button")
+    const input = document.createElement('input');
+    input.type = type;
+    input.id = id;
+    input.placeholder = placeholder;
 
-    title.innerHTML = "LOGIN"
-
-    usernameLabel.innerHTML = "Username"
-    usernameInput.className = "login_input"
-    usernameInput.id = "username"
-    usernameInput.placeholder = "Username"
-    usernameInput.required = true
-
-    passwordLabel.innerHTML = "Password"
-    passwordInput.className = "login_input"
-    passwordInput.type = "password"
-    passwordInput.id = "password"
-    passwordInput.placeholder = "Password"
-    passwordInput.required = true
-
-    buttons.id = "buttons"
-
-    loginButton.innerHTML = "LOGIN"
-    loginButton.id = "active-button"
-
-    if (loginButton) {
-        loginButton.addEventListener('click', () => {
-            login()
-        });
-    }
-    
-    registerButton.innerHTML = "Register"
-    registerButton.id = "inactive-button"
-    
-    if (registerButton) {
-        registerButton.addEventListener('click', () => {
-            loadRegister()
-        });
-    }
-
-
-    buttons.appendChild(loginButton)
-    buttons.appendChild(registerButton)
-
-    container.appendChild(title)
-    container.appendChild(usernameLabel)
-    container.appendChild(usernameInput)
-    container.appendChild(passwordLabel)
-    container.appendChild(passwordInput)
-    container.appendChild(buttons)
+    wrap.appendChild(label);
+    wrap.appendChild(input);
+    return wrap;
 }
 
+function loadLogin() {
+    state = "login";
+    const container = document.getElementById("formArea");
+    container.innerHTML = "";
+
+    container.appendChild(field("Username", { id: "username", placeholder: "Username" }));
+    container.appendChild(field("Password", { id: "password", type: "password", placeholder: "Password" }));
+
+    const submit = document.createElement('button');
+    submit.className = "btn btn-primary";
+    submit.textContent = "Log in";
+    submit.addEventListener('click', login);
+
+    container.appendChild(submit);
+}
 
 function loadRegister() {
-    state = "register"
-    const container = document.getElementById("container")
-    container.innerHTML = ""
+    state = "register";
+    const container = document.getElementById("formArea");
+    container.innerHTML = "";
 
-    const title = document.createElement("h2")
-    const usernameLabel = document.createElement("h3")
-    const usernameInput = document.createElement("input")
-    const passwordLabel = document.createElement("h3")
-    const passwordInput = document.createElement("input")
-    const password2Label = document.createElement("h3")
-    const password2Input = document.createElement("input")
-    const emailLabel = document.createElement("h3")
-    const emailInfo = document.createElement("p")
-    const emailInput = document.createElement("input")
-    const buttons = document.createElement("div")
-    const loginButton = document.createElement("button")
-    const registerButton = document.createElement("button")
+    container.appendChild(field("How do you want to be called?", { id: "username", placeholder: "Username" }));
+    container.appendChild(field("Enter a safe password", { id: "password", type: "password", placeholder: "Password" }));
+    container.appendChild(field("Again", { id: "password-repeat", type: "password", placeholder: "Repeat password" }));
+    container.appendChild(field("E-mail (optional)", { id: "email", type: "email", placeholder: "E-mail" }));
 
-    title.innerHTML = "REGISTER"
+    const hint = document.createElement('p');
+    hint.className = "hint";
+    hint.textContent = "Not used for anything yet — just here for account recovery later.";
+    container.insertBefore(hint, container.lastChild);
 
-usernameLabel.innerHTML = "How do you wanna be called?";
-    usernameInput.className = "login_input";
-    usernameInput.id = "username";
-    usernameInput.placeholder = "Username";
+    const submit = document.createElement('button');
+    submit.className = "btn btn-primary";
+    submit.textContent = "Create account";
+    submit.addEventListener('click', register);
 
-    passwordLabel.innerHTML = "Enter a safe password";
-    passwordInput.className = "login_input";
-    passwordInput.type = "password";
-    passwordInput.id = "password";
-    passwordInput.placeholder = "Password";
-
-    password2Label.innerHTML = "Again";
-    password2Input.className = "login_input";
-    password2Input.type = "password";
-    password2Input.id = "password-repeat";
-    password2Input.placeholder = "Repeat password";
-
-    emailLabel.innerHTML = "Optional E-mail";
-    emailInfo.innerHTML = "wip, no use atm";
-    emailInput.className = "login_input";
-    emailInput.id = "email";
-    emailInput.placeholder = "E-mail";
-
-    buttons.id = "buttons"
-
-    loginButton.innerHTML = "Login"
-    loginButton.id = "inactive-button"
-
-    if (loginButton) {
-        loginButton.addEventListener('click', () => {
-            loadLogin()
-        });
-    }
-
-    registerButton.innerHTML = "REGISTER"
-    registerButton.id = "active-button"
-
-    if (registerButton) {
-        registerButton.addEventListener('click', () => {
-            register()
-        });
-    }
-
-    buttons.appendChild(registerButton)
-    buttons.appendChild(loginButton)
-
-    container.appendChild(title)
-    container.appendChild(usernameLabel)
-    container.appendChild(usernameInput)
-    container.appendChild(passwordLabel)
-    container.appendChild(passwordInput)
-    container.appendChild(password2Label)
-    container.appendChild(password2Input)
-    container.appendChild(emailLabel)
-    container.appendChild(emailInfo)
-    container.appendChild(emailInput)
-    container.appendChild(buttons)
+    container.appendChild(submit);
 }

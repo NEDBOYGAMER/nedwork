@@ -1,193 +1,111 @@
-#Welcome {
-    font-size: 120px;
-    margin-top: 0;
-    padding-top: 60px;
-    margin-bottom: 10px;
-    color: var(--text-color);
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+/* login.css — page-specific styling only.
+   Layout, buttons, inputs, tabs, and the card itself all come from
+   ui-elements.css; this file just covers what's unique to this page:
+   the hero title, the pulse bar, and the auth card sizing. */
+
+#login-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-7) var(--space-4);
 }
 
-#Welcome:hover {
-    animation: glitch 0.4s ease;
+/* ---- Hero ---- */
+
+#main-box {
+    text-align: center;
+    margin-bottom: var(--space-6);
+}
+
+.hero-title {
+    font-size: 96px;
+    margin: 0 0 var(--space-1);
+    color: var(--text);
+    text-shadow: 2px 2px 4px var(--shadow);
+}
+
+.hero-subtitle {
+    font-size: 32px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    margin: 0 0 var(--space-4);
+    color: var(--text-muted);
+    text-shadow: 2px 2px 4px var(--shadow);
+}
+
+.hero-title:hover,
+.hero-subtitle:hover {
+    animation: glitch .4s ease;
 }
 
 @keyframes glitch {
-    0%   { transform: translate(0, 0); text-shadow: 0 0 var(--glitch-red), 0 0 var(--glitch-cyan); }
-    28%  { transform: translate(-3px, 0); text-shadow: 3px 1px var(--glitch-red), -3px 1px var(--glitch-cyan); }
-    54%  { transform: translate(2px, 0); text-shadow: -2px -1px var(--glitch-red), 2px -1px var(--glitch-cyan); }
-    70%  { transform: translate(-2px, 0); text-shadow: 2px 1px var(--glitch-red), -2px 1px var(--glitch-cyan); }
-    100% { transform: translate(0, 0); text-shadow: 0 0 var(--glitch-red), 0 0 var(--glitch-cyan); }
-}
-
-#nedwork {
-    font-size: 40px;
-    font-stretch: expanded;
-    margin-top: 10px;
-    color: var(--text-color);
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-#nedwork:hover {
-    animation: glitch 0.4s ease;
-}
-
-#main-box {
-    margin-bottom: 5vh;
-}
-
-#container {
-    background-color: var(--surface-dark);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    margin-left: 30vw;
-    margin-right: 30vw;
-    padding: 1%;
-    backdrop-filter: blur(3px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75);
-    border-radius: 20px;
-}
-.less_padding {
-    padding: 10px;
-}
-
-input {
-    background-color: rgba(0, 0, 0, 0);
-    border-color: var(--text-color);
-    border-style: none;
-    border-bottom-style: outset;
-    padding: 5px;
-    color: var(--text-color);
-    margin-bottom: 20px;
-    font-size: 20px;
-    width: 80%;
-    font-family: 'Orbitron', sans-serif;
-}
-input:focus {
-    outline: none;
-}
-
-#buttons {
-    display: grid;
-    grid-template-columns: 40% 20% 40%;
-    grid-template-rows: 100%;
-    width: 80%;
-    margin: auto;
-}
-
-#active-button {
-    background-color: color-mix(in srgb, var(--accent) 47%, transparent);
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    margin-bottom: 10px;
-    font-size: 120%;
-    color: var(--text-color);
-    font-family: 'Orbitron', sans-serif;
-    padding: 10px;
-    box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 47%, transparent);
-}
-
-#inactive-button {
-    grid-column: 3;
-    background-color: var(--surface-button-dark);
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    margin-bottom: 10px;
-    font-size: 120%;
-    color: var(--text-color);
-    font-family: 'Orbitron', sans-serif;
-    padding: 10px;
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.041);
-}
-
-* { cursor: none !important; }
-
-#bg-canvas {
-    position: fixed;
-    inset: 0;
-    z-index: -10;
-    pointer-events: none;
+    0%   { transform: translate(0, 0);     text-shadow: 0 0 var(--glitch-red), 0 0 var(--glitch-cyan); }
+    28%  { transform: translate(-3px, 0);  text-shadow: 3px 1px var(--glitch-red), -3px 1px var(--glitch-cyan); }
+    54%  { transform: translate(2px, 0);   text-shadow: -2px -1px var(--glitch-red), 2px -1px var(--glitch-cyan); }
+    70%  { transform: translate(-2px, 0);  text-shadow: 2px 1px var(--glitch-red), -2px 1px var(--glitch-cyan); }
+    100% { transform: translate(0, 0);     text-shadow: 0 0 var(--glitch-red), 0 0 var(--glitch-cyan); }
 }
 
 #pulse-bar {
-    margin-left: auto;
-    margin-right: auto;
-    margin-bottom: 10px;
-    width: 30vw;
+    width: 240px;
     height: 2px;
+    margin: 0 auto;
     background: linear-gradient(90deg, transparent, var(--accent), transparent);
     animation: pulse 2s ease infinite;
 }
 
 @keyframes pulse {
-    50% { opacity: 20%; }
-    0%, 100% { opacity: 80%; }
+    0%, 100% { opacity: .8; }
+    50%      { opacity: .2; }
+}
+
+/* ---- Auth card ---- */
+
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--surface-strong);
+    backdrop-filter: blur(6px);
+}
+
+.auth-card .field:last-of-type {
+    margin-bottom: var(--space-5);
+}
+
+#formArea .btn {
+    width: 100%;
+    justify-content: center;
+}
+
+#formArea p.hint {
+    margin: -8px 0 var(--space-4);
 }
 
 
-/* ===== MOBILE OPTIMIZATION ===== */
+/* ===== MOBILE ===== */
 @media (max-width: 700px) {
-    #Welcome {
+    .hero-title {
         font-size: 15vw;
-        padding-top: 40px;
-        margin-bottom: 4px;
     }
 
-    #nedwork {
+    .hero-subtitle {
         font-size: 6.5vw;
-        margin-top: 6px;
-    }
-
-    #main-box {
-        margin-bottom: 4vh;
-        padding: 0 4vw;
     }
 
     #pulse-bar {
         width: 60vw;
     }
 
-    #container {
-        margin-left: 5vw;
-        margin-right: 5vw;
-        padding: 6%;
-        border-radius: 16px;
+    .auth-card {
+        max-width: none;
     }
 
     input {
-        width: 100%;
         font-size: 16px; /* keeps iOS Safari from auto-zooming on focus */
-        box-sizing: border-box;
-        margin-bottom: 16px;
-    }
-
-    #buttons {
-        grid-template-columns: 47% 6% 47%;
-        width: 100%;
-    }
-
-    #active-button,
-    #inactive-button {
-        font-size: 100%;
-        padding: 12px 8px;
-    }
-
-    /* No real mouse on touch devices: hide the custom cursor
-       instead of letting it sit at (0,0) with no mousemove to move it */
-    #cursor,
-    #cursor-ring {
-        display: none;
-    }
-
-    * {
-        cursor: auto !important;
     }
 }
 
 @media (max-width: 380px) {
-    #Welcome {
-        font-size: 17vw;
-    }
-
-    #nedwork {
-        font-size: 7.5vw;
-    }
+    .hero-title { font-size: 17vw; }
+    .hero-subtitle { font-size: 7.5vw; }
 }

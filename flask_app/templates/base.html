@@ -1,29 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+{#
+  base.html
+
+  The shared foundation almost every page extends. Handles: theme/accent
+  persistence, all core stylesheet imports, the ambient background, and
+  the sidenav — plus the override points a page needs to opt out of any
+  of those.
+
+  Basic usage:
+
+    {% extends "base.html" %}
+    {% block title %}Events{% endblock %}
+    {% block content %}
+      <h1>Events</h1>
+    {% endblock %}
+
+  Opting out of the sidenav (e.g. the login page):
+
+    {% block sidenav %}{% endblock %}
+    {% block body_class %}no-sidenav{% endblock %}
+
+  Opting out of the ambient background (full-bleed / canvas-style pages,
+  e.g. an editing surface where the content itself fills the viewport):
+
+    {% block background %}{% endblock %}
+    {% block body_class %}no-ambient{% endblock %}
+
+  Adding page-specific CSS/JS without overriding the whole head/scripts:
+
+    {% block extra_head %}<link rel="stylesheet" href="...">{% endblock %}
+    {% block extra_scripts %}<script src="..."></script>{% endblock %}
+#}
+<html lang="en" data-theme="dark" data-accent="violet">
 <head>
-    <title>{% block title %}Default{% endblock %}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <title>{% block title %}Nedwork{% endblock %}</title>
 
+    <!-- Applies saved theme/accent before first paint, avoids a flash of the wrong colors -->
+    <script>
+        (function () {
+            var theme = localStorage.getItem('theme');
+            var accent = localStorage.getItem('accent');
+            if (theme) document.documentElement.setAttribute('data-theme', theme);
+            if (accent) document.documentElement.setAttribute('data-accent', accent);
+        })();
+    </script>
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-    <!--BASIC-->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Core system, in dependency order -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/global/colors.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/basic.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/bg.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global/ui-elements.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/sidenav.css') }}">
 
-    <script></script>
-
-    {% block head %}{% endblock %}
-
+    {% block extra_head %}{% endblock %}
 </head>
-<body>
-    <div id="cursor"></div>
-    <div id="cursor-ring"></div>
-    <canvas id="bg-canvas"></canvas>
-    {% block content %}{% endblock %}
+<body class="{% block body_class %}{% endblock %}">
+
+    {% block background %}
+        {% include "partials/background.html" %}
+    {% endblock %}
+
+    {% block sidenav %}
+        {% include "partials/sidenav.html" %}s
+    {% endblock %}
+
+    <div id="content" class="surface-layer">
+        {% block content %}{% endblock %}
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    {% block scripts %}{% endblock %}
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>
