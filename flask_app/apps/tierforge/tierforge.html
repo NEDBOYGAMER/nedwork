@@ -1,25 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark" data-accent="violet">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TierForge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/global/colors.css" />
+  <link rel="stylesheet" href="/static/css/global/ui-elements.css" />
   <link rel="stylesheet" href="/apps/{{ app_name }}/style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="/apps/{{ app_name }}/app.js" defer></script>
 </head>
 <body>
 
+  <div class="glow-orb"></div>
+
   <header>
-    <div class="logo">Tier<span>Forge</span></div>
+    <div class="brand">
+      <img src="/static/img/apps/tier_forge.png" alt="TierForge" />
+    </div>
     <div class="header-actions">
       <label class="btn btn-primary" for="imageUpload">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Upload Images
+        Upload images
       </label>
       <input type="file" id="imageUpload" multiple accept="image/*" hidden />
-      <button class="btn btn-ghost" id="addTierBtn">+ Add Tier</button>
-      <button class="btn btn-ghost" id="clearAllBtn">Clear All</button>
+      <button class="btn btn-secondary" id="addTierBtn">+ Add tier</button>
+      <button class="btn btn-secondary" id="clearAllBtn">Clear all</button>
       <button class="btn btn-ghost" id="settingsBtn" title="Settings">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Settings
@@ -49,7 +57,7 @@
       </div>
 
       <div class="export-group">
-        <a class="btn-icon" id="closeAppBtn" href="/app_corner" title="Back to App Corner">
+        <a class="btn btn-ghost btn-icon" id="closeAppBtn" href="/app_corner" title="Back to App Corner">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </a>
       </div>
@@ -66,7 +74,7 @@
 
     <div class="image-pool-section">
       <div class="pool-header">
-        <span class="pool-title">Unranked Images</span>
+        <span class="pool-title">Unranked images</span>
         <span class="pool-count" id="poolCount">0 images</span>
       </div>
       <div class="image-pool" id="imagePool">
@@ -84,14 +92,14 @@
   </div>
 
   <!-- Settings Modal -->
-  <div class="modal-overlay" id="settingsModalOverlay" hidden>
-    <div class="modal settings-modal">
-      <div class="modal-header">
+  <div class="tf-modal-overlay" id="settingsModalOverlay" hidden>
+    <div class="tf-modal settings-modal">
+      <div class="tf-modal-header">
         <span>Settings</span>
-        <button class="modal-close" id="settingsModalClose">✕</button>
+        <button class="tf-modal-close" id="settingsModalClose">✕</button>
       </div>
-      <div class="modal-body">
-        <label>Unranked Image Size</label>
+      <div class="tf-modal-body">
+        <label>Unranked image size</label>
         <select id="poolSizeSelect">
           <option value="72">Small</option>
           <option value="120" selected>Medium</option>
@@ -99,7 +107,7 @@
           <option value="260">X-Large</option>
         </select>
 
-        <label>Ranked Image Size</label>
+        <label>Ranked image size</label>
         <select id="tierSizeSelect">
           <option value="72">Small</option>
           <option value="120" selected>Medium</option>
@@ -107,47 +115,76 @@
           <option value="260">X-Large</option>
         </select>
 
-        <label>Behavior</label>
-        <label class="settings-toggle-row" title="Always show image names on cards, not just on hover">
-          <input type="checkbox" id="showNamesToggle" />
-          Show names
+        <div class="settings-section-label">Appearance</div>
+        <label class="settings-toggle-row">
+          <span class="toggle-label">Theme</span>
+          <div class="theme-toggle-row">
+            <button class="btn btn-secondary btn-sm" id="themeLightBtn" type="button">Light</button>
+            <button class="btn btn-secondary btn-sm" id="themeDarkBtn" type="button">Dark</button>
+          </div>
         </label>
-        <label class="settings-toggle-row" title="Ask for confirmation before removing an image">
-          <input type="checkbox" id="confirmDeleteToggle" />
-          Confirm delete
+        <label class="settings-toggle-row">
+          <span class="toggle-label">Accent</span>
+          <div class="accent-dots">
+            <div class="accent-dot" data-accent="violet" style="background:#6C5CE7" title="Violet"></div>
+            <div class="accent-dot" data-accent="green" style="background:#22C58B" title="Green"></div>
+            <div class="accent-dot" data-accent="red" style="background:#E5484D" title="Red"></div>
+          </div>
         </label>
-        <label class="settings-toggle-row" title='Ask for confirmation before "Clear All"'>
-          <input type="checkbox" id="confirmClearToggle" checked />
-          Confirm clear all
+
+        <div class="settings-section-label">Behavior</div>
+        <label class="settings-toggle-row">
+          <span class="toggle-label">Show names</span>
+          <label class="switch" title="Always show image names on cards, not just on hover">
+            <input type="checkbox" id="showNamesToggle" />
+            <span class="switch-track"></span>
+          </label>
         </label>
-        <label class="settings-toggle-row" title="Wide table — fill ~80% of screen width">
-          <input type="checkbox" id="fullscreenTableToggle" />
-          Wide table <kbd>F</kbd>
+        <label class="settings-toggle-row">
+          <span class="toggle-label">Confirm delete</span>
+          <label class="switch" title="Ask for confirmation before removing an image">
+            <input type="checkbox" id="confirmDeleteToggle" />
+            <span class="switch-track"></span>
+          </label>
+        </label>
+        <label class="settings-toggle-row">
+          <span class="toggle-label">Confirm clear all</span>
+          <label class="switch" title='Ask for confirmation before "Clear All"'>
+            <input type="checkbox" id="confirmClearToggle" checked />
+            <span class="switch-track"></span>
+          </label>
+        </label>
+        <label class="settings-toggle-row">
+          <span class="toggle-label">Wide table <kbd>F</kbd></span>
+          <label class="switch" title="Wide table — fill ~80% of screen width">
+            <input type="checkbox" id="fullscreenTableToggle" />
+            <span class="switch-track"></span>
+          </label>
         </label>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" id="resetSettingsBtn">Reset to Defaults</button>
+      <div class="tf-modal-footer">
+        <button class="btn btn-ghost" id="resetSettingsBtn">Reset to defaults</button>
         <button class="btn btn-primary" id="settingsDoneBtn">Done</button>
       </div>
     </div>
   </div>
 
   <!-- Tier Edit Modal -->
-  <div class="modal-overlay" id="modalOverlay" hidden>
-    <div class="modal">
-      <div class="modal-header">
-        <span>Edit Tier</span>
-        <button class="modal-close" id="modalClose">✕</button>
+  <div class="tf-modal-overlay" id="modalOverlay" hidden>
+    <div class="tf-modal">
+      <div class="tf-modal-header">
+        <span>Edit tier</span>
+        <button class="tf-modal-close" id="modalClose">✕</button>
       </div>
-      <div class="modal-body">
-        <label>Tier Label</label>
-        <input type="text" id="tierLabelInput" placeholder="S" />
+      <div class="tf-modal-body">
+        <label>Tier label</label>
+        <input type="text" id="tierLabelInput" class="tier-label-input" placeholder="S" />
         <label>Color</label>
         <div class="color-swatches" id="colorSwatches"></div>
         <input type="color" id="tierColorInput" />
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-danger" id="deleteTierBtn">Delete Tier</button>
+      <div class="tf-modal-footer">
+        <button class="btn btn-danger" id="deleteTierBtn">Delete tier</button>
         <button class="btn btn-primary" id="saveTierBtn">Save</button>
       </div>
     </div>

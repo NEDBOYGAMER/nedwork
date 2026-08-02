@@ -27,6 +27,8 @@ let settings = {
   confirmDelete: false,
   confirmClear: true,
   fullscreenTable: false,
+  theme: 'dark',
+  accent: 'violet',
 };
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -613,11 +615,16 @@ document.getElementById('exportPngBtn').addEventListener('click', async () => {
   const board = document.getElementById('tierBoard');
   const titleEl = document.querySelector('.tier-title-wrap');
 
+  // Follow whichever theme is currently active, not a hardcoded palette
+  const rootStyle = getComputedStyle(document.documentElement);
+  const bgColor = rootStyle.getPropertyValue('--bg').trim() || '#0A0C14';
+  const textColor = rootStyle.getPropertyValue('--text').trim() || '#ECEEF5';
+
   // Temporarily show full board for capture
   const capture = document.createElement('div');
   capture.style.cssText = `
     position: fixed; top: -9999px; left: -9999px;
-    background: #0f0f13; padding: 28px; width: ${board.offsetWidth}px;
+    background: ${bgColor}; padding: 28px; width: ${board.offsetWidth}px;
     font-family: 'Inter', system-ui, sans-serif;
   `;
 
@@ -627,7 +634,7 @@ document.getElementById('exportPngBtn').addEventListener('click', async () => {
     const inp = titleClone.querySelector('.tier-title-input');
     if (inp) {
       const span = document.createElement('div');
-      span.style.cssText = `font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 700; color: #e8e8f0; padding-bottom: 12px; letter-spacing: -0.5px;`;
+      span.style.cssText = `font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 600; color: ${textColor}; padding-bottom: 12px;`;
       span.textContent = inp.value || '';
       titleClone.replaceChild(span, inp);
     }
@@ -638,7 +645,7 @@ document.getElementById('exportPngBtn').addEventListener('click', async () => {
 
   try {
     const canvas = await html2canvas(capture, {
-      backgroundColor: '#0f0f13',
+      backgroundColor: bgColor,
       scale: 2,
       useCORS: true,
       allowTaint: true,
@@ -808,6 +815,8 @@ const DEFAULT_SETTINGS = {
   confirmDelete: false,
   confirmClear: true,
   fullscreenTable: false,
+  theme: 'dark',
+  accent: 'violet',
 };
 
 function applySettings() {
@@ -815,6 +824,8 @@ function applySettings() {
   document.documentElement.style.setProperty('--tier-img-size', settings.tierImgSize + 'px');
   document.body.classList.toggle('always-show-names', settings.showNames);
   document.body.classList.toggle('wide-table', settings.fullscreenTable);
+  document.documentElement.setAttribute('data-theme', settings.theme);
+  document.documentElement.setAttribute('data-accent', settings.accent);
 }
 
 function syncSettingsForm() {
@@ -824,6 +835,14 @@ function syncSettingsForm() {
   document.getElementById('confirmDeleteToggle').checked = settings.confirmDelete;
   document.getElementById('confirmClearToggle').checked = settings.confirmClear;
   document.getElementById('fullscreenTableToggle').checked = settings.fullscreenTable;
+
+  document.getElementById('themeLightBtn').classList.toggle('btn-primary', settings.theme === 'light');
+  document.getElementById('themeLightBtn').classList.toggle('btn-secondary', settings.theme !== 'light');
+  document.getElementById('themeDarkBtn').classList.toggle('btn-primary', settings.theme === 'dark');
+  document.getElementById('themeDarkBtn').classList.toggle('btn-secondary', settings.theme !== 'dark');
+  document.querySelectorAll('.accent-dot').forEach(dot => {
+    dot.classList.toggle('active', dot.dataset.accent === settings.accent);
+  });
 }
 
 function openSettingsModal() {
@@ -875,6 +894,27 @@ document.getElementById('resetSettingsBtn').addEventListener('click', () => {
   syncSettingsForm();
   applySettings();
   scheduleAutosave();
+});
+
+document.getElementById('themeLightBtn').addEventListener('click', () => {
+  settings.theme = 'light';
+  applySettings();
+  syncSettingsForm();
+  scheduleAutosave();
+});
+document.getElementById('themeDarkBtn').addEventListener('click', () => {
+  settings.theme = 'dark';
+  applySettings();
+  syncSettingsForm();
+  scheduleAutosave();
+});
+document.querySelectorAll('.accent-dot').forEach(dot => {
+  dot.addEventListener('click', () => {
+    settings.accent = dot.dataset.accent;
+    applySettings();
+    syncSettingsForm();
+    scheduleAutosave();
+  });
 });
 
 applySettings();

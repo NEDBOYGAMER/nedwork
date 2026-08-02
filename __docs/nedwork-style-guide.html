@@ -46,26 +46,6 @@
     min-height:100vh;
   }
 
-  /* ambient background — quiet dot grid + drifting accent glow */
-  .ambient{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
-  .ambient::before{
-    content:''; position:absolute; inset:0;
-    background-image: radial-gradient(var(--line-alpha) 1px, transparent 1px);
-    background-size: 24px 24px;
-    opacity:.35;
-  }
-  .orb{
-    position:absolute; width:520px; height:520px; border-radius:50%;
-    background: radial-gradient(circle at 30% 30%, var(--accent), transparent 70%);
-    opacity:.10; filter:blur(10px);
-    animation: drift 22s ease-in-out infinite alternate;
-    top:-120px; right:-80px;
-  }
-  @keyframes drift{
-    from{ transform:translate(0,0) scale(1); }
-    to{ transform:translate(-60px, 90px) scale(1.15); }
-  }
-
   a{ color:inherit; }
 
   /* ===== Shell ===== */

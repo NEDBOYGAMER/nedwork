@@ -1,28 +1,35 @@
-/* ── Reset & Base ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ==========================================================================
+   TierForge — app-specific styles.
+   Depends on colors.css + ui-elements.css being loaded first (tokens,
+   .btn/.field/.modal/.switch/etc. base components come from there).
+   ========================================================================== */
 
 :root {
-  --bg:        #0f0f13;
-  --surface:   #18181f;
-  --surface2:  #22222d;
-  --border:    #2e2e3e;
-  --text:      #e8e8f0;
-  --muted:     #6b6b85;
-  --accent:    #e63946;
-  --radius:    6px;
-  --font-ui:   'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Mono', monospace;
   --pool-img-size: 120px;
   --tier-img-size: 120px;
 }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-ui);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+/* ── Ambient glow orb ──
+   ui-elements.css already provides the dot-grid layer (body::before); the
+   single soft accent glow (§4) isn't part of the shared file, so it's added
+   here as a page-level element. */
+.glow-orb {
+  position: fixed;
+  top: -120px;
+  right: -80px;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--accent), transparent 70%);
+  opacity: 0.10;
+  filter: blur(10px);
+  z-index: 0;
+  pointer-events: none;
+  animation: glow-drift 22s ease-in-out infinite alternate;
+}
+@keyframes glow-drift {
+  from { transform: translate(0,0) scale(1); }
+  to   { transform: translate(-60px, 90px) scale(1.15); }
 }
 
 /* ── Header ── */
@@ -30,115 +37,104 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 28px;
-  border-bottom: 1px solid var(--border);
+  padding: 14px var(--space-6);
+  border-bottom: 1px solid var(--line);
   background: var(--surface);
   position: sticky;
   top: 0;
   z-index: 100;
 }
 
-.logo {
-  font-family: var(--font-mono);
-  font-size: 1.3rem;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  color: var(--text);
+.brand {
+  display: flex;
+  align-items: center;
 }
-.logo span { color: var(--accent); }
+.brand img {
+  height: 34px;
+  width: auto;
+  display: block;
+}
 
 .header-actions {
   display: flex;
-  gap: 10px;
+  gap: var(--space-2);
   align-items: center;
 }
 
-/* ── Buttons ── */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: var(--radius);
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  border: none;
-  transition: all 0.15s;
-}
-.btn-primary {
-  background: var(--accent);
-  color: #fff;
-}
-.btn-primary:hover { background: #c1121f; }
-
-.btn-ghost {
-  background: transparent;
-  color: var(--muted);
-  border: 1px solid var(--border);
-}
-.btn-ghost:hover {
-  color: var(--text);
-  border-color: var(--muted);
-  background: var(--surface2);
-}
-
-.btn-danger {
-  background: transparent;
-  color: #e63946;
-  border: 1px solid #e63946;
-}
-.btn-danger:hover { background: rgba(230,57,70,0.12); }
-
+/* ── Icon button (square ghost/secondary button) ── */
 .btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 34px;
   height: 34px;
-  flex-shrink: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.15s;
-}
-.btn-icon:hover {
-  color: #fff;
-  border-color: var(--accent);
-  background: rgba(230,57,70,0.15);
+  padding: 0;
+  justify-content: center;
 }
 
 /* ── Main ── */
 main {
+  position: relative;
+  z-index: 1;
   flex: 1;
-  padding: 28px;
+  padding: var(--space-6);
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-5);
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
 }
 
-/* ── Tier Board ── */
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Tier list title ──
+   Intentional deviation from the standard .field input treatment (§6):
+   this is an inline-editable page heading, not a form field, so it uses
+   the display type role and a bottom-border-only style instead of the
+   surface-2 filled box. */
+.tier-title-wrap {
+  padding-bottom: var(--space-1);
+}
+
+.tier-title-input {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--line);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  width: 100%;
+  padding: var(--space-2) 2px var(--space-3);
+  outline: none;
+  transition: border-color 0.2s;
+  caret-color: var(--accent);
+}
+.tier-title-input:focus {
+  border-bottom-color: var(--accent);
+}
+.tier-title-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* ── Tier board ── */
 .tier-board {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
-/* ── Tier Row ── */
 .tier-row {
   display: flex;
   align-items: stretch;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   overflow: visible;
   min-height: 100px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
   transition: border-color 0.2s;
 }
 
@@ -155,22 +151,21 @@ main {
   width: 72px;
   min-width: 72px;
   max-width: 160px;
-  gap: 6px;
+  gap: var(--space-2);
   cursor: pointer;
-  padding: 10px 6px;
-  border-right: 1px solid var(--border);
+  padding: var(--space-3) var(--space-2);
+  border-right: 1px solid var(--line);
   transition: background 0.15s, width 0.15s;
   position: relative;
 }
-.tier-label-wrap:hover { background: var(--surface2); }
+.tier-label-wrap:hover { background: var(--surface-2); }
 .tier-label-wrap:hover .edit-hint { opacity: 1; }
 
 .tier-label {
-  font-family: var(--font-mono);
-  font-size: 1.5rem;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
   line-height: 1.15;
-  text-shadow: 0 0 20px currentColor;
   text-align: center;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -178,53 +173,49 @@ main {
 }
 
 /* Long tier names shrink to fit instead of blowing out the row */
-.tier-label[data-len="long"] { font-size: 1rem; }
-.tier-label[data-len="very-long"] { font-size: 0.75rem; }
+.tier-label[data-len="long"] { font-size: 16px; }
+.tier-label[data-len="very-long"] { font-size: 12px; }
 
 .edit-hint {
-  font-size: 0.6rem;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 12px;
+  color: var(--text-muted);
   opacity: 0;
   transition: opacity 0.15s;
 }
 
 .tier-key-badge {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
-  color: var(--muted);
-  background: var(--surface2);
-  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
   border-radius: 3px;
   padding: 1px 5px;
-  letter-spacing: 0;
 }
 
 .tier-images {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px;
+  gap: var(--space-2);
+  padding: var(--space-3);
   flex: 1;
   align-content: flex-start;
   min-height: 100px;
 }
 
-/* Drag over highlight for tier-images */
 .tier-images.drag-active {
-  background: rgba(230,57,70,0.05);
-  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--accent-soft);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
 
-/* ── Tier Row Controls ── */
+/* ── Tier row controls ── */
 .tier-controls {
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 4px;
-  padding: 6px 4px;
-  border-left: 1px solid var(--border);
+  padding: var(--space-2) 4px;
+  border-left: 1px solid var(--line);
   opacity: 0;
   transition: opacity 0.15s;
 }
@@ -233,17 +224,17 @@ main {
 .tier-ctrl-btn {
   background: none;
   border: none;
-  color: var(--muted);
+  color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 12px;
   padding: 4px 6px;
   border-radius: 4px;
   line-height: 1;
   transition: color 0.15s, background 0.15s;
 }
-.tier-ctrl-btn:hover { color: var(--text); background: var(--surface2); }
+.tier-ctrl-btn:hover { color: var(--text); background: var(--surface-2); }
 
-/* ── Image Cards ── */
+/* ── Image cards ── */
 .img-card {
   max-width: var(--tier-img-size);
   max-height: var(--tier-img-size);
@@ -255,13 +246,13 @@ main {
   flex-shrink: 0;
   border: 2px solid transparent;
   transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s, max-width 0.15s, max-height 0.15s;
-  background: var(--surface2);
+  background: var(--surface-2);
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 .img-card:hover {
-  border-color: rgba(255,255,255,0.25);
+  border-color: var(--accent);
   transform: scale(1.05);
   z-index: 2;
 }
@@ -294,7 +285,7 @@ main {
   bottom: 0; left: 0; right: 0;
   background: rgba(0,0,0,0.75);
   color: #fff;
-  font-size: 0.55rem;
+  font-size: 11px;
   padding: 2px 4px;
   text-align: center;
   white-space: nowrap;
@@ -314,7 +305,7 @@ main {
   color: #fff;
   border: none;
   border-radius: 50%;
-  font-size: 0.6rem;
+  font-size: 10px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   opacity: 0;
@@ -323,11 +314,12 @@ main {
 }
 .img-card:hover .img-remove { opacity: 1; }
 
-/* ── Image Pool ── */
+/* ── Image pool ── */
 .image-pool-section {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 
@@ -335,46 +327,44 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
 }
 
 .pool-title {
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 .pool-count {
   font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: var(--muted);
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .image-pool {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 14px;
+  gap: var(--space-2);
+  padding: var(--space-4);
   min-height: 100px;
 }
 
-.image-pool.drag-active { background: rgba(230,57,70,0.04); }
+.image-pool.drag-active { background: var(--accent-soft); }
 
 .pool-empty {
-  color: var(--muted);
-  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 20px;
+  padding: var(--space-5);
   text-align: center;
 }
 
-/* ── Image Preview Overlay (right-click) ── */
+/* ── Image preview overlay (right-click) ── */
 .img-preview-overlay {
   position: fixed;
   inset: 0;
@@ -395,10 +385,10 @@ main {
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  background: var(--surface2);
-  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
 }
 
 @keyframes preview-fade-in {
@@ -406,8 +396,12 @@ main {
   to { opacity: 1; }
 }
 
-/* ── Modal ── */
-.modal-overlay {
+/* ── Modals ──
+   Namespaced as .tf-modal* (rather than the shared .modal-backdrop/.modal)
+   because this app's modal needs a header/body/footer split with its own
+   internal dividers and padding, which would fight the shared component's
+   single-padding box. Same tokens throughout. */
+.tf-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.65);
@@ -417,103 +411,84 @@ main {
   z-index: 200;
   backdrop-filter: blur(4px);
 }
-.modal-overlay[hidden] { display: none; }
+.tf-modal-overlay[hidden] { display: none; }
 
-.modal {
+.tf-modal {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   width: 340px;
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0,0,0,0.5);
 }
 
-.modal-header {
+.tf-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--line);
   font-weight: 600;
+  font-family: var(--font-display);
 }
 
-.modal-close {
+.tf-modal-close {
   background: none;
   border: none;
-  color: var(--muted);
+  color: var(--text-muted);
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 16px;
   line-height: 1;
   padding: 2px;
 }
-.modal-close:hover { color: var(--text); }
+.tf-modal-close:hover { color: var(--text); }
 
-.modal-body {
-  padding: 20px;
+.tf-modal-body {
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
-.modal-body label {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--muted);
+.tf-modal-body label {
+  font-size: 13px;
+  color: var(--text-muted);
   margin-bottom: -4px;
 }
 
-.modal-body input[type="text"] {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
+/* Tier label input — deviates from the default 14px field text: this is a
+   short, prominent, code-like value (a tier's key), so it uses mono at a
+   larger size rather than body text. */
+.tier-label-input {
   font-family: var(--font-mono);
-  font-size: 1.4rem;
-  font-weight: 700;
-  padding: 10px 14px;
-  width: 100%;
+  font-size: 20px;
+  font-weight: 600;
   text-transform: uppercase;
-  outline: none;
 }
-.modal-body input[type="text"]:focus {
-  border-color: var(--accent);
-}
-
-.modal-body select {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
-  font-family: var(--font-ui);
-  font-size: 0.9rem;
-  padding: 9px 12px;
-  width: 100%;
-  outline: none;
-  cursor: pointer;
-}
-.modal-body select:focus { border-color: var(--accent); }
 
 .settings-toggle-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-  text-transform: none;
-  letter-spacing: normal;
+  gap: var(--space-3);
+  justify-content: space-between;
+  font-size: 14px;
   color: var(--text);
-  cursor: pointer;
   margin-bottom: 0;
 }
-.settings-toggle-row input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent);
-  cursor: pointer;
-  flex-shrink: 0;
+.settings-toggle-row .toggle-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-.settings-modal .modal-footer { justify-content: space-between; }
+.settings-modal .tf-modal-footer { justify-content: space-between; }
+
+.settings-section-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+  margin-bottom: -4px;
+}
 
 /* Always-show-names setting */
 body.always-show-names .img-card .img-name { opacity: 1; }
@@ -521,7 +496,7 @@ body.always-show-names .img-card .img-name { opacity: 1; }
 .color-swatches {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   margin-bottom: 4px;
 }
 
@@ -534,60 +509,53 @@ body.always-show-names .img-card .img-name { opacity: 1; }
   transition: transform 0.12s, border-color 0.12s;
 }
 .swatch:hover { transform: scale(1.15); }
-.swatch.selected { border-color: #fff; transform: scale(1.1); }
+.swatch.selected { border-color: var(--text); transform: scale(1.1); }
 
-.modal-body input[type="color"] {
+.tf-modal-body input[type="color"] {
   width: 100%;
   height: 38px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
   cursor: pointer;
   padding: 2px;
 }
 
-.modal-footer {
+.tf-modal-footer {
   display: flex;
   justify-content: space-between;
-  padding: 14px 20px;
-  border-top: 1px solid var(--border);
-  gap: 10px;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--line);
+  gap: var(--space-3);
 }
 
-/* ── Tier List Title ── */
-.tier-title-wrap {
-  padding-bottom: 4px;
+/* ── Accent swatches (theme settings) ── */
+.accent-dots {
+  display: flex;
+  gap: var(--space-2);
 }
+.accent-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.accent-dot:hover { transform: scale(1.12); }
+.accent-dot.active { border-color: var(--text); }
 
-.tier-title-input {
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid var(--border);
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 1.6rem;
-  font-weight: 700;
-  width: 100%;
-  padding: 6px 2px 8px;
-  outline: none;
-  letter-spacing: -0.5px;
-  transition: border-color 0.2s;
-  caret-color: var(--accent);
-}
-.tier-title-input:focus {
-  border-bottom-color: var(--accent);
-}
-.tier-title-input::placeholder {
-  color: var(--muted);
-  opacity: 0.5;
+.theme-toggle-row {
+  display: flex;
+  gap: var(--space-2);
 }
 
 /* ── Export group ── */
 .export-group {
   display: flex;
-  gap: 6px;
-  border-left: 1px solid var(--border);
-  padding-left: 10px;
+  gap: var(--space-2);
+  border-left: 1px solid var(--line);
+  padding-left: var(--space-3);
   margin-left: 4px;
 }
 
@@ -617,8 +585,8 @@ body.always-show-names .img-card .img-name { opacity: 1; }
 }
 .dropdown.open .dropdown-toggle {
   color: var(--text);
-  border-color: var(--muted);
-  background: var(--surface2);
+  border-color: var(--text-muted);
+  background: var(--surface-2);
 }
 .dropdown-menu {
   position: absolute;
@@ -626,10 +594,10 @@ body.always-show-names .img-card .img-name { opacity: 1; }
   right: 0;
   min-width: 180px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   box-shadow: 0 12px 32px rgba(0,0,0,0.5);
-  padding: 6px;
+  padding: var(--space-2);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -640,38 +608,31 @@ body.always-show-names .img-card .img-name { opacity: 1; }
 .dropdown-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
-  padding: 8px 10px;
+  padding: var(--space-2) 10px;
   background: transparent;
   border: none;
   border-radius: 4px;
   color: var(--text);
-  font-size: 0.85rem;
-  font-family: var(--font-ui);
+  font-size: 14px;
+  font-family: var(--font-body);
   cursor: pointer;
   text-align: left;
 }
-.dropdown-item:hover { background: var(--surface2); }
+.dropdown-item:hover { background: var(--surface-2); }
 
 .dropdown-divider {
   height: 1px;
-  background: var(--border);
+  background: var(--line);
   margin: 4px 2px;
 }
 
-/* ── Keyboard hint chip ── */
+/* ── Keyboard hint chip ──
+   Uses the shared bare-kbd styling from ui-elements.css; only positioning
+   is added here. */
 kbd {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  color: var(--muted);
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 1px 5px;
   margin-left: 4px;
-  line-height: 1.4;
 }
 
 /* ── Wide table mode ── */
@@ -696,9 +657,3 @@ body.blank-mode .image-pool-section {
   flex-shrink: 0;
   pointer-events: none;
 }
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--muted); }
