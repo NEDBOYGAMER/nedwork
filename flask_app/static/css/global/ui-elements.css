@@ -5,13 +5,13 @@
    ========================================================================== */
 
 /* Optional — load these three if not already included in the page:
-   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 */
 
 :root {
     /* Type */
     --font-display: 'Space Grotesk', sans-serif;
-    --font-body: 'Inter', sans-serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
     /* Spacing scale — use these, don't invent one-off values */

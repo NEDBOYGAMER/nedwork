@@ -73,7 +73,7 @@ Three font roles, used consistently everywhere:
 | Role | Font | Used for |
 |---|---|---|
 | Display | Space Grotesk | Headings, section titles, large numbers/stats |
-| Body | Inter | Paragraphs, labels, buttons, all general UI text |
+| Body | IBM Plex Sans | Paragraphs, labels, buttons, all general UI text |
 | Mono | JetBrains Mono | Data: timestamps, codes, counters, numeric values, technical identifiers |
 
 Rules:
@@ -120,7 +120,7 @@ When in doubt: if the page has visible background around its content, use the am
 
 Every page will have buttons — this set is mandatory.
 
-- Shared base: Inter, 500 weight, 14px, `10px` radius, no uppercase, `1px` transparent border by default.
+- Shared base: IBM Plex Sans, 500 weight, 14px, `10px` radius, no uppercase, `1px` transparent border by default.
 - Variants:
   - **Primary** — filled `--accent`, text `--accent-ink`. For the one main action.
   - **Secondary** — `--surface-2` fill, `1px solid var(--line)` border, `--text`. For standard actions.
@@ -135,7 +135,7 @@ Every page will have buttons — this set is mandatory.
 
 Mandatory baseline for any input, select, textarea, checkbox, radio, or toggle:
 
-- Fields (`input`, `select`, `textarea`): `--surface-2` background, `1px solid var(--line)`, `10px` radius, 14px Inter text, 10–12px padding.
+- Fields (`input`, `select`, `textarea`): `--surface-2` background, `1px solid var(--line)`, `10px` radius, 14px IBM Plex Sans text, 10–12px padding.
 - Focus state: border becomes `--accent`, plus a soft `0 0 0 3px var(--accent-soft)` glow. This is the same focus treatment used for buttons — one consistent focus language across all controls.
 - Labels: 13px, `--text-muted`, sentence case, positioned above the field, medium weight.
 - Helper/hint text: 12px, `--text-muted`, below the field.
@@ -198,3 +198,12 @@ These appear across apps whenever something needs confirming or explaining, so t
 - in templates/ there is a base.html which serves as the ground base for all sites
 - base.html allows for blocking and the background and side nav, only the "big apps" have side navs, if you're unsure whether the site is a "big" one ask
 - the background (dot grid + background image, §4) can generally stay enabled except when you think it doesn't make sense
+
+
+## 13. Icons
+
+- when you need an icon ther is a folder in flask_app/static/img/icons where many different icons live
+the names of the available icons are:
+  tabler-alert-circle, tabler-arrow-down, tabler-arrow-left, tabler-arrow-right, tabler-arrow-up, tabler-bell, tabler-calendar, tabler-chart-bar, tabler-check, tabler-cloud, tabler-code, tabler-color-picker, tabler-copy, tabler-database, tabler-device-desktop, tabler-download, tabler-edit, tabler-external-link, tabler-file, tabler-filter, tabler-folder, tabler-globe, tabler-grid-dots, tabler-heart-filled, tabler-heart, tabler-home, tabler-info-circle, tabler-layout-dashboard, tabler-link, tabler-lock, tabler-mail, tabler-map-pin, tabler-menu, tabler-message, tabler-minus, tabler-moon, tabler-package, tabler-palette, tabler-plus, tabler-search, tabler-server, tabler-settings, tabler-shield, tabler-star-filled, tabler-star, tabler-sun, tabler-trash, tabler-upload, tabler-user, tabler-x
+- all of course with the .svg ending
+- if you created any other icons or use emojis explicitely state so, as it is not intended but, if there truly arent any icons for the purpose its permitted
