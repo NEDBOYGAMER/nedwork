@@ -165,27 +165,19 @@ body::before {
     pointer-events: none;
 }
 
-.glow {
+.bg-image {
     position: fixed;
+    inset: 0;
     z-index: 0;
     pointer-events: none;
-    width: 520px;
-    height: 520px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, var(--accent), transparent 70%);
-    opacity: .10;
-    filter: blur(10px);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: left bottom;
+    opacity: 0.06;
+    background-image: var(--bg-image);
 }
 
-/* optional slow movement for a glow element — add alongside .glow */
-.glow-drift {
-    animation: glow-drift 22s ease-in-out infinite alternate;
-}
 
-@keyframes glow-drift {
-    from { transform: translate(0, 0) scale(1); }
-    to   { transform: translate(-60px, 90px) scale(1.15); }
-}
 
 /* anything meant to sit above the ambient layer */
 .surface-layer {
