@@ -132,6 +132,15 @@ hr {
    and instead set body background to var(--bg) flat, with
    no ::before dot grid and no .glow element.
    ========================================================================== */
+html {
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* old Edge/IE */
+}
+
+html::-webkit-scrollbar {
+    display: none;              /* Chrome, Safari, new Edge */
+}
+
 
 body {
     background: var(--bg);
