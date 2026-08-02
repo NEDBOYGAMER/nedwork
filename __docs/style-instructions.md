@@ -12,31 +12,33 @@ Implement as CSS variables so theme and accent can be swapped by changing an att
 
 Dark:
 ```
---bg: #0A0C14
---surface: #12141F
---surface-2: #1A1D2B
---surface-strong: #12141F
+--bg: #0B0B0D
+--surface: #16161A
+--surface-2: #1E1E24
+--surface-strong: #16161A
 --surface-hover: rgba(255,255,255,.06)
---line: #262A3B
---line-alpha: rgba(38,42,59,.55)
---text: #ECEEF5
---text-muted: #8A8FA6
+--line: #2A2A32
+--line-alpha: rgba(42,42,50,.55)
+--text: #EDEDF0
+--text-muted: #8B8B96
 --shadow: none
 ```
 
 Light:
 ```
---bg: #F6F7FB
+--bg: #F7F7F8
 --surface: #FFFFFF
---surface-2: #F0F1F7
+--surface-2: #F0F0F2
 --surface-strong: #FFFFFF
 --surface-hover: rgba(0,0,0,.05)
---line: #E3E5EE
---line-alpha: rgba(227,229,238,.9)
---text: #14161F
---text-muted: #6B7086
---shadow: 0 1px 2px rgba(20,22,31,.04), 0 8px 24px rgba(20,22,31,.06)
+--line: #E4E4E8
+--line-alpha: rgba(228,228,232,.9)
+--text: #16161A
+--text-muted: #6E6E78
+--shadow: 0 1px 2px rgba(20,20,24,.04), 0 8px 24px rgba(20,20,24,.06)
 ```
+
+This palette is intentionally neutral — the old values leaned navy (blue-tinted blacks and blue-gray text); these are true grays instead, which reads cleaner and lets the accent color do the only color work on the page.
 
 `--line-alpha` is a translucent version of `--line`, used only for the ambient dot grid (§4) — `--line` itself stays a solid 1px border color and is never watered down for that purpose. `--surface-strong` exists for elevated/floating surfaces that sit above other content; in practice it's currently identical to `--surface` in both themes, kept as its own variable so it can diverge later without a find-and-replace. `--surface-hover` is for finer-grained hover effects (skeleton loaders, scrollbar thumbs) — shared interactive components (ghost buttons, nav items) hover to `--surface-2` directly instead, see §11.
 
@@ -101,11 +103,14 @@ Applies to every component on every page — this is what makes different apps f
 
 ## 4. Background / ambient layer
 
-**Default for any page that is primarily navigational, informational, or dashboard-like** (i.e. has surrounding chrome, cards, empty page space around content): apply an ambient background —
-- A faint dot grid: `radial-gradient(var(--line-alpha) 1px, transparent 1px)`, 24px pitch, ~35% opacity. Use `--line-alpha` (a translucent version of `--line`), not `--line` itself — the grid needs a softer dot than a solid border color gives.
-- Exactly one soft-focus circular glow, tinted from `--accent` (e.g. `radial-gradient(circle at 30% 30%, var(--accent), transparent 70%)`), ~520px, opacity ~10%, positioned off to one side (e.g. top-right), optionally slow-drifting (15–25s ease-in-out loop). One glow element only — don't add a second static blob for extra depth, it reads as clutter and isn't in the reference look. It must sit behind all content, fixed, and never visually compete with foreground elements.
+**Default for any page that is primarily navigational, informational, or dashboard-like** (i.e. has surrounding chrome, cards, empty page space around content): apply an ambient background, built from two layers stacked behind all content:
 
-**Exception — skip the ambient background entirely when the page's content is the visual field itself**, i.e. any full-bleed, content-fills-the-viewport tool where the work surface *is* the background (e.g. a canvas, board, or edge-to-edge layout with no visible page margins). In that case use a flat `var(--bg)` with no dot grid and no glow — the ambient layer only makes sense where there's empty space around content for it to live in.
+- **Dot grid**: `radial-gradient(var(--line-alpha) 1px, transparent 1px)`, 24px pitch, ~35% opacity. Use `--line-alpha` (a translucent version of `--line`), not `--line` itself — the grid needs a softer dot than a solid border color gives. This is applied globally via `body::before` — pages don't add markup for it, it's on by default and opts out per-page with a `no-ambient` body class.
+- **Background image**: a very low-opacity full-bleed image sitting behind content, same as the dot grid — `background-size: cover`, anchored to the bottom-left, ~6% opacity, referenced through a `--bg-image` variable set per page (e.g. via `url_for('static', filename='img/background_image.png')`). Include it with the `background.html` partial (see that file). Unlike the dot grid this one is opt-in per page, not automatic — include the partial where the ambient look calls for it, and skip it where it doesn't fit.
+
+Both layers are `position: fixed`, `inset: 0`, `z-index: 0`, and `pointer-events: none`, so they never intercept clicks or compete with foreground content, which stays on `.surface-layer` at `z-index: 1`.
+
+**Exception — skip the ambient background entirely when the page's content is the visual field itself**, i.e. any full-bleed, content-fills-the-viewport tool where the work surface *is* the background (e.g. a canvas, board, or edge-to-edge layout with no visible page margins). In that case use a flat `var(--bg)` with no dot grid and no background image — the ambient layer only makes sense where there's empty space around content for it to live in.
 
 When in doubt: if the page has visible background around its content, use the ambient layer; if the content fills the screen, don't.
 
@@ -183,14 +188,13 @@ These appear across apps whenever something needs confirming or explaining, so t
 - System colors (success/warning/danger/info) always mean the same thing and are never swapped for the theme accent.
 - If a page's nature genuinely requires deviating from a rule here (as with the background exception in §4), state the exception and why, rather than silently ignoring the system.
 
+---
 
-
-
-## 12. Use of provided ressources
+## 12. Use of provided resources
 
 - in flask_app/static/css/global there is a colors.css and a ui-elements.css file
-- if these files were not included in the commit, make a reamark about it
+- if these files were not included in the commit, make a remark about it
 - only using them can you make the same look as the other pages
 - in templates/ there is a base.html which serves as the ground base for all sites
-- base.html allows for blocking and the background and side nav, only the "big apps" have side nav's, if you're unsure wheter the site is a "big" one ask
-- the background can generally stay enabled except when you think it doesnt make sense
+- base.html allows for blocking and the background and side nav, only the "big apps" have side navs, if you're unsure whether the site is a "big" one ask
+- the background (dot grid + background image, §4) can generally stay enabled except when you think it doesn't make sense

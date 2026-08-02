@@ -22,16 +22,16 @@
   }
 
   html[data-theme="dark"]{
-    --bg:#0A0C14; --surface:#12141F; --surface-2:#1A1D2B; --line:#262A3B;
-    --text:#ECEEF5; --text-muted:#8A8FA6;
+    --bg:#0B0B0D; --surface:#16161A; --surface-2:#1E1E24; --line:#2A2A32;
+    --text:#EDEDF0; --text-muted:#8B8B96;
     --shadow:none;
-    --line-alpha: rgba(38,42,59,.55);
+    --line-alpha: rgba(42,42,50,.55);
   }
   html[data-theme="light"]{
-    --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#F0F1F7; --line:#E3E5EE;
-    --text:#14161F; --text-muted:#6B7086;
-    --shadow:0 1px 2px rgba(20,22,31,.04), 0 8px 24px rgba(20,22,31,.06);
-    --line-alpha: rgba(227,229,238,.9);
+    --bg:#F7F7F8; --surface:#FFFFFF; --surface-2:#F0F0F2; --line:#E4E4E8;
+    --text:#16161A; --text-muted:#6E6E78;
+    --shadow:0 1px 2px rgba(20,20,24,.04), 0 8px 24px rgba(20,20,24,.06);
+    --line-alpha: rgba(228,228,232,.9);
   }
 
   html[data-accent="violet"]{ --accent:#6C5CE7; --accent-soft:rgba(108,92,231,.14); --accent-ink:#FFFFFF; }
@@ -47,6 +47,18 @@
   }
 
   a{ color:inherit; }
+
+  /* ===== Ambient background: dot grid + background image ===== */
+  body::before{
+    content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:radial-gradient(var(--line-alpha) 1px, transparent 1px);
+    background-size:24px 24px; opacity:.35;
+  }
+  .bg-image{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-repeat:no-repeat; background-size:cover; background-position:left bottom;
+    opacity:.06; background-image:var(--bg-image);
+  }
 
   /* ===== Shell ===== */
   .shell{ position:relative; z-index:1; display:flex; min-height:100vh; }
@@ -291,7 +303,7 @@
 </head>
 <body>
 
-<div class="ambient"><div class="orb"></div></div>
+<div class="bg-image" style="--bg-image:url('img/background_image.png');"></div>
 
 <div class="shell">
   <aside class="sidebar">
@@ -422,7 +434,7 @@
             <div class="radio-row"><input type="radio" name="bg" id="r2"><label for="r2">No background</label></div>
             <div style="margin-top:var(--sp-4); display:flex; align-items:center; gap:12px;">
               <label class="switch"><input type="checkbox" checked><span class="switch-track"></span></label>
-              <span style="font-size:14px;">Show ambient glow</span>
+              <span style="font-size:14px;">Show background image</span>
             </div>
           </div>
         </div>

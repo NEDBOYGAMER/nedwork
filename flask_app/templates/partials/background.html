@@ -1,9 +1,13 @@
 {#
   partials/background.html
 
-  Ambient background layer: dot grid (from ui-elements.css body::before,
-  no markup needed) + one drifting glow blob (markup below). Matches the
-  style guide's single .orb - one glow only, not several.
+  Ambient background layer, two pieces stacked behind all content:
+    1. Dot grid - handled entirely by ui-elements.css (body::before),
+       no markup needed here.
+    2. Background image - the markup below. A very low-opacity
+       (6%), full-bleed image anchored bottom-left, set via the
+       --bg-image variable. This is the current ambient-image
+       implementation - not a glow/orb effect.
 
   Usage in a Flask/Jinja template:
 

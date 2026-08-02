@@ -9,28 +9,12 @@
   --tier-img-size: 120px;
 }
 
-/* ── Ambient glow orb ──
-   ui-elements.css already provides the dot-grid layer (body::before); the
-   single soft accent glow (§4) isn't part of the shared file, so it's added
-   here as a page-level element. */
-.glow-orb {
-  position: fixed;
-  top: -120px;
-  right: -80px;
-  width: 520px;
-  height: 520px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, var(--accent), transparent 70%);
-  opacity: 0.10;
-  filter: blur(10px);
-  z-index: 0;
-  pointer-events: none;
-  animation: glow-drift 22s ease-in-out infinite alternate;
-}
-@keyframes glow-drift {
-  from { transform: translate(0,0) scale(1); }
-  to   { transform: translate(-60px, 90px) scale(1.15); }
-}
+/* Ambient background: dot grid comes from ui-elements.css (body::before),
+   already loaded via the shared stylesheets. The background-image layer
+   (.bg-image) is also defined there, driven by the --bg-image variable —
+   it's set inline on the markup in tierforge.html since this app's
+   templates can't include the shared partials/background.html file.
+   No glow/orb here — this app intentionally skips that layer. */
 
 /* ── Header ── */
 header {
@@ -130,7 +114,7 @@ body {
   display: flex;
   align-items: stretch;
   border-radius: var(--radius-md);
-  overflow: visible;
+  overflow: hidden;
   min-height: 100px;
   background: var(--surface);
   border: 1px solid var(--line);

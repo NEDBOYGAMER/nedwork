@@ -9,15 +9,15 @@
 /* ===== Theme: dark (default) ===== */
 :root,
 [data-theme="dark"] {
-    --bg: #0A0C14;
-    --surface: #12141F;
-    --surface-2: #1A1D2B;
-    --surface-strong: #12141F;
+    --bg: #0B0B0D;
+    --surface: #16161A;
+    --surface-2: #1E1E24;
+    --surface-strong: #16161A;
     --surface-hover: rgba(255, 255, 255, 0.06);
-    --line: #262A3B;
-    --line-alpha: rgba(38, 42, 59, 0.55);
-    --text: #ECEEF5;
-    --text-muted: #8A8FA6;
+    --line: #2A2A32;
+    --line-alpha: rgba(42, 42, 50, 0.55);
+    --text: #EDEDF0;
+    --text-muted: #8B8B96;
 
     /* Dark theme is border-only elevation - no shadows read on dark surfaces */
     --shadow: none;
@@ -25,17 +25,17 @@
 
 /* ===== Theme: light ===== */
 [data-theme="light"] {
-    --bg: #F6F7FB;
+    --bg: #F7F7F8;
     --surface: #FFFFFF;
-    --surface-2: #F0F1F7;
+    --surface-2: #F0F0F2;
     --surface-strong: #FFFFFF;
     --surface-hover: rgba(0, 0, 0, 0.05);
-    --line: #E3E5EE;
-    --line-alpha: rgba(227, 229, 238, 0.9);
-    --text: #14161F;
-    --text-muted: #6B7086;
+    --line: #E4E4E8;
+    --line-alpha: rgba(228, 228, 232, 0.9);
+    --text: #16161A;
+    --text-muted: #6E6E78;
 
-    --shadow: 0 1px 2px rgba(20, 22, 31, 0.04), 0 8px 24px rgba(20, 22, 31, 0.06);
+    --shadow: 0 1px 2px rgba(20, 20, 24, 0.04), 0 8px 24px rgba(20, 20, 24, 0.06);
 }
 
 /* ===== Accent — identical hex in both themes, switched via data-accent ===== */
