@@ -1,7 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, abort, send_from_directory
 import os
-from ..models import *
-
 
 apps_bp = Blueprint(
     'apps', 
@@ -30,6 +28,7 @@ def dynamic_app(app_name):
 def app_static(app_name, filename):
     app_folder = os.path.join(apps_bp.root_path, app_name)
     file_path = os.path.join(app_folder, filename)
+    
     
     if not os.path.exists(file_path):
         abort(404)

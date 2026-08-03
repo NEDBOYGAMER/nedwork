@@ -7,6 +7,7 @@ import random
 import string
 import secrets
 
+
 class UserGroup(db.Model):
     __tablename__ = "user_groups"
 
@@ -89,12 +90,14 @@ class User(db.Model):
     app_corner_configs = db.relationship(
         "AppCornerConfig",
         back_populates="user",
+        uselist=False,
         cascade="all, delete-orphan"
     )
 
     settings_configs = db.relationship(
-        "settings_config",
+        "SettingsConfig",
         back_populates="user",
+        uselist=False,
         cascade="all, delete-orphan"
     )
 
@@ -234,15 +237,14 @@ class SettingsConfig(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    dark_mode = db.Column(db.Boolean, default="true")
+    dark_mode = db.Column(db.Boolean, default=True)
+    grid = db.Column(db.Boolean, default=True)
 
     accent_color = db.Column(db.String, default="#55778e")
     accent_color_soft = db.Column(db.String, default="rgba(52, 49, 73, 0.14)")
     accent_color_ink = db.Column(db.String, default="#FFFFFF")
 
     language = db.Column(db.String, default="English")
-
-    grid = db.Column(db.Boolean, default="true")
 
     user_id = db.Column(
         db.Integer,
@@ -251,6 +253,12 @@ class SettingsConfig(db.Model):
 
     user = db.relationship("User", back_populates="settings_configs")
 
+    def to_dict(self):
+        return {
+            c.name: getattr(self, c.name)
+            for c in self.__table__.columns
+            if c.name not in ("id", "user_id")
+        }
 
 class AppCornerConfig(db.Model):
     __tablename__ = "app_corner_configs"

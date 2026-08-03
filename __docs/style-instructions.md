@@ -207,3 +207,7 @@ the names of the available icons are:
   tabler-alert-circle, tabler-arrow-down, tabler-arrow-left, tabler-arrow-right, tabler-arrow-up, tabler-bell, tabler-calendar, tabler-chart-bar, tabler-check, tabler-cloud, tabler-code, tabler-color-picker, tabler-copy, tabler-database, tabler-device-desktop, tabler-download, tabler-edit, tabler-external-link, tabler-file, tabler-filter, tabler-folder, tabler-globe, tabler-grid-dots, tabler-heart-filled, tabler-heart, tabler-home, tabler-info-circle, tabler-layout-dashboard, tabler-link, tabler-lock, tabler-mail, tabler-map-pin, tabler-menu, tabler-message, tabler-minus, tabler-moon, tabler-package, tabler-palette, tabler-plus, tabler-search, tabler-server, tabler-settings, tabler-shield, tabler-star-filled, tabler-star, tabler-sun, tabler-trash, tabler-upload, tabler-user, tabler-x
 - all of course with the .svg ending
 - if you created any other icons or use emojis explicitely state so, as it is not intended but, if there truly arent any icons for the purpose its permitted
+
+
+## 14. Settings
+- if youre instructed to 
