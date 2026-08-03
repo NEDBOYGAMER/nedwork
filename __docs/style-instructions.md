@@ -210,4 +210,14 @@ the names of the available icons are:
 
 
 ## 14. Settings
-- if youre instructed to 
+
+Every page reflects the user's stored settings instead of hardcoding theme/accent/grid — `SettingsConfig` (dark_mode, grid, accent_color, accent_color_soft, accent_color_ink, language) is the source of truth, not the defaults in §1/§4.
+
+- **Fetch**: `fetch('/settings/get_config')`. Works for both logged-in and anonymous users — anonymous requests get the model defaults back (no separate code path needed on the page).
+- **Response shape**: `{ dark_mode, grid, accent_color, accent_color_soft, accent_color_ink, language }`.
+- **Apply theme**: `dark_mode` selects dark vs light from §1 (however the page switches themes, e.g. a `data-theme` attribute on `<html>`).
+- **Apply grid**: `grid` toggles the ambient dot grid from §4 (`false` → add the `no-ambient` body class). It does not affect the background image layer — that stays a per-page opt-in as described in §4.
+- **Apply accent**: overwrite `--accent`, `--accent-soft`, `--accent-ink` on `:root` with `accent_color`, `accent_color_soft`, `accent_color_ink` from the response. The three presets in §1 are just the values these fields default to — once config is fetched, the fetched hex values win, not the presets.
+- **Language**: the field exists on the model but there's no frontend i18n wired up yet — don't build per-page language switching against it; flag it and ask first if a task seems to need that.
+- **Timing**: apply this as early as possible (before/with first paint) to avoid a flash of the wrong theme/accent.
+- **Where it lives**: this fetch-and-apply logic is identical on every page, so it belongs once in `base.html` (or a shared script it includes), not re-implemented per template. If a page needs to duplicate it (e.g. it doesn't extend `base.html`), say so explicitly.
