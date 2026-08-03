@@ -1,23 +1,12 @@
-import { createBackground, colorMap, applyColor } from '../components/background.js';
+// ==========================================================================
+// settings.js
+// Wires up the settings sidebar (category switching, no scroll-jumping)
+// plus every control on the page. The reusable pieces (segmented control,
+// dropdown, range fill) are small helpers so new settings panels can reuse
+// them without copy-pasting wiring code.
+// ==========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    const cursor = document.getElementById('cursor');
-    const ring = document.getElementById('cursor-ring');
-    const canvas = document.getElementById('bg-canvas');
-
-    if (!cursor || !ring || !canvas) {
-        console.warn('Missing background elements');
-        return;
-    }
-
-    const background = createBackground({
-        cursor,
-        ring,
-        canvas
-    });
-
-    background.start();
-
     const root = document.documentElement;
 
     // =========================
@@ -27,117 +16,192 @@ document.addEventListener('DOMContentLoaded', () => {
     const load = (key, fallback) => localStorage.getItem(key) ?? fallback;
 
     // =========================
-    // THEME TOGGLE
+    // SIDEBAR NAVIGATION
+    // Shows/hides panels in place - no scrolling or anchor jumping.
     // =========================
-    const themeSwitch = document.getElementById('switch');
+    function initSettingsNav() {
+        const navItems = document.querySelectorAll('.settings-nav-item');
+        const panels = document.querySelectorAll('.settings-panel');
 
-    const applyTheme = (theme) => {
-        if (theme === 'light') {
-            document.body.setAttribute('data-theme', 'light');
-        } else {
-            document.body.removeAttribute('data-theme');
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const target = item.dataset.panel;
+                navItems.forEach(n => n.classList.toggle('active', n === item));
+                panels.forEach(p => p.classList.toggle('active', p.dataset.panel === target));
+            });
+        });
+    }
+
+    // =========================
+    // SEGMENTED CONTROL
+    // Positions the sliding thumb behind the active option. Re-run on
+    // resize since option widths can change with the viewport.
+    // =========================
+    function initSegmented(container, { onChange, initial } = {}) {
+        const options = [...container.querySelectorAll('.segmented-option')];
+        const thumb = container.querySelector('.segmented-thumb');
+
+        function setActive(value, animate = true) {
+            const active = options.find(o => o.dataset.value === value) || options[0];
+            if (!active) return;
+
+            options.forEach(o => o.classList.toggle('active', o === active));
+
+            if (thumb) {
+                thumb.style.transition = animate ? '' : 'none';
+                thumb.style.left = active.offsetLeft + 'px';
+                thumb.style.width = active.offsetWidth + 'px';
+                if (!animate) thumb.offsetHeight; // force reflow before re-enabling transition
+                thumb.style.transition = '';
+            }
         }
+
+        options.forEach(o => {
+            o.addEventListener('click', () => {
+                setActive(o.dataset.value);
+                if (onChange) onChange(o.dataset.value);
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            const current = options.find(o => o.classList.contains('active'));
+            if (current) setActive(current.dataset.value, false);
+        });
+
+        if (initial) setActive(initial, false);
+        return setActive;
+    }
+
+    // =========================
+    // DROPDOWN (custom select)
+    // =========================
+    function initDropdown(el, { onSelect } = {}) {
+        if (el.getAttribute('aria-disabled') === 'true') return;
+
+        const trigger = el.querySelector('.select-dropdown-trigger');
+        const valueEl = el.querySelector('.select-dropdown-value');
+        const options = [...el.querySelectorAll('.select-dropdown-option')];
+
+        trigger.addEventListener('click', () => {
+            el.classList.toggle('open');
+            trigger.setAttribute('aria-expanded', el.classList.contains('open'));
+        });
+
+        options.forEach(opt => {
+            opt.addEventListener('click', () => {
+                options.forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                if (valueEl) valueEl.textContent = opt.textContent.trim();
+                el.classList.remove('open');
+                trigger.setAttribute('aria-expanded', 'false');
+                if (onSelect) onSelect(opt.dataset.value || opt.textContent.trim());
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!el.contains(e.target)) {
+                el.classList.remove('open');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+
+    // =========================
+    // RANGE SLIDER FILL
+    // =========================
+    function initRangeFill(input) {
+        const update = () => {
+            const min = Number(input.min) || 0;
+            const max = Number(input.max) || 100;
+            const val = Number(input.value);
+            const pct = ((val - min) / (max - min)) * 100;
+            input.style.background = `linear-gradient(to right, var(--accent) ${pct}%, var(--surface-2) ${pct}%)`;
+            const valueEl = input.parentElement.querySelector('.range-value');
+            if (valueEl) valueEl.textContent = `${val}%`;
+        };
+        input.addEventListener('input', update);
+        update();
+    }
+
+    initSettingsNav();
+    document.querySelectorAll('input[type="range"]').forEach(initRangeFill);
+
+    // =========================
+    // THEME
+    // =========================
+    const applyTheme = (theme) => {
+        root.setAttribute('data-theme', theme);
         save('theme', theme);
     };
 
-    const savedTheme = load('theme', 'dark');
-    themeSwitch.checked = savedTheme === 'light';
-    applyTheme(savedTheme);
-
-    themeSwitch.addEventListener('change', () => {
-        applyTheme(themeSwitch.checked ? 'light' : 'dark');
-    });
+    const themeSegmented = document.getElementById('theme-segmented');
+    if (themeSegmented) {
+        const savedTheme = load('theme', 'dark');
+        initSegmented(themeSegmented, { onChange: applyTheme, initial: savedTheme });
+        applyTheme(savedTheme);
+    }
 
     // =========================
     // ACCENT COLOR
     // =========================
-    const colorInputs = document.querySelectorAll('input[name="color"]');
+    const applyAccent = (accent) => {
+        root.setAttribute('data-accent', accent);
+        save('accent', accent);
+    };
 
-    const savedColor = load('accent', 'optviolet');
-    const savedColorInput = document.getElementById(savedColor);
-    if (savedColorInput) savedColorInput.checked = true;
-    applyColor(savedColor);
-
-    colorInputs.forEach(input => {
-        input.addEventListener('change', () => {
-            if (input.checked) applyColor(input.id);
-        });
-    });
+    const accentSegmented = document.getElementById('accent-segmented');
+    if (accentSegmented) {
+        const savedAccent = load('accent', 'violet');
+        initSegmented(accentSegmented, { onChange: applyAccent, initial: savedAccent });
+        applyAccent(savedAccent);
+    }
 
     // =========================
-    // BACKGROUND MODE
+    // BACKGROUND
     // =========================
-    const bgInputs = document.querySelectorAll('input[name="background"]');
-
     const applyBackground = (mode) => {
+        document.body.classList.toggle('no-ambient', mode === 'none');
         save('background', mode);
-
-        if (!background || !background.setMode) return;
-
-        background.setMode(mode);
     };
 
-    const savedBg = load('background', 'optgrid');
-    const savedBgInput = document.getElementById(savedBg);
-    if (savedBgInput) savedBgInput.checked = true;
-    applyBackground(savedBg);
+    const backgroundSegmented = document.getElementById('background-segmented');
+    if (backgroundSegmented) {
+        const savedBackground = load('background', 'grid');
+        initSegmented(backgroundSegmented, { onChange: applyBackground, initial: savedBackground });
+        applyBackground(savedBackground);
+    }
 
-    bgInputs.forEach(input => {
-        input.addEventListener('change', () => {
-            if (input.checked) applyBackground(input.id);
+    // =========================
+    // LANGUAGE
+    // =========================
+    const languageDropdown = document.getElementById('language-dropdown');
+    if (languageDropdown) {
+        const savedLang = load('language', 'English');
+        const valueEl = languageDropdown.querySelector('.select-dropdown-value');
+        const options = languageDropdown.querySelectorAll('.select-dropdown-option');
+        if (valueEl) valueEl.textContent = savedLang;
+        options.forEach(o => o.classList.toggle('selected', o.dataset.value === savedLang));
+
+        initDropdown(languageDropdown, {
+            onSelect: (lang) => save('language', lang)
         });
-    });
+    }
 
     // =========================
-    // LANGUAGE DROPDOWN
+    // NOTIFICATION EMAIL
     // =========================
-    const dropdown = document.querySelector(".dropdown");
-    const selected = dropdown.querySelector(".dropdown-selected");
-    const options = dropdown.querySelectorAll(".dropdown-option");
-    const checkbox = dropdown.querySelector("#drop");
-
-    const applyLanguage = (lang) => {
-        selected.textContent = lang;
-        save('language', lang);
-    };
-
-    const savedLang = load('language', 'English');
-    applyLanguage(savedLang);
-
-    options.forEach(opt => {
-        opt.addEventListener("click", () => {
-            applyLanguage(opt.textContent);
-            checkbox.checked = false;
-        });
-    });
-
-    // =========================
-    // EMAIL INPUT
-    // =========================
-    const emailInput = document.querySelector('.ui-input[type="email"]');
-
+    const emailInput = document.querySelector('.notif-email');
     if (emailInput) {
         emailInput.value = load('email', '');
-
-        emailInput.addEventListener('input', () => {
-            save('email', emailInput.value);
-        });
+        emailInput.addEventListener('input', () => save('email', emailInput.value));
     }
 
     // =========================
     // NOTIFICATION SWITCHES
     // =========================
-    const switches = document.querySelectorAll('.switch input');
-
-    switches.forEach((sw, i) => {
-        const key = `notif_${i}`;
-
+    document.querySelectorAll('.switch input[data-key]').forEach(sw => {
+        const key = sw.dataset.key;
         sw.checked = load(key, 'false') === 'true';
-
-        sw.addEventListener('change', () => {
-            save(key, sw.checked);
-        });
+        sw.addEventListener('change', () => save(key, sw.checked));
     });
-
-    console.log('Settings loaded');
 });

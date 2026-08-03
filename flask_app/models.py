@@ -92,6 +92,12 @@ class User(db.Model):
         cascade="all, delete-orphan"
     )
 
+    settings_configs = db.relationship(
+        "settings_config",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
     sessions = db.relationship(
         "Session",
         back_populates="user",
@@ -223,7 +229,27 @@ class Session(db.Model):
         else:
             return True, session.user
 
+class SettingsConfig(db.Model):
+    __tablename__ = "settings_configs"
 
+    id = db.Column(db.Integer, primary_key=True)
+
+    dark_mode = db.Column(db.Boolean, default="true")
+
+    accent_color = db.Column(db.String, default="#55778e")
+    accent_color_soft = db.Column(db.String, default="rgba(52, 49, 73, 0.14)")
+    accent_color_ink = db.Column(db.String, default="#FFFFFF")
+
+    language = db.Column(db.String, default="English")
+
+    grid = db.Column(db.Boolean, default="true")
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+    )
+
+    user = db.relationship("User", back_populates="settings_configs")
 
 
 class AppCornerConfig(db.Model):

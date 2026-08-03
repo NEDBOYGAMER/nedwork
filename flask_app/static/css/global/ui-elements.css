@@ -731,3 +731,441 @@ tr:last-child td {
     color: var(--text);
     margin-bottom: var(--space-2);
 }
+
+
+/* ==========================================================================
+   Icon
+   Recolorable icon from the shared SVG set (flask_app/static/img/icons).
+   SVGs are single-color line icons, so instead of <img> (which can't be
+   restyled) apply the file as a mask and fill it with currentColor - the
+   icon then inherits whatever color its container/text has, incl. on
+   hover/active states.
+
+   Usage:
+     <span class="icon" style="--icon: url('.../tabler-settings.svg');"></span>
+   ========================================================================== */
+
+.icon {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    background-color: currentColor;
+    -webkit-mask-image: var(--icon);
+    mask-image: var(--icon);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+}
+
+.icon-sm { width: 14px; height: 14px; }
+.icon-lg { width: 20px; height: 20px; }
+
+
+/* ==========================================================================
+   Setting row
+   Reusable labeled control row - title/description on the left, the
+   control on the right. Works for a switch, dropdown, input, segmented
+   control, whatever. Stack rows inside a .card or a plain container.
+
+   Add `.is-placeholder` for settings that exist in the UI but aren't wired
+   up yet: dims the row and blocks interaction with its control. Pair it
+   with a `.badge-neutral` reading "Coming soon" in the title so it's
+   distinguishable from a shipped setting at a glance, not just dimmer.
+   ========================================================================== */
+
+.setting-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-5);
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
+.setting-item-info h3 {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.setting-item-info p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+    max-width: 440px;
+    line-height: 1.5;
+}
+
+.setting-item-control {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.setting-item.is-placeholder {
+    opacity: 0.45;
+}
+
+.setting-item.is-placeholder .setting-item-control {
+    pointer-events: none;
+}
+
+@media (max-width: 560px) {
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-3);
+    }
+}
+
+
+/* ==========================================================================
+   Dropdown (custom select)
+   Usage:
+     <div class="select-dropdown">
+       <button type="button" class="select-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">
+         <span class="select-dropdown-value">English</span>
+         <span class="icon select-dropdown-caret" style="--icon:url(...tabler-arrow-down.svg)"></span>
+       </button>
+       <ul class="select-dropdown-menu" role="listbox">
+         <li class="select-dropdown-option selected" role="option" data-value="en">English</li>
+       </ul>
+     </div>
+   Disabled/placeholder state: add aria-disabled="true" to .select-dropdown
+   and disabled to the trigger button.
+   ========================================================================== */
+
+.select-dropdown {
+    position: relative;
+    min-width: 180px;
+}
+
+.select-dropdown-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.select-dropdown-trigger:hover {
+    border-color: var(--accent);
+}
+
+.select-dropdown.open .select-dropdown-trigger {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.select-dropdown-trigger:disabled {
+    cursor: not-allowed;
+}
+
+.select-dropdown-caret {
+    color: var(--text-muted);
+    transition: transform .15s ease;
+}
+
+.select-dropdown.open .select-dropdown-caret {
+    transform: rotate(180deg);
+}
+
+.select-dropdown-menu {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: var(--surface-strong);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    z-index: 20;
+    display: none;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.select-dropdown.open .select-dropdown-menu {
+    display: block;
+}
+
+.select-dropdown-option {
+    font-size: 14px;
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.select-dropdown-option:hover {
+    background: var(--surface-2);
+}
+
+.select-dropdown-option.selected {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+
+/* ==========================================================================
+   Segmented control
+   Exclusive choice between short options - a 2-way toggle (theme) or a
+   3+-way picker (accent color). A sliding thumb (positioned by JS, since
+   option widths vary with their label) sits behind the active option.
+
+   Usage:
+     <div class="segmented">
+       <button type="button" class="segmented-option active" data-value="dark">Dark</button>
+       <button type="button" class="segmented-option" data-value="light">Light</button>
+       <div class="segmented-thumb"></div>
+     </div>
+   ========================================================================== */
+
+.segmented {
+    position: relative;
+    display: inline-flex;
+    padding: 3px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.segmented-option {
+    position: relative;
+    z-index: 1;
+    border: none;
+    background: transparent;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    padding: 7px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: color .15s ease;
+    white-space: nowrap;
+}
+
+.segmented-option.active {
+    color: var(--accent-ink);
+}
+
+.segmented-thumb {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: 0;
+    background: var(--accent);
+    border-radius: 7px;
+    transition: left .2s ease, width .2s ease;
+    z-index: 0;
+}
+
+
+/* ==========================================================================
+   Radio group
+   A vertical list of exclusive options with visible descriptions - use
+   instead of a segmented control when options need more than a short label.
+   Native radios keep it accessible and cheap to theme (accent-color).
+
+   Usage:
+     <div class="radio-group">
+       <label class="radio-group-option">
+         <input type="radio" name="visibility" checked>
+         <span class="radio-group-text">
+           <strong>Public</strong>
+           <small>Anyone can see your profile</small>
+         </span>
+       </label>
+     </div>
+   ========================================================================== */
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.radio-group-option {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+}
+
+.radio-group-option:hover {
+    background: var(--surface-2);
+}
+
+.radio-group-option:has(input:checked) {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.radio-group-option input {
+    margin-top: 2px;
+}
+
+.radio-group-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13px;
+}
+
+.radio-group-text strong {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.radio-group-text small {
+    color: var(--text-muted);
+}
+
+
+/* ==========================================================================
+   Range slider
+   ========================================================================== */
+
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    outline: none;
+    cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--line);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--line);
+}
+
+input[type="range"]:disabled {
+    cursor: not-allowed;
+}
+
+.range-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    max-width: 220px;
+}
+
+.range-value {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    min-width: 34px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+
+/* ==========================================================================
+   Input group
+   An input with an inline icon and/or a trailing action - password fields,
+   search boxes, copyable keys, anything that pairs a text field with a
+   button. `.has-icon` pads the input to make room for a leading .icon;
+   `.has-action` lays the input and a trailing button out side by side.
+
+   Usage:
+     <div class="input-group has-icon">
+       <span class="icon input-group-icon" style="--icon:url(...tabler-mail.svg)"></span>
+       <input type="email" placeholder="name@example.com">
+     </div>
+
+     <div class="input-group has-action">
+       <input type="text" readonly value="sk_live_••••••••">
+       <button class="btn btn-secondary btn-icon" type="button">
+         <span class="icon" style="--icon:url(...tabler-copy.svg)"></span>
+       </button>
+     </div>
+   ========================================================================== */
+
+.input-group {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+}
+
+.input-group.has-icon {
+    position: relative;
+}
+
+.input-group.has-icon input {
+    padding-left: 38px;
+}
+
+.input-group-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.input-group.has-action {
+    gap: var(--space-2);
+}
+
+.input-group.has-action input {
+    flex: 1;
+    min-width: 0;
+}
+
+.btn-icon {
+    padding: 10px;
+}

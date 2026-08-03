@@ -1,124 +1,190 @@
-#vp {
-    width: 100%;
-    height: 100%;
-    padding: 40px;
+/* ==========================================================================
+   settings.css
+   Layout for the Settings page: a dedicated settings sidebar (categories)
+   next to a content pane, divided by a thin vertical line. Category panels
+   are shown/hidden in place by settings.js - there's no scrolling between
+   sections. Shared controls (dropdown, segmented, switch, etc.) live in
+   the global ui-elements.css; everything here is page-structure only.
+   ========================================================================== */
+
+.settings-shell {
+    display: flex;
+    align-items: flex-start;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-5);
     box-sizing: border-box;
-    overflow-y: auto;
 }
 
-html::-webkit-scrollbar {
+/* ===== Sidebar ===== */
+
+.settings-sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    position: sticky;
+    top: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.settings-sidebar-header h1 {
+    font-size: 24px;
+    margin: 0;
+}
+
+.settings-nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.settings-nav-group-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    opacity: 0.7;
+    padding: 0 10px;
+    margin: 0 0 4px;
+}
+
+.settings-nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: left;
+    transition: background .15s ease, color .15s ease;
+}
+
+.settings-nav-item:hover {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.settings-nav-item.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+/* ===== Divider ===== */
+
+.settings-divider {
+    width: 1px;
+    align-self: stretch;
+    background: var(--line);
+    margin: 0 var(--space-6);
+    flex-shrink: 0;
+}
+
+/* ===== Content / panels ===== */
+
+.settings-content {
+    flex: 1;
+    min-width: 0;
+    max-width: 640px;
+}
+
+.settings-panel {
     display: none;
 }
 
-/* Hide scrollbar for IE, Edge and Firefox */
-html {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+.settings-panel.active {
+    display: block;
+    animation: settings-panel-in .15s ease;
 }
 
-#back-panel {
-    width: 100%;
-    min-height: 100%;
-
-    padding: 40px 50px;
-
-    background: var(--surface-dark);
-
-    border-radius: 40px;
-
-    backdrop-filter: blur(24px);
-
-    border: 1px solid var(--border-soft);
-
-    box-shadow:
-        0 20px 60px rgba(0, 0, 0, 0.4),
-        inset 0 1px rgba(255, 255, 255, 0.04);
-
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+@keyframes settings-panel-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
-#back-panel h1 {
-    margin: 20px 0 10px;
-
-    font-family: Orbitron, sans-serif;
-    font-size: 1.3rem;
-    font-weight: 700;
-
-    letter-spacing: 2px;
-    text-transform: uppercase;
-
-    color: var(--text-color);
+.settings-panel-head {
+    margin-bottom: var(--space-5);
 }
 
-.setting-row {
-    min-height: 90px;
-
-    padding: 0 25px;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    border-radius: 24px;
-
-    background: rgba(255, 255, 255, 0.02);
-
-    border: 1px solid transparent;
-
-    transition:
-        background 0.25s ease,
-        border-color 0.25s ease,
-        transform 0.25s ease;
+.settings-panel-head h2 {
+    font-size: 20px;
+    margin: 0 0 4px;
 }
 
-.setting-row:hover {
-    background: var(--surface-hover);
-    border-color: var(--border-soft);
-    transform: translateY(-2px);
-}
-
-.setting-row h2 {
+.settings-panel-head p {
+    font-size: 13px;
+    color: var(--text-muted);
     margin: 0;
-
-    color: var(--text-color);
-
-    font-size: 1rem;
-    font-weight: 600;
-
-    letter-spacing: 0.5px;
 }
 
-.divider {
-    border: none;
-    height: 1px;
-
-    margin: 0 0 10px;
-
-    background:
-    linear-gradient(
-        90deg,
-        transparent,
-        var(--border-soft),
-        transparent
-    );
+.settings-group {
+    margin-bottom: var(--space-7);
 }
 
-@media (max-width: 900px) {
-    .setting-row {
+.settings-group:last-child {
+    margin-bottom: 0;
+}
+
+.settings-group-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 0 0 var(--space-2);
+}
+
+/* ===== Danger zone ===== */
+
+.settings-danger-zone {
+    border: 1px solid rgba(229, 72, 77, .3);
+    border-radius: var(--radius-md);
+    padding: var(--space-5);
+}
+
+.settings-danger-zone .setting-item {
+    border-bottom: none;
+    padding: 0;
+}
+
+/* ===== Responsive ===== */
+
+@media (max-width: 860px) {
+    .settings-shell {
         flex-direction: column;
-        align-items: flex-start;
-
-        gap: 15px;
-
-        padding: 20px;
+        padding: var(--space-5);
     }
 
-    .ui-input,
-    .dropdown,
-    .nselect,
-    .toggle-box {
+    .settings-sidebar {
         width: 100%;
+        position: static;
+    }
+
+    .settings-nav-group {
+        flex-direction: row;
+        overflow-x: auto;
+        gap: 6px;
+        padding-bottom: 4px;
+    }
+
+    .settings-nav-group-label {
+        display: none;
+    }
+
+    .settings-nav-item {
+        flex-shrink: 0;
+    }
+
+    .settings-divider {
+        display: none;
+        margin: var(--space-5) 0;
+    }
+
+    .settings-content {
+        max-width: 100%;
     }
 }

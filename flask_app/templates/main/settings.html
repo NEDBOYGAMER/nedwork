@@ -1,124 +1,424 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}Settings{% endblock %}
 
-{% block head %}
+{% block body_class %}no-sidenav{% endblock %}
+
+{# The main site nav is replaced by the settings-specific sidebar below,
+   so we opt out of it here rather than showing both. #}
+{% block sidenav %}{% endblock %}
+
+{% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/settings.css') }}">
-<script type="module" src="{{ url_for('static', filename='js/pages/settings.js') }}"></script>
 {% endblock %}
 
 {% block content %}
-    <div id="vp">
-        <div id="back-panel">
+{% set icon = 'img/icons/' %}
+<div class="settings-shell">
 
-            <h1>General</h1>
-            <hr class="divider">
-
-            <div class="setting-row">
-                <h2>Language</h2>
-
-                <div class="dropdown">
-                    <input type="checkbox" id="drop">
-
-                    <div class="dropdown-header">
-                        <label for="drop" class="dropdown-box">
-                            <span class="dropdown-selected">English</span>
-                            <span class="dropdown-arrow">▾</span>
-                        </label>
-                    </div>
-
-                    <div class="dropdown-menu">
-                        <span class="dropdown-option">English</span>
-                        <span class="dropdown-option">Deutsch</span>
-                        <span class="dropdown-option">Español</span>
-                    </div>
-                </div>
-            </div>
-
-            <h1>Appearance</h1>
-            <hr class="divider">
-
-            <div class="setting-row">
-                <h2>Theme</h2>
-
-                <input type="checkbox" id="switch">
-                <label for="switch" class="toggle-box">
-                    <span class="option left">Dark</span>
-                    <span class="option right">Light</span>
-                    <div class="slider"></div>
-                </label>
-            </div>
-
-            <div class="setting-row">
-                <h2>Color</h2>
-
-                <div class="nselect">
-                    <input type="radio" name="color" id="optviolet" checked>
-                    <input type="radio" name="color" id="optgreen">
-                    <input type="radio" name="color" id="optred">
-
-                    <label class="option" for="optviolet">Violet</label>
-                    <label class="option" for="optgreen">Green</label>
-                    <label class="option" for="optred">Red</label>
-
-                    <div class="nselect-slider"></div>
-                </div>
-            </div>
-
-            <div class="setting-row">
-                <h2>Background</h2>
-
-                <input type="checkbox" id="bg-switch">
-                <label for="bg-switch" class="toggle-box">
-                    <span class="option left">Grid</span>
-                    <span class="option right">None</span>
-                    <div class="slider"></div>
-                </label>
-
-
-            </div>
-
-            <h1>Notifications</h1>
-            <hr class="divider">
-
-            <div class="setting-row">
-                <h2>Email</h2>
-                <input type="email" class="ui-input" placeholder="name@example.com">
-            </div>
-
-            <div class="setting-row">
-                <h2>Updates</h2>
-
-                <label class="switch">
-                    <input type="checkbox">
-                    <span class="switch-track">
-                        <span class="switch-knob"></span>
-                    </span>
-                </label>
-            </div>
-
-            <div class="setting-row">
-                <h2>Messages</h2>
-
-                <label class="switch">
-                    <input type="checkbox">
-                    <span class="switch-track">
-                        <span class="switch-knob"></span>
-                    </span>
-                </label>
-            </div>
-
-            <div class="setting-row">
-                <h2>Near Limit</h2>
-
-                <label class="switch">
-                    <input type="checkbox">
-                    <span class="switch-track">
-                        <span class="switch-knob"></span>
-                    </span>
-                </label>
-            </div>
-
+    <aside class="settings-sidebar">
+        <div class="settings-sidebar-header">
+            <h1>Settings</h1>
         </div>
-    </div>
+
+        <nav class="settings-nav-group" aria-label="Settings categories">
+            <button type="button" class="settings-nav-item active" data-panel="general">
+                <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-settings.svg') }}');"></span>
+                General
+            </button>
+            <button type="button" class="settings-nav-item" data-panel="appearance">
+                <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-palette.svg') }}');"></span>
+                Appearance
+            </button>
+            <button type="button" class="settings-nav-item" data-panel="notifications">
+                <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-bell.svg') }}');"></span>
+                Notifications
+            </button>
+            <button type="button" class="settings-nav-item" data-panel="account">
+                <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-user.svg') }}');"></span>
+                Account
+            </button>
+            <button type="button" class="settings-nav-item" data-panel="privacy">
+                <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-shield.svg') }}');"></span>
+                Privacy &amp; security
+            </button>
+            <button type="button" class="settings-nav-item" data-panel="advanced">
+                <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-code.svg') }}');"></span>
+                Advanced
+            </button>
+        </nav>
+    </aside>
+
+    <div class="settings-divider"></div>
+
+    <main class="settings-content">
+
+        <!-- ===================== General ===================== -->
+        <section class="settings-panel active" data-panel="general">
+            <div class="settings-panel-head">
+                <h2>General</h2>
+                <p>Basic preferences for how Nedwork behaves.</p>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-item-info">
+                    <h3>Language</h3>
+                    <p>Choose the language used across the interface.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="select-dropdown" id="language-dropdown">
+                        <button type="button" class="select-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">
+                            <span class="select-dropdown-value">English</span>
+                            <span class="icon select-dropdown-caret" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-arrow-down.svg') }}');"></span>
+                        </button>
+                        <ul class="select-dropdown-menu" role="listbox">
+                            <li class="select-dropdown-option selected" role="option" data-value="English">English</li>
+                            <li class="select-dropdown-option" role="option" data-value="Deutsch">Deutsch</li>
+                            <li class="select-dropdown-option" role="option" data-value="Español">Español</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item is-placeholder">
+                <div class="setting-item-info">
+                    <h3>Region <span class="badge badge-neutral">Coming soon</span></h3>
+                    <p>Used to localize dates, times, and number formats.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="select-dropdown" aria-disabled="true">
+                        <button type="button" class="select-dropdown-trigger" disabled>
+                            <span class="select-dropdown-value">United States</span>
+                            <span class="icon select-dropdown-caret" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-arrow-down.svg') }}');"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item is-placeholder">
+                <div class="setting-item-info">
+                    <h3>Time zone <span class="badge badge-neutral">Coming soon</span></h3>
+                    <p>Times across Nedwork will be shown in this time zone.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="select-dropdown" aria-disabled="true">
+                        <button type="button" class="select-dropdown-trigger" disabled>
+                            <span class="select-dropdown-value">Auto-detect</span>
+                            <span class="icon select-dropdown-caret" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-arrow-down.svg') }}');"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================== Appearance ===================== -->
+        <section class="settings-panel" data-panel="appearance">
+            <div class="settings-panel-head">
+                <h2>Appearance</h2>
+                <p>Control how Nedwork looks on this device.</p>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-item-info">
+                    <h3>Theme</h3>
+                    <p>Switch between a dark and light interface.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="segmented" id="theme-segmented">
+                        <button type="button" class="segmented-option" data-value="dark">Dark</button>
+                        <button type="button" class="segmented-option" data-value="light">Light</button>
+                        <div class="segmented-thumb"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-item-info">
+                    <h3>Accent color</h3>
+                    <p>The color used for buttons, links, and highlights.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="segmented" id="accent-segmented">
+                        <button type="button" class="segmented-option" data-value="violet">Violet</button>
+                        <button type="button" class="segmented-option" data-value="green">Green</button>
+                        <button type="button" class="segmented-option" data-value="red">Red</button>
+                        <div class="segmented-thumb"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-item-info">
+                    <h3>Background</h3>
+                    <p>Show the ambient dot grid behind page content.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="segmented" id="background-segmented">
+                        <button type="button" class="segmented-option" data-value="grid">Grid</button>
+                        <button type="button" class="segmented-option" data-value="none">None</button>
+                        <div class="segmented-thumb"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item is-placeholder">
+                <div class="setting-item-info">
+                    <h3>Interface text size <span class="badge badge-neutral">Coming soon</span></h3>
+                    <p>Scale text across the app up or down.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="range-row">
+                        <input type="range" min="80" max="120" value="100" disabled>
+                        <span class="range-value">100%</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================== Notifications ===================== -->
+        <section class="settings-panel" data-panel="notifications">
+            <div class="settings-panel-head">
+                <h2>Notifications</h2>
+                <p>Choose what Nedwork sends you, and where.</p>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-item-info">
+                    <h3>Notification email</h3>
+                    <p>Where notification emails are sent.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="input-group has-icon" style="min-width:240px;">
+                        <span class="icon input-group-icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-mail.svg') }}');"></span>
+                        <input type="email" class="notif-email" placeholder="name@example.com">
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-group-label">Email me about</div>
+
+            <div class="setting-item">
+                <div class="setting-item-info">
+                    <h3>Product updates</h3>
+                    <p>News about new features and changes.</p>
+                </div>
+                <div class="setting-item-control">
+                    <label class="switch">
+                        <input type="checkbox" data-key="notif-updates">
+                        <span class="switch-track"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-item-info">
+                    <h3>Direct messages</h3>
+                    <p>When someone sends you a message.</p>
+                </div>
+                <div class="setting-item-control">
+                    <label class="switch">
+                        <input type="checkbox" data-key="notif-messages">
+                        <span class="switch-track"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-item-info">
+                    <h3>Nearing your limit</h3>
+                    <p>When you're close to a plan or usage limit.</p>
+                </div>
+                <div class="setting-item-control">
+                    <label class="switch">
+                        <input type="checkbox" data-key="notif-near-limit">
+                        <span class="switch-track"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-item is-placeholder">
+                <div class="setting-item-info">
+                    <h3>Push notifications <span class="badge badge-neutral">Coming soon</span></h3>
+                    <p>Get notified on this device, even when it's closed.</p>
+                </div>
+                <div class="setting-item-control">
+                    <label class="switch">
+                        <input type="checkbox" disabled>
+                        <span class="switch-track"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-item is-placeholder">
+                <div class="setting-item-info">
+                    <h3>Digest frequency <span class="badge badge-neutral">Coming soon</span></h3>
+                    <p>How often to send a summary instead of individual emails.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="select-dropdown" aria-disabled="true">
+                        <button type="button" class="select-dropdown-trigger" disabled>
+                            <span class="select-dropdown-value">Daily</span>
+                            <span class="icon select-dropdown-caret" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-arrow-down.svg') }}');"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================== Account ===================== -->
+        <section class="settings-panel" data-panel="account">
+            <div class="settings-panel-head">
+                <h2>Account</h2>
+                <p>Manage your login and how you access Nedwork.</p>
+            </div>
+
+            <div class="setting-item is-placeholder">
+                <div class="setting-item-info">
+                    <h3>Password <span class="badge badge-neutral">Coming soon</span></h3>
+                    <p>Change the password used to sign in.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="input-group has-action" style="min-width:220px;">
+                        <input type="password" value="••••••••••" readonly disabled>
+                        <button class="btn btn-secondary btn-sm" type="button" disabled>Change</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item is-placeholder">
+                <div class="setting-item-info">
+                    <h3>Two-factor authentication <span class="badge badge-neutral">Coming soon</span></h3>
+                    <p>Require a second step when signing in.</p>
+                </div>
+                <div class="setting-item-control">
+                    <label class="switch">
+                        <input type="checkbox" disabled>
+                        <span class="switch-track"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-item is-placeholder">
+                <div class="setting-item-info">
+                    <h3>Connected accounts <span class="badge badge-neutral">Coming soon</span></h3>
+                    <p>Sign in with a linked Google or GitHub account.</p>
+                </div>
+                <div class="setting-item-control">
+                    <button class="btn btn-secondary btn-sm" type="button" disabled>Connect</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================== Privacy & security ===================== -->
+        <section class="settings-panel" data-panel="privacy">
+            <div class="settings-panel-head">
+                <h2>Privacy &amp; security</h2>
+                <p>Control who can see your activity and data.</p>
+            </div>
+
+            <div class="settings-group is-placeholder">
+                <div class="settings-group-label">Profile visibility <span class="badge badge-neutral">Coming soon</span></div>
+                <div class="radio-group">
+                    <label class="radio-group-option">
+                        <input type="radio" name="visibility" disabled checked>
+                        <span class="radio-group-text">
+                            <strong>Public</strong>
+                            <small>Anyone can see your profile and activity.</small>
+                        </span>
+                    </label>
+                    <label class="radio-group-option">
+                        <input type="radio" name="visibility" disabled>
+                        <span class="radio-group-text">
+                            <strong>Followers only</strong>
+                            <small>Only people who follow you can see your activity.</small>
+                        </span>
+                    </label>
+                    <label class="radio-group-option">
+                        <input type="radio" name="visibility" disabled>
+                        <span class="radio-group-text">
+                            <strong>Private</strong>
+                            <small>Nothing is visible to other users.</small>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-item is-placeholder">
+                <div class="setting-item-info">
+                    <h3>Active sessions <span class="badge badge-neutral">Coming soon</span></h3>
+                    <p>Review and sign out of devices logged into your account.</p>
+                </div>
+                <div class="setting-item-control">
+                    <button class="btn btn-secondary btn-sm" type="button" disabled>Review sessions</button>
+                </div>
+            </div>
+
+            <div class="setting-item is-placeholder">
+                <div class="setting-item-info">
+                    <h3>Download your data <span class="badge badge-neutral">Coming soon</span></h3>
+                    <p>Get a copy of everything Nedwork has stored for you.</p>
+                </div>
+                <div class="setting-item-control">
+                    <button class="btn btn-secondary btn-sm" type="button" disabled>Request export</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================== Advanced ===================== -->
+        <section class="settings-panel" data-panel="advanced">
+            <div class="settings-panel-head">
+                <h2>Advanced</h2>
+                <p>Developer tools and account-level actions.</p>
+            </div>
+
+            <div class="setting-item is-placeholder">
+                <div class="setting-item-info">
+                    <h3>API key <span class="badge badge-neutral">Coming soon</span></h3>
+                    <p>Used to authenticate requests to the Nedwork API.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="input-group has-action" style="min-width:260px;">
+                        <input type="text" value="sk_live_••••••••••••" readonly disabled>
+                        <button class="btn btn-secondary btn-icon" type="button" disabled aria-label="Copy API key">
+                            <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-copy.svg') }}');"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item is-placeholder">
+                <div class="setting-item-info">
+                    <h3>Webhooks <span class="badge badge-neutral">Coming soon</span></h3>
+                    <p>Send events to an external URL as they happen.</p>
+                </div>
+                <div class="setting-item-control">
+                    <button class="btn btn-secondary btn-sm" type="button" disabled>Add webhook</button>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-group-label">Danger zone</div>
+                <div class="settings-danger-zone">
+                    <div class="setting-item is-placeholder">
+                        <div class="setting-item-info">
+                            <h3>Delete account <span class="badge badge-neutral">Coming soon</span></h3>
+                            <p>Permanently delete your account and all associated data.</p>
+                        </div>
+                        <div class="setting-item-control">
+                            <button class="btn btn-danger btn-sm" type="button" disabled>
+                                <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-trash.svg') }}'); background-color:#fff;"></span>
+                                Delete account
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script type="module" src="{{ url_for('static', filename='js/pages/settings.js') }}"></script>
 {% endblock %}

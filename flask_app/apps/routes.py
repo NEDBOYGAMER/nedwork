@@ -1,5 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, abort, send_from_directory
 import os
+from ..models import *
+
 
 apps_bp = Blueprint(
     'apps', 
