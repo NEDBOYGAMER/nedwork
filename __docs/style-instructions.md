@@ -44,11 +44,9 @@ This palette is intentionally neutral — the old values leaned navy (blue-tinte
 
 `--shadow` is defined once per theme and used as-is (`box-shadow: var(--shadow)`) — it resolves to `none` in dark and to the real elevation shadow in light, so components never need theme-specific shadow logic of their own.
 
-**Accent — must be switchable between three options, identical hex in both themes:**
+**Accent — three independent color values, identical hex in both themes. These are user-selected (see §14), the values below are only the model's defaults, not a fixed set to choose between:**
 ```
-Violet (default): --accent:#6C5CE7   --accent-soft:rgba(108,92,231,.14)   --accent-ink:#FFFFFF
-Green:            --accent:#22C58B   --accent-soft:rgba(34,197,139,.14)   --accent-ink:#06251A
-Red:               --accent:#E5484D   --accent-soft:rgba(229,72,77,.14)    --accent-ink:#FFFFFF
+Default: --accent:#6C5CE7   --accent-soft:rgba(108,92,231,.14)   --accent-ink:#FFFFFF
 ```
 Every colored interactive element (buttons, focus states, active states, links, selected items, progress fills) must reference `--accent` / `--accent-soft`, never a hardcoded color. Swapping the accent must visibly re-skin the whole page.
 
@@ -217,7 +215,17 @@ Every page reflects the user's stored settings instead of hardcoding theme/accen
 - **Response shape**: `{ dark_mode, grid, accent_color, accent_color_soft, accent_color_ink, language }`.
 - **Apply theme**: `dark_mode` selects dark vs light from §1 (however the page switches themes, e.g. a `data-theme` attribute on `<html>`).
 - **Apply grid**: `grid` toggles the ambient dot grid from §4 (`false` → add the `no-ambient` body class). It does not affect the background image layer — that stays a per-page opt-in as described in §4.
-- **Apply accent**: overwrite `--accent`, `--accent-soft`, `--accent-ink` on `:root` with `accent_color`, `accent_color_soft`, `accent_color_ink` from the response. The three presets in §1 are just the values these fields default to — once config is fetched, the fetched hex values win, not the presets.
+- **Apply accent**: overwrite `--accent`, `--accent-soft`, `--accent-ink` on `:root` with `accent_color`, `accent_color_soft`, `accent_color_ink` from the response. The default in §1 is just the value these fields fall back to — once config is fetched, the fetched hex values win, not the default.
 - **Language**: the field exists on the model but there's no frontend i18n wired up yet — don't build per-page language switching against it; flag it and ask first if a task seems to need that.
 - **Timing**: apply this as early as possible (before/with first paint) to avoid a flash of the wrong theme/accent.
 - **Where it lives**: this fetch-and-apply logic is identical on every page, so it belongs once in `base.html` (or a shared script it includes), not re-implemented per template. If a page needs to duplicate it (e.g. it doesn't extend `base.html`), say so explicitly.
+
+**Letting the user pick the accent colors (Settings page only):**
+
+Accent color is not a fixed set to choose between — it's three independent, freeform colors the user picks themselves. The Settings page is the only place this happens, and it works like this:
+
+- **Controls**: one native `<input type="color">` per value — `accent_color`, `accent_color_soft`, `accent_color_ink` — each its own row, not a single combined picker. A small mono-font label next to each shows the current hex (e.g. `#6C5CE7`), updated live from the input's `value`.
+- **Hex only**: `<input type="color">` only accepts/returns 6-digit hex, but `accent_color_soft`'s model default is an `rgba(...)` string. Convert on load — parse the `rgba()`/`rgb()` triplet into hex and drop the alpha channel; a bare `#rgb`/`#rrggbb` string passes through as-is. From that point on the field is stored (and sent back to the server) as plain hex, alpha is not preserved.
+- **Live preview, no autosave**: on the color input's `input` event, write the picked value straight to the matching CSS variable on `:root` (`--accent`, `--accent-soft`, `--accent-ink`) so the whole page re-skins immediately as the user drags the picker. This is preview only — nothing is persisted until Save.
+- **Persisting**: the Save button on the Settings page reads the three inputs' current `.value` and POSTs them as part of the normal settings payload to `/settings/api/save` (see §14 fetch pattern, just mirrored for writes). Until Save is pressed, a page refresh reverts to whatever was last saved.
+- **Cross-page consistency after saving**: once saved, the base-layer pre-paint script (the one that applies theme/accent before first paint, see "Timing" above) should also pick up the new values so other pages don't flash the old accent on next load — cache the three hex strings (e.g. in `localStorage`) right after a successful save and read that cache in the pre-paint step, in addition to the normal `/settings/api/get_config` fetch.

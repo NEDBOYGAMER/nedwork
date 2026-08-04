@@ -155,6 +155,13 @@ body.no-ambient {
     background: var(--bg);
 }
 
+/* pre-paint version of the above, set on <html> by the inline script in
+   base.html before settings.js has run - prevents a flash of the grid
+   on pages where the user has turned it off */
+html[data-ambient="none"] body::before {
+    display: none;
+}
+
 body::before {
     /* dot grid */
     content: '';

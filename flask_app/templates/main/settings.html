@@ -14,6 +14,14 @@
 
 {% block content %}
 {% set icon = 'img/icons/' %}
+
+<!-- Closes the settings page and returns to the dashboard. Update the
+     href below to the real dashboard endpoint (e.g. url_for('main.dashboard'))
+     once it's confirmed - left as a plain path for now. -->
+<a href="/" class="btn btn-ghost btn-icon settings-close-btn" aria-label="Close settings">
+    <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-x.svg') }}');"></span>
+</a>
+
 <div class="settings-shell">
 
     <aside class="settings-sidebar">
@@ -138,11 +146,35 @@
                     <p>The color used for buttons, links, and highlights.</p>
                 </div>
                 <div class="setting-item-control">
-                    <div class="segmented" id="accent-segmented">
-                        <button type="button" class="segmented-option" data-value="violet">Violet</button>
-                        <button type="button" class="segmented-option" data-value="green">Green</button>
-                        <button type="button" class="segmented-option" data-value="red">Red</button>
-                        <div class="segmented-thumb"></div>
+                    <div class="color-picker-row">
+                        <input type="color" class="color-picker" id="accent-color-picker" value="#55778e">
+                        <span class="color-picker-value">#55778E</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-item-info">
+                    <h3>Accent color (soft)</h3>
+                    <p>A muted tint of the accent, used behind selected items.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="color-picker-row">
+                        <input type="color" class="color-picker" id="accent-soft-picker" value="#343149">
+                        <span class="color-picker-value">#343149</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-item-info">
+                    <h3>Accent ink</h3>
+                    <p>The text color used on top of the accent color.</p>
+                </div>
+                <div class="setting-item-control">
+                    <div class="color-picker-row">
+                        <input type="color" class="color-picker" id="accent-ink-picker" value="#ffffff">
+                        <span class="color-picker-value">#FFFFFF</span>
                     </div>
                 </div>
             </div>
@@ -417,8 +449,12 @@
 
     </main>
 
+</div>
 
-    <button id="save-btn">Test</button>
+<!-- Same dashboard-link caveat as the close (X) button above. -->
+<div class="settings-actions">
+    <a href="/" class="btn btn-secondary">Cancel</a>
+    <button id="save-btn" class="btn btn-primary" type="button">Save changes</button>
 </div>
 {% endblock %}
 

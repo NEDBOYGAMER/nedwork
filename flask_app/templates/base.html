@@ -37,13 +37,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Nedwork{% endblock %}</title>
 
-    <!-- Applies saved theme/accent before first paint, avoids a flash of the wrong colors -->
+    <!-- Applies saved theme/accent/background before first paint, avoids a
+         flash of the wrong colors. Reads the local cache written by
+         settings.js after it loads/saves settings from the server. -->
     <script>
         (function () {
-            var theme = localStorage.getItem('theme');
-            var accent = localStorage.getItem('accent');
-            if (theme) document.documentElement.setAttribute('data-theme', theme);
-            if (accent) document.documentElement.setAttribute('data-accent', accent);
+            var theme = localStorage.getItem('_dark_mode');
+            var grid = localStorage.getItem('_grid');
+            var accent = localStorage.getItem('_accent_color');
+            var accentSoft = localStorage.getItem('_accent_color_soft');
+            var accentInk = localStorage.getItem('_accent_color_ink');
+
+            if (theme !== null) {
+                document.documentElement.setAttribute('data-theme', theme === 'true' ? 'dark' : 'light');
+            }
+            if (grid === 'false') {
+                document.documentElement.setAttribute('data-ambient', 'none');
+            }
+            if (accent) document.documentElement.style.setProperty('--accent', accent);
+            if (accentSoft) document.documentElement.style.setProperty('--accent-soft', accentSoft);
+            if (accentInk) document.documentElement.style.setProperty('--accent-ink', accentInk);
         })();
     </script>
 
