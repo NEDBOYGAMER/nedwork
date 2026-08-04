@@ -73,10 +73,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // window.location.href = "/account";
     });
 
-    document.getElementById("logout-btn").addEventListener("click", () => {
-        // window.location.href = "/auth/logout";
-    });
+    document.getElementById("logout-btn").addEventListener("click", async () => {
+        const response = await fetch("/auth/api/logout", {
+            method: "POST"
+        });
 
+        if (response.redirected) {
+            window.location.href = response.url;
+        }
+    });
 
 
 })

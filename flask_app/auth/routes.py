@@ -1,4 +1,4 @@
-from flask import request, Blueprint, jsonify, render_template, make_response, redirect, url_for
+from flask import request, Blueprint, jsonify, render_template, make_response, redirect, url_for, make_response
 from ..models import *
 from .. import db
 from datetime import *
@@ -42,20 +42,13 @@ def register():
         })
 
     db.session.add(user)
-
     dashboard = Dashboard(
         name="Main",
         user=user,
         widgets=["Time"]
     )
     db.session.add(dashboard)
-
-
-
     db.session.commit()
-
-    
-
     return jsonify({"success": True})
 
 
@@ -69,8 +62,6 @@ def login():
 
     if  not user or not user.check_password(data["password"]):
         return jsonify({"success": False, "error": "User doesnt exist or password is wrong"}), 401
-    
-
 
     session = Session(
         user_id = user.id,
@@ -90,9 +81,6 @@ def login():
         secure=True,
         max_age=60*60*24*7
     )
-
-
-
     return response
 
 
@@ -102,3 +90,19 @@ def who():
     valid, user = Session.check(request.cookies.get("session_id"))
 
     return jsonify({"user": user.username})
+
+
+
+
+@auth_bp.route("/api/logout", methods=["POST"])
+def logout():
+    response = make_response(redirect(url_for("auth.login_page")))
+    response.set_cookie(
+        "session_id",
+        "",
+        max_age=0,
+        httponly=True,
+        secure=True,
+        path="/"
+    )
+    return response
