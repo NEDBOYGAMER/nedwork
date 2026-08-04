@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, current_user, jsonify
+from flask import Blueprint, render_template, jsonify, request
 from ..models import *
 
 settings_bp = Blueprint('settings', __name__, static_folder='../static')
@@ -9,28 +9,36 @@ def settings():
 
 from sqlalchemy.inspection import inspect
 
-@settings_bp.route("/settings/get_config")
-def get_config():
 
-    if not current_user.is_authenticated:
-        # Return model defaults
-        data = {}
-        mapper = inspect(SettingsConfig)
 
-        for column in mapper.columns:
-            if column.name in ("id", "user_id"):
-                continue
+@settings_bp.route('/api/save', methods=["POST"])
+def save_settings():
+    valid, user = Session.check(request.cookies.get("session_id"))
 
-            default = column.default.arg if column.default is not None else None
-            data[column.name] = default
+    if not valid:
+        return render_template('auth/login.html')
 
-        return jsonify(data)
+    data = request.get_json()
 
-    settings = current_user.settings_configs
+    user.settings_config.to_var(data)
+    db.session.commit()
 
-    if settings is None:
-        settings = SettingsConfig(user=current_user)
-        db.session.add(settings)
+    return jsonify({"success": True}), 200
+
+@settings_bp.route('/api/load')
+def load_settings():
+    valid, user = Session.check(request.cookies.get("session_id"))
+
+    if not valid:
+        return render_template('auth/login.html')
+
+    if not user.settings_config:
+        user.settings_config = SettingsConfig()
         db.session.commit()
 
-    return jsonify(settings.to_dict())
+    settings = user.settings_config.to_dict()
+
+    return jsonify({
+        "success": True,
+        "settings": settings
+    })

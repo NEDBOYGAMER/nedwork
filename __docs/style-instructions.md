@@ -213,7 +213,7 @@ the names of the available icons are:
 
 Every page reflects the user's stored settings instead of hardcoding theme/accent/grid — `SettingsConfig` (dark_mode, grid, accent_color, accent_color_soft, accent_color_ink, language) is the source of truth, not the defaults in §1/§4.
 
-- **Fetch**: `fetch('/settings/get_config')`. Works for both logged-in and anonymous users — anonymous requests get the model defaults back (no separate code path needed on the page).
+- **Fetch**: `fetch('/settings/api/get_config')`. Works for both logged-in and anonymous users — anonymous requests get the model defaults back (no separate code path needed on the page).
 - **Response shape**: `{ dark_mode, grid, accent_color, accent_color_soft, accent_color_ink, language }`.
 - **Apply theme**: `dark_mode` selects dark vs light from §1 (however the page switches themes, e.g. a `data-theme` attribute on `<html>`).
 - **Apply grid**: `grid` toggles the ambient dot grid from §4 (`false` → add the `no-ambient` body class). It does not affect the background image layer — that stays a per-page opt-in as described in §4.

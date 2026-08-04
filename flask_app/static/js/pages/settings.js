@@ -10,10 +10,50 @@ document.addEventListener('DOMContentLoaded', () => {
     const root = document.documentElement;
 
     // =========================
+    // Load Settings
+    // =========================
+    settings = fetch("settings/api/load")
+
+
+    // =========================
     // STORAGE HELPERS
     // =========================
-    const save = (key, value) => localStorage.setItem(key, value);
-    const load = (key, fallback) => localStorage.getItem(key) ?? fallback;
+    const save = (key, value) => localStorage.setItem("_" + key, value);
+    const load = (key, fallback) => localStorage.getItem("_" + key) ?? fallback;
+
+    // =========================
+    // BUTTON SAVE
+    // Shows/hides panels in place - no scrolling or anchor jumping.
+    // =========================
+    const saveButton = document.getElementById("save-btn")
+
+    saveButton.addEventListener("click", e => {
+        const settings = {};
+
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+
+            if (key.startsWith("_")) {
+                let value = localStorage.getItem(key);
+
+                key = key.slice(1);
+
+                if (value === "true" || value === "false") {
+                    value = value === "true";
+                }
+
+                settings[key] = value;
+            }
+        }
+
+        fetch("/settings/api/save", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(settings)
+        });
+    });
 
     // =========================
     // SIDEBAR NAVIGATION

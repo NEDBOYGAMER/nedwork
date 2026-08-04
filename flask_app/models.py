@@ -94,7 +94,7 @@ class User(db.Model):
         cascade="all, delete-orphan"
     )
 
-    settings_configs = db.relationship(
+    settings_config = db.relationship(
         "SettingsConfig",
         back_populates="user",
         uselist=False,
@@ -249,9 +249,14 @@ class SettingsConfig(db.Model):
     user_id = db.Column(
         db.Integer,
         db.ForeignKey("users.id"),
+        unique=True
     )
 
-    user = db.relationship("User", back_populates="settings_configs")
+    user = db.relationship(
+        "User",
+        back_populates="settings_config",
+        uselist=False
+    )
 
     def to_dict(self):
         return {
@@ -259,6 +264,11 @@ class SettingsConfig(db.Model):
             for c in self.__table__.columns
             if c.name not in ("id", "user_id")
         }
+
+    def to_var(self, data):
+        for key, value in data.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
 
 class AppCornerConfig(db.Model):
     __tablename__ = "app_corner_configs"
