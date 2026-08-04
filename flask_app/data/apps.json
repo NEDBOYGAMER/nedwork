@@ -20,7 +20,7 @@
         {
         "id": 2,
         "name": "PolyWars",
-        "image": "/placeholder",
+        "image": "/locologo",
         "permissions": [],
         "url": "/polywars",
         "type": "Games",
@@ -28,11 +28,11 @@
     },
     {
         "id": 2,
-        "name": "PixelPaint",
+        "name": "LocoLogo",
         "permissions": [],
-        "url": "/placeholder",
+        "url": "/locologo",
         "type": "Tools",
-        "description": "An online drawing and pixel art editor with intuitive tools and layers."
+        "description": "A logo generator using simple fonts and shapes"
     },
     {
         "id": 3,

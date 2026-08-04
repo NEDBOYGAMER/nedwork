@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Loco Logo</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: white;
+    text-align: center;
+    padding: 30px;
+}
+
+canvas {
+    background: white;
+    border-radius: 20px;
+    margin: 20px;
+    box-shadow: 0 0 30px #000;
+}
+
+button, input {
+    padding: 12px 20px;
+    margin: 5px;
+    border-radius: 8px;
+    border: none;
+    font-size: 16px;
+}
+
+button {
+    cursor: pointer;
+    background: #4caf50;
+    color: white;
+}
+
+button:hover {
+    background: #66bb6a;
+}
+
+.controls {
+    margin: auto;
+    max-width: 600px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Logo Generator</h1>
+
+<canvas id="logo" width="600" height="600"></canvas>
+
+<div class="controls">
+    <input id="name" value="NOVA">
+    <button onclick="generate()">Generate</button>
+    <button onclick="download()">Export PNG</button>
+</div>
+
+<script>
+const canvas = document.getElementById("logo");
+const ctx = canvas.getContext("2d");
+
+const fonts = [
+    "Arial",
+    "Impact",
+    "Georgia",
+    "Verdana",
+    "Courier New"
+];
+
+const shapes = [
+    "circle",
+    "square",
+    "triangle",
+    "diamond"
+];
+
+function randomColor() {
+    return "#" + Math.floor(Math.random()*16777215).toString(16).padStart(6,"0");
+}
+
+function generate() {
+    ctx.clearRect(0,0,600,600);
+
+    let bg = randomColor();
+    let main = randomColor();
+    let accent = randomColor();
+
+    ctx.fillStyle = bg;
+    ctx.fillRect(0,0,600,600);
+
+    let shape = shapes[Math.floor(Math.random()*shapes.length)];
+
+    ctx.fillStyle = main;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 15;
+
+    ctx.beginPath();
+
+    if(shape === "circle") {
+        ctx.arc(300,250,130,0,Math.PI*2);
+    }
+
+    if(shape === "square") {
+        ctx.rect(170,120,260,260);
+    }
+
+    if(shape === "triangle") {
+        ctx.moveTo(300,100);
+        ctx.lineTo(450,380);
+        ctx.lineTo(150,380);
+        ctx.closePath();
+    }
+
+    if(shape === "diamond") {
+        ctx.moveTo(300,100);
+        ctx.lineTo(450,250);
+        ctx.lineTo(300,400);
+        ctx.lineTo(150,250);
+        ctx.closePath();
+    }
+
+    ctx.fill();
+    ctx.stroke();
+
+    let text = document.getElementById("name").value || "LOGO";
+
+    ctx.fillStyle = "white";
+    ctx.font = "bold 70px " + fonts[Math.floor(Math.random()*fonts.length)];
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.shadowColor = "black";
+    ctx.shadowBlur = 10;
+
+    ctx.fillText(text.toUpperCase(),300,470);
+
+    ctx.shadowBlur = 0;
+
+    for(let i=0;i<15;i++) {
+        ctx.fillStyle = randomColor();
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.arc(
+            Math.random()*600,
+            Math.random()*600,
+            Math.random()*20,
+            0,
+            Math.PI*2
+        );
+        ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+}
+
+function download() {
+    let link = document.createElement("a");
+    link.download = "logo.png";
+    link.href = canvas.toDataURL();
+    link.click();
+}
+
+generate();
+</script>
+
+</body>
+</html>
