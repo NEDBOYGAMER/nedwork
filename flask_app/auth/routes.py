@@ -23,8 +23,8 @@ def register():
     password = data.get("password")
     email = data.get("email")
 
-    if email == "":
-        email == username + "@nedwork.ch"
+    if email == "" or not email:
+        email = username + "@nedwork.ch"
 
     if not username or not password:
         return jsonify({"error": "username and password are required"}), 400
