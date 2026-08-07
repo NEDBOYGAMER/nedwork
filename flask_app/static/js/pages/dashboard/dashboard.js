@@ -90,8 +90,8 @@ function setup_modal(){
 async function fill_dashboard(name = current_dashboard){
     close_popups()
 
-    const response = await fetch('/dashboard/api/list/owned');
-    const data = await response.json();
+    const dashboard_response = await fetch('/dashboard/api/list/owned');
+    const data = await dashboard_response.json();
     const dashboards = data.dashboards
 
     if (name = null){
