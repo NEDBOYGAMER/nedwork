@@ -45,7 +45,7 @@ def register():
     dashboard = Dashboard(
         name="Main",
         user=user,
-        widgets=["Time"]
+        widgets = []
     )
     db.session.add(dashboard)
     db.session.commit()

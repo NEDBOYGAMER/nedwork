@@ -62,6 +62,8 @@ async function register() {
 
         const data = await response.json();
         console.log(data);
+        state = "login";
+        switchTab("login")
         loadLogin()
     } catch (error) {
         console.error('Request failed:', error);

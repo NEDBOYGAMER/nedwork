@@ -5,7 +5,7 @@ let user = ""
 
 let widgets = []
 let dashboard_name = ""
-let current_dashboard = localStorage.getItem("current_dashboard") || null
+let current_dashboard = localStorage.getItem("current_dashboard") || "null"
 
 document.addEventListener('DOMContentLoaded', () => {
     adjust_headers();
@@ -94,7 +94,8 @@ async function fill_dashboard(name = current_dashboard){
     const data = await dashboard_response.json();
     const dashboards = data.dashboards
 
-    if (name = null){
+
+    if (name == "null"){
         name = dashboards[0]
     }
 
@@ -105,6 +106,7 @@ async function fill_dashboard(name = current_dashboard){
     const response = await fetch(`/dashboard/api/load/${name}`);
     const dashboard = await response.json();
     widgets = dashboard.widgets
+
     dashboard_name = dashboard.name
     const dashname = document.getElementById("dash-name")
 
