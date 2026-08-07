@@ -1,14 +1,15 @@
-# Byte-compiled / optimized / DLL files
+# Python cache files
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
-# Virtual Environment
+# Virtual environments
 venv/
 ENV/
 env/
 
-# Flask Instance folder (contains your local database)
+# Flask
 instance/
 .webassets-cache
 
@@ -25,7 +26,6 @@ instance/
 *.sln
 *.swp
 
-# OS generated files
+# OS files
 .DS_Store
-Thumbs.db__pycache__/
-*.pyc
+Thumbs.db
