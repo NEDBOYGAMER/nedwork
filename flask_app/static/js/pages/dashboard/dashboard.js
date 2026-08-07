@@ -5,7 +5,7 @@ let user = ""
 
 let widgets = []
 let dashboard_name = ""
-let current_dashboard = localStorage.getItem("current_dashboard") || "main"
+let current_dashboard = localStorage.getItem("current_dashboard") || null
 
 document.addEventListener('DOMContentLoaded', () => {
     adjust_headers();
@@ -89,6 +89,15 @@ function setup_modal(){
 
 async function fill_dashboard(name = current_dashboard){
     close_popups()
+
+    const response = await fetch('/dashboard/api/list/owned');
+    const data = await response.json();
+    const dashboards = data.dashboards
+
+    if (name = null){
+        name = dashboards[0]
+    }
+
     current_dashboard = name
     const grid = document.getElementById("card-grid");
     grid.innerHTML = ""

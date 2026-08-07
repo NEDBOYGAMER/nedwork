@@ -62,6 +62,7 @@ async function register() {
 
         const data = await response.json();
         console.log(data);
+        loadLogin()
     } catch (error) {
         console.error('Request failed:', error);
     }
