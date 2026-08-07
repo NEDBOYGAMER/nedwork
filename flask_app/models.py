@@ -89,7 +89,7 @@ class User(db.Model):
     )
 
     tasks = db.relationship(
-        "Tashboard",
+        "Task",
         back_populates="user",
         cascade="all, delete-orphan"
     )

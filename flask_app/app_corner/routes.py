@@ -18,7 +18,7 @@ def _config_to_dict(config):
 
 
 def _get_or_create_config(user):
-    config = user.app_corner_configs[0] if getattr(user, "app_corner_configs", None) else None
+    config = getattr(user, "app_corner_configs", None)
 
     if config is None:
         config = AppCornerConfig(
