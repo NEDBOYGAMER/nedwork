@@ -36,11 +36,11 @@
     },
     {
         "id": 3,
-        "name": "QuickCalc",
+        "name": "Controller Tester",
         "permissions": [],
-        "url": "/placeholder",
+        "url": "/controller_tester",
         "type": "Tools",
-        "description": "A collection of useful calculators and converters for everyday use."
+        "description": "Test the inputs of your controller"
     },
     {
         "id": 4,

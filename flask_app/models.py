@@ -69,6 +69,7 @@ class User(db.Model):
     email = db.Column(db.String(80), unique=True)
     password_hash = db.Column(db.String(256), nullable=False)
     key = db.Column(db.String(9), unique=True, nullable=False) # automatically generated for searching for friends and is a seperate id but more easyily sharable (while not beeing 1, 2 ...)
+    encryption_key = db.Column(db.String(256))
 
     group_memberships = db.relationship(
         "UserGroup",
@@ -83,6 +84,12 @@ class User(db.Model):
 
     dashboards = db.relationship(
         "Dashboard",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    tasks = db.relationship(
+        "Tashboard",
         back_populates="user",
         cascade="all, delete-orphan"
     )
@@ -306,3 +313,37 @@ class AppsConfig(db.Model):
         uselist=False,
         cascade="all, delete-orphan"
     )
+
+
+
+
+class Task(db.Model):
+    __tablename__ = "tasks"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    name = db.Column(db.String(80), nullable=False)
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+    )
+    text = db.Column(db.Text)
+
+    tags = db.Column(db.JSON, nullable = False)
+
+
+    deadline = db.Column(db.DateTime)
+    urgency = db.Column(db.String, nullable = False)
+
+    private = db.Column(db.Boolean, nullable=False)
+
+    done = db.Column(db.Boolean, nullable = False)
+
+    importance = db.Column(db.String(20), nullable=False)
+
+    created_at = db.Column(db.DateTime, nullable=False)
+    last_updated_at = db.Column(db.DateTime, nullable=False)
+    completed_at = db.Column(db.DateTime)
+
+    user = db.relationship("User", back_populates="tasks")

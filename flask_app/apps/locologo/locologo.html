@@ -1,168 +1,133 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Loco Logo</title>
-<style>
-body {
-    font-family: Arial, sans-serif;
-    background: #111;
-    color: white;
-    text-align: center;
-    padding: 30px;
-}
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loco Logo — Logo Generator</title>
 
-canvas {
-    background: white;
-    border-radius: 20px;
-    margin: 20px;
-    box-shadow: 0 0 30px #000;
-}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=Montserrat:wght@800;900&family=Oswald:wght@600;700&family=Pacifico&family=Playfair+Display:wght@800;900&family=Poppins:wght@700;800;900&family=Righteous&family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-button, input {
-    padding: 12px 20px;
-    margin: 5px;
-    border-radius: 8px;
-    border: none;
-    font-size: 16px;
-}
+<link rel="stylesheet" href="/apps/{{ app_name }}/style.css" />
 
-button {
-    cursor: pointer;
-    background: #4caf50;
-    color: white;
-}
-
-button:hover {
-    background: #66bb6a;
-}
-
-.controls {
-    margin: auto;
-    max-width: 600px;
-}
-</style>
+<script src="/apps/{{ app_name }}/app.js" defer></script>
 </head>
-
 <body>
 
-<h1>Logo Generator</h1>
+<div class="wrap">
 
-<canvas id="logo" width="600" height="600"></canvas>
+  <header class="hero">
+    <span class="eyebrow">Logo generator</span>
+    <h1>Loco Logo</h1>
+    <p class="sub">Pick a palette, a shape, a font — or let it all ride random.</p>
+  </header>
 
-<div class="controls">
-    <input id="name" value="NOVA">
-    <button onclick="generate()">Generate</button>
-    <button onclick="download()">Export PNG</button>
+  <main class="studio">
+
+    <section class="stage">
+      <canvas id="logo" width="600" height="600"></canvas>
+      <div class="stage-actions">
+        <button id="btnGenerate" class="btn primary">🎲 Generate</button>
+        <button id="btnRecolor" class="btn ghost">🎨 New colors</button>
+      </div>
+    </section>
+
+    <aside class="panel">
+
+      <div class="field">
+        <label for="name">Name / word</label>
+        <input id="name" type="text" value="NOVA" maxlength="18">
+      </div>
+
+      <div class="field">
+        <label for="palette">Palette</label>
+        <select id="palette"></select>
+        <div id="customColors" class="custom-colors hidden">
+          <label>Background <input type="color" id="cBg" value="#111111"></label>
+          <label>Shape <input type="color" id="cMain" value="#ff5c38"></label>
+          <label>Accent <input type="color" id="cAccent" value="#ffd23f"></label>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="shape">Shape</label>
+          <select id="shape">
+            <option value="random">Random</option>
+            <option value="circle">Circle</option>
+            <option value="square">Rounded square</option>
+            <option value="triangle">Triangle</option>
+            <option value="diamond">Diamond</option>
+            <option value="hexagon">Hexagon</option>
+            <option value="pentagon">Pentagon</option>
+            <option value="star">Star</option>
+            <option value="ring">Ring</option>
+            <option value="blob">Blob</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="font">Font</label>
+          <select id="font">
+            <option value="random">Random</option>
+            <option value="'Poppins', sans-serif">Poppins</option>
+            <option value="'Montserrat', sans-serif">Montserrat</option>
+            <option value="'Archivo Black', sans-serif">Archivo Black</option>
+            <option value="'Bebas Neue', sans-serif">Bebas Neue</option>
+            <option value="'Space Grotesk', sans-serif">Space Grotesk</option>
+            <option value="'Oswald', sans-serif">Oswald</option>
+            <option value="'Playfair Display', serif">Playfair Display</option>
+            <option value="'Righteous', cursive">Righteous</option>
+            <option value="'Pacifico', cursive">Pacifico</option>
+            <option value="Impact, sans-serif">Impact</option>
+            <option value="Georgia, serif">Georgia</option>
+            <option value="'Courier New', monospace">Courier New</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="layout">Layout</label>
+          <select id="layout">
+            <option value="random">Random</option>
+            <option value="stacked">Stacked</option>
+            <option value="overlay">Overlay</option>
+            <option value="iconOnly">Icon only</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="deco">Decoration</label>
+          <select id="deco">
+            <option value="random">Random</option>
+            <option value="none">None</option>
+            <option value="dots">Confetti dots</option>
+            <option value="rings">Scatter rings</option>
+            <option value="lines">Speed lines</option>
+            <option value="grid">Grid backdrop</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="roundness">Corner roundness <span id="roundnessVal">40</span>px</label>
+        <input id="roundness" type="range" min="0" max="120" value="40">
+      </div>
+
+      <label class="checkbox">
+        <input type="checkbox" id="transparent">
+        Transparent background on export
+      </label>
+
+      <button id="btnExport" class="btn primary block">⬇ Export PNG</button>
+
+    </aside>
+
+  </main>
+
 </div>
-
-<script>
-const canvas = document.getElementById("logo");
-const ctx = canvas.getContext("2d");
-
-const fonts = [
-    "Arial",
-    "Impact",
-    "Georgia",
-    "Verdana",
-    "Courier New"
-];
-
-const shapes = [
-    "circle",
-    "square",
-    "triangle",
-    "diamond"
-];
-
-function randomColor() {
-    return "#" + Math.floor(Math.random()*16777215).toString(16).padStart(6,"0");
-}
-
-function generate() {
-    ctx.clearRect(0,0,600,600);
-
-    let bg = randomColor();
-    let main = randomColor();
-    let accent = randomColor();
-
-    ctx.fillStyle = bg;
-    ctx.fillRect(0,0,600,600);
-
-    let shape = shapes[Math.floor(Math.random()*shapes.length)];
-
-    ctx.fillStyle = main;
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 15;
-
-    ctx.beginPath();
-
-    if(shape === "circle") {
-        ctx.arc(300,250,130,0,Math.PI*2);
-    }
-
-    if(shape === "square") {
-        ctx.rect(170,120,260,260);
-    }
-
-    if(shape === "triangle") {
-        ctx.moveTo(300,100);
-        ctx.lineTo(450,380);
-        ctx.lineTo(150,380);
-        ctx.closePath();
-    }
-
-    if(shape === "diamond") {
-        ctx.moveTo(300,100);
-        ctx.lineTo(450,250);
-        ctx.lineTo(300,400);
-        ctx.lineTo(150,250);
-        ctx.closePath();
-    }
-
-    ctx.fill();
-    ctx.stroke();
-
-    let text = document.getElementById("name").value || "LOGO";
-
-    ctx.fillStyle = "white";
-    ctx.font = "bold 70px " + fonts[Math.floor(Math.random()*fonts.length)];
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    ctx.shadowColor = "black";
-    ctx.shadowBlur = 10;
-
-    ctx.fillText(text.toUpperCase(),300,470);
-
-    ctx.shadowBlur = 0;
-
-    for(let i=0;i<15;i++) {
-        ctx.fillStyle = randomColor();
-        ctx.globalAlpha = 0.5;
-        ctx.beginPath();
-        ctx.arc(
-            Math.random()*600,
-            Math.random()*600,
-            Math.random()*20,
-            0,
-            Math.PI*2
-        );
-        ctx.fill();
-    }
-
-    ctx.globalAlpha = 1;
-}
-
-function download() {
-    let link = document.createElement("a");
-    link.download = "logo.png";
-    link.href = canvas.toDataURL();
-    link.click();
-}
-
-generate();
-</script>
 
 </body>
 </html>

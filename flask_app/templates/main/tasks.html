@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}nedwork — Tasks{% endblock %}
+
+{% block extra_head %}
+    <meta name="description" content="Private Dashboard Site">
+    <meta property="og:image" content="{{ url_for('static', filename='img/about/header_img.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/tasks.css') }}">
+{% endblock %}
+
+{% block content %}
+
+    <main class="Tasks">
+
+        <header id="tasks-header">
+            <h1 id="tasks-title">Tasks</h1>
+        </header>
+
+        <div id="container">
+        </div>
+
+    </main>
+
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>window.STATIC_URL = "{{ url_for('static', filename='') }}";</script>
+    <script type="module" src="{{ url_for('static', filename='js/pages/tasks.js') }}"></script>
+{% endblock %}

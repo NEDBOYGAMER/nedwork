@@ -50,11 +50,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById("events-btn").addEventListener("click", () => {
-        // window.location.href = "/events";
+        window.location.href = "/events";
     });
 
     document.getElementById("tasks-btn").addEventListener("click", () => {
-        // window.location.href = "/tasks";
+        window.location.href = "/tasks";
     });
 
     document.getElementById("apps-btn").addEventListener("click", () => {

@@ -1,0 +1,223 @@
+:root {
+  --bg: #14111a;
+  --panel: #1c1822;
+  --panel-border: #2c2632;
+  --text: #f2eef7;
+  --text-dim: #9c93a8;
+  --accent: #ff6b4a;
+  --accent-2: #ffd23f;
+  --radius: 16px;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background:
+    radial-gradient(circle at 15% -10%, rgba(255,107,74,0.16), transparent 45%),
+    radial-gradient(circle at 100% 0%, rgba(255,210,63,0.10), transparent 40%),
+    var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+.hero {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 6vw, 64px);
+  margin: 0;
+  letter-spacing: -0.02em;
+  background: linear-gradient(100deg, #fff 30%, var(--accent) 75%, var(--accent-2) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero .sub {
+  color: var(--text-dim);
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+.studio {
+  display: grid;
+  grid-template-columns: 600px 1fr;
+  gap: 32px;
+  align-items: start;
+  justify-content: center;
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+canvas {
+  width: 100%;
+  max-width: 600px;
+  aspect-ratio: 1 / 1;
+  background: repeating-conic-gradient(#221e28 0% 25%, #1a1620 0% 50%) 50% / 24px 24px;
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+}
+
+.stage-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.field-row {
+  display: flex;
+  gap: 14px;
+}
+
+label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+input[type="text"],
+select {
+  background: #100d15;
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: var(--font-body);
+  outline: none;
+}
+
+input[type="text"]:focus,
+select:focus {
+  border-color: var(--accent);
+}
+
+input[type="range"] {
+  accent-color: var(--accent);
+}
+
+.custom-colors {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  padding: 12px;
+  background: #100d15;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+}
+
+.custom-colors label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  align-items: center;
+}
+
+.custom-colors input[type="color"] {
+  width: 44px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.hidden { display: none !important; }
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.checkbox input { accent-color: var(--accent); }
+
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.08s ease, opacity 0.15s ease;
+}
+
+.btn:hover { opacity: 0.92; }
+.btn:active { transform: scale(0.97); }
+
+.btn.primary {
+  flex: 1;
+  background: linear-gradient(100deg, var(--accent), var(--accent-2));
+  color: #1a1420;
+}
+
+.btn.ghost {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+}
+
+.btn.block { width: 100%; }
+
+@media (max-width: 880px) {
+  .studio {
+    grid-template-columns: 1fr;
+  }
+  .field-row { flex-direction: column; }
+}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-accent="violet">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/apps/{{ app_name }}/controller_tester.css" />
+    <title>Controller Tester</title>
+</head>
+<body>
+
+    <div class="page">
+
+        <header class="topbar">
+            <h1>Controller Tester</h1>
+            <span class="badge badge-accent" id="statusBadge">No controller</span>
+        </header>
+
+        <main class="content">
+
+            <aside class="side-col" id="left-col">
+                <div class="card">
+                    <p class="eyebrow">Credits</p>
+                    <p class="hint">Images by <strong>Zacksly</strong></p>
+                    <button class="btn btn-ghost btn-sm" id="creditsToggle">Show details</button>
+
+                    <div class="credits-panel" id="creditsPanel" hidden>
+                        <p class="hint">Product Title: PS5 Button Icons and Controls<br>
+                        Author: Zacksly<br>
+                        Source: <a href="https://zacksly.itch.io" target="_blank" rel="noopener">https://zacksly.itch.io</a><br>
+                        License: "CC BY 3.0" — modified.</p>
+
+                        <p class="hint">Product Title: Xbox Series Button Icons and Controls<br>
+                        Author: Zacksly<br>
+                        Source: <a href="https://zacksly.itch.io" target="_blank" rel="noopener">https://zacksly.itch.io</a><br>
+                        License: "CC BY 3.0" — modified.</p>
+                    </div>
+                </div>
+            </aside>
+
+            <div id="wrap">
+                <img id="controller" src="/apps/{{ app_name }}/img/controller_img.png" alt="controller">
+                <!-- overlay elements (buttons + stick rings) are injected here by JS -->
+            </div>
+
+            <aside class="side-col" id="right-col">
+                <div class="card" id="output-card">
+                    <p class="eyebrow">Live state</p>
+                    <p id="output">No controller connected</p>
+                </div>
+            </aside>
+
+        </main>
+    </div>
+
+    <script src="/apps/{{ app_name }}/controller_tester.js"></script>
+</body>
+</html>
