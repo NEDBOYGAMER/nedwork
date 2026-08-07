@@ -20,8 +20,24 @@ def list_owned_dashboards():
     if not valid:
         return render_template('auth/login.html')
 
+    dashboards = [dashboard.name for dashboard in user.dashboards]
+
+
+    # ensures everyobe gets a dashboard created when first entering
+    if len(dashboards) == 0:
+        new_dashboard = Dashboard(
+            name="Main",
+            user_id=user,
+            widgets=[]
+        )
+
+        db.session.add(new_dashboard)
+        db.session.commit()
+        dashboards.append
+
+
     return jsonify({
-        "dashboards": [dashboard.name for dashboard in user.dashboards]
+        "dashboards": dashboards
     })
 
 
