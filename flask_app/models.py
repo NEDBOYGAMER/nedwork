@@ -314,7 +314,12 @@ class AppsConfig(db.Model):
         cascade="all, delete-orphan"
     )
 
-
+    link_list = db.relationship(   # <-- indent this into the class
+        "LinkList",
+        backref="apps_config",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
 
 
 class Task(db.Model):

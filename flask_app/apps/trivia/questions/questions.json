@@ -1,0 +1,752 @@
+[
+  {
+    "id": 1,
+    "category": "Science",
+    "difficulty": "easy",
+    "question": "What planet is known as the Red Planet?",
+    "options": ["Venus", "Mars", "Jupiter", "Saturn"],
+    "answer": 1,
+    "image": null,
+    "info": "Mars looks red because its surface is covered in iron oxide (rust) dust."
+  },
+  {
+    "id": 2,
+    "category": "Geography",
+    "difficulty": "medium",
+    "question": "What is the capital of Australia?",
+    "options": ["Sydney", "Melbourne", "Canberra", "Perth"],
+    "answer": 2,
+    "image": "https://picsum.photos/seed/australia/600/240",
+    "info": "Canberra was purpose-built as the capital in 1913, a compromise between Sydney and Melbourne."
+  },
+  {
+    "id": 3,
+    "category": "History",
+    "difficulty": "hard",
+    "question": "In which year did the Titanic sink?",
+    "options": ["1905", "1912", "1915", "1920"],
+    "answer": 1,
+    "image": null,
+    "info": "The Titanic sank on April 15, 1912, after striking an iceberg on her maiden voyage."
+  },
+  {
+    "id": 4,
+    "category": "Science",
+    "difficulty": "easy",
+    "question": "What is the chemical symbol for gold?",
+    "options": ["Go", "Gd", "Au", "Ag"],
+    "answer": 2,
+    "image": null,
+    "info": "Au comes from the Latin 'aurum', meaning shining dawn."
+  },
+  {
+    "id": 5,
+    "category": "Science",
+    "difficulty": "easy",
+    "question": "What is the chemical formula for water?",
+    "options": ["CO2", "H2O", "O2", "NaCl"],
+    "answer": 1,
+    "image": null,
+    "info": "Each water molecule is two hydrogen atoms bonded to one oxygen atom."
+  },
+  {
+    "id": 6,
+    "category": "Science",
+    "difficulty": "medium",
+    "question": "Which organ in the human body pumps blood?",
+    "options": ["Lungs", "Liver", "Heart", "Kidneys"],
+    "answer": 2,
+    "image": "https://picsum.photos/seed/heart/600/240",
+    "info": "Your heart beats about 100,000 times a day, pumping roughly 7,500 liters of blood."
+  },
+  {
+    "id": 7,
+    "category": "Science",
+    "difficulty": "easy",
+    "question": "What is the largest planet in our solar system?",
+    "options": ["Earth", "Saturn", "Jupiter", "Neptune"],
+    "answer": 2,
+    "image": null,
+    "info": "Jupiter is so large that over 1,300 Earths could fit inside it."
+  },
+  {
+    "id": 8,
+    "category": "Science",
+    "difficulty": "medium",
+    "question": "What gas do plants absorb during photosynthesis?",
+    "options": ["Oxygen", "Carbon dioxide", "Nitrogen", "Hydrogen"],
+    "answer": 1,
+    "image": null,
+    "info": "Plants take in CO2 and release oxygen, which is why forests are called 'the lungs of the Earth'."
+  },
+  {
+    "id": 9,
+    "category": "Science",
+    "difficulty": "medium",
+    "question": "What is the atomic number of carbon?",
+    "options": ["4", "6", "8", "12"],
+    "answer": 1,
+    "image": null,
+    "info": "Carbon has 6 protons, and is the backbone of all known life."
+  },
+  {
+    "id": 10,
+    "category": "Science",
+    "difficulty": "hard",
+    "question": "What does 'Na' stand for in the periodic table?",
+    "options": ["Neon", "Nitrogen", "Sodium", "Nickel"],
+    "answer": 2,
+    "image": null,
+    "info": "Na comes from 'natrium', the Latin word for sodium."
+  },
+  {
+    "id": 11,
+    "category": "Geography",
+    "difficulty": "easy",
+    "question": "What is the largest ocean on Earth?",
+    "options": ["Atlantic", "Indian", "Arctic", "Pacific"],
+    "answer": 3,
+    "image": null,
+    "info": "The Pacific Ocean covers more than 30% of Earth's surface."
+  },
+  {
+    "id": 12,
+    "category": "Geography",
+    "difficulty": "medium",
+    "question": "In which continent is the Sahara Desert located?",
+    "options": ["Asia", "Africa", "Australia", "South America"],
+    "answer": 1,
+    "image": null,
+    "info": "The Sahara is the largest hot desert in the world, covering most of North Africa."
+  },
+  {
+    "id": 13,
+    "category": "Geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Japan?",
+    "options": ["Kyoto", "Osaka", "Tokyo", "Hiroshima"],
+    "answer": 2,
+    "image": "https://picsum.photos/seed/tokyo/600/240",
+    "info": "Tokyo is the most populous metropolitan area in the world."
+  },
+  {
+    "id": 14,
+    "category": "Geography",
+    "difficulty": "easy",
+    "question": "Which mountain is the highest on Earth?",
+    "options": ["Kilimanjaro", "K2", "Everest", "Denali"],
+    "answer": 2,
+    "image": null,
+    "info": "Mount Everest stands at 8,849 meters above sea level in the Himalayas."
+  },
+  {
+    "id": 15,
+    "category": "Geography",
+    "difficulty": "medium",
+    "question": "What is the largest country in the world by land area?",
+    "options": ["Canada", "China", "USA", "Russia"],
+    "answer": 3,
+    "image": null,
+    "info": "Russia spans about 17.1 million km², almost double the size of Canada."
+  },
+  {
+    "id": 16,
+    "category": "Geography",
+    "difficulty": "medium",
+    "question": "What is the official language of Brazil?",
+    "options": ["Spanish", "Portuguese", "French", "Italian"],
+    "answer": 1,
+    "image": null,
+    "info": "Brazil is the only country in the Americas whose official language is Portuguese."
+  },
+  {
+    "id": 17,
+    "category": "Geography",
+    "difficulty": "hard",
+    "question": "What is the smallest country in the world?",
+    "options": ["Monaco", "San Marino", "Vatican City", "Liechtenstein"],
+    "answer": 2,
+    "image": null,
+    "info": "Vatican City is only about 0.44 km², the smallest independent state."
+  },
+  {
+    "id": 18,
+    "category": "History",
+    "difficulty": "easy",
+    "question": "Who was the first President of the United States?",
+    "options": ["Abraham Lincoln", "George Washington", "Thomas Jefferson", "John Adams"],
+    "answer": 1,
+    "image": null,
+    "info": "George Washington served from 1789 to 1797."
+  },
+  {
+    "id": 19,
+    "category": "History",
+    "difficulty": "medium",
+    "question": "Who was the first human to walk on the Moon?",
+    "options": ["Buzz Aldrin", "Yuri Gagarin", "Neil Armstrong", "John Glenn"],
+    "answer": 2,
+    "image": null,
+    "info": "Neil Armstrong stepped onto the Moon on July 20, 1969, during Apollo 11."
+  },
+  {
+    "id": 20,
+    "category": "History",
+    "difficulty": "medium",
+    "question": "In which year did World War II end?",
+    "options": ["1943", "1944", "1945", "1946"],
+    "answer": 2,
+    "image": null,
+    "info": "Japan surrendered on September 2, 1945, formally ending WWII."
+  },
+  {
+    "id": 21,
+    "category": "History",
+    "difficulty": "hard",
+    "question": "The ancient Colosseum is located in which city?",
+    "options": ["Athens", "Rome", "Istanbul", "Cairo"],
+    "answer": 1,
+    "image": "https://picsum.photos/seed/colosseum/600/240",
+    "info": "Rome's Colosseum could hold up to 80,000 spectators for gladiator contests."
+  },
+  {
+    "id": 22,
+    "category": "History",
+    "difficulty": "medium",
+    "question": "What year did the stock market crash that started the Great Depression occur?",
+    "options": ["1919", "1929", "1939", "1949"],
+    "answer": 1,
+    "image": null,
+    "info": "The Wall Street Crash of October 1929 triggered the decade-long Great Depression."
+  },
+  {
+    "id": 23,
+    "category": "Programming",
+    "difficulty": "easy",
+    "question": "What does HTML stand for?",
+    "options": ["Hyperlinks and Text Markup Language", "HyperText Markup Language", "High Tech Modern Language", "Home Tool Markup Language"],
+    "answer": 1,
+    "image": null,
+    "info": "HTML is the standard markup language for structuring web pages."
+  },
+  {
+    "id": 24,
+    "category": "Programming",
+    "difficulty": "easy",
+    "question": "What does CSS stand for?",
+    "options": ["Creative Style Sheets", "Cascading Style Sheets", "Computer Styled Sections", "Cascading Script Sheets"],
+    "answer": 1,
+    "image": null,
+    "info": "CSS controls the visual presentation of HTML documents."
+  },
+  {
+    "id": 25,
+    "category": "Programming",
+    "difficulty": "medium",
+    "question": "Which language is known for 'Write Once, Run Anywhere'?",
+    "options": ["C", "Python", "Java", "JavaScript"],
+    "answer": 2,
+    "image": null,
+    "info": "Java runs on the Java Virtual Machine (JVM), making it platform-independent."
+  },
+  {
+    "id": 26,
+    "category": "Programming",
+    "difficulty": "easy",
+    "question": "What is the output of '2 ** 3' in Python?",
+    "options": ["5", "6", "8", "9"],
+    "answer": 2,
+    "image": null,
+    "info": "The ** operator is Python's exponent, so 2³ = 8."
+  },
+  {
+    "id": 27,
+    "category": "Programming",
+    "difficulty": "hard",
+    "question": "In JavaScript, what does 'typeof null' return?",
+    "options": ["\"null\"", "\"undefined\"", "\"object\"", "\"boolean\""],
+    "answer": 2,
+    "image": null,
+    "info": "A famous JavaScript quirk — typeof null returns 'object', a leftover bug never fixed."
+  },
+  {
+    "id": 28,
+    "category": "Programming",
+    "difficulty": "medium",
+    "question": "Which data structure operates on a First-In-First-Out (FIFO) basis?",
+    "options": ["Stack", "Queue", "Tree", "Graph"],
+    "answer": 1,
+    "image": null,
+    "info": "Queues process items in the order they arrive, like a line at a checkout."
+  },
+  {
+    "id": 29,
+    "category": "Programming",
+    "difficulty": "medium",
+    "question": "Which Git command records your changes to the local repository?",
+    "options": ["git push", "git commit", "git clone", "git merge"],
+    "answer": 1,
+    "image": null,
+    "info": "git commit saves a snapshot of changes with a message; git push uploads it remotely."
+  },
+  {
+    "id": 30,
+    "category": "Programming",
+    "difficulty": "hard",
+    "question": "What is the worst-case time complexity of quicksort?",
+    "options": ["O(n log n)", "O(n)", "O(n²)", "O(log n)"],
+    "answer": 2,
+    "image": null,
+    "info": "With poor pivot choices quicksort degrades to O(n²), though average is O(n log n)."
+  },
+  {
+    "id": 31,
+    "category": "Programming",
+    "difficulty": "easy",
+    "question": "What does OOP stand for?",
+    "options": ["Object-Oriented Programming", "Open Operating Process", "Online Object Protocol", "Output-Oriented Programming"],
+    "answer": 0,
+    "image": null,
+    "info": "OOP organizes code around objects containing data and methods."
+  },
+  {
+    "id": 32,
+    "category": "Programming",
+    "difficulty": "medium",
+    "question": "Which Python function converts a string like '42' into an integer?",
+    "options": ["str()", "int()", "float()", "len()"],
+    "answer": 1,
+    "image": null,
+    "info": "int('42') returns the integer 42."
+  },
+  {
+    "id": 33,
+    "category": "Music",
+    "difficulty": "medium",
+    "question": "Which band performed 'Bohemian Rhapsody'?",
+    "options": ["The Beatles", "Pink Floyd", "Queen", "Led Zeppelin"],
+    "answer": 2,
+    "image": null,
+    "info": "Queen released the operatic rock epic in 1975, fronted by Freddie Mercury."
+  },
+  {
+    "id": 34,
+    "category": "Music",
+    "difficulty": "easy",
+    "question": "How many keys does a standard piano have?",
+    "options": ["66", "76", "88", "96"],
+    "answer": 2,
+    "image": "https://picsum.photos/seed/piano/600/240",
+    "info": "A full piano has 52 white and 36 black keys, totaling 88."
+  },
+  {
+    "id": 35,
+    "category": "Music",
+    "difficulty": "easy",
+    "question": "Who is known as the 'King of Pop'?",
+    "options": ["Elvis Presley", "Michael Jackson", "Prince", "Freddie Mercury"],
+    "answer": 1,
+    "image": null,
+    "info": "Michael Jackson earned the title with hits like 'Thriller' and 'Billie Jean'."
+  },
+  {
+    "id": 36,
+    "category": "Music",
+    "difficulty": "hard",
+    "question": "Which composer wrote the famous Fifth Symphony opening 'da-da-da-dum'?",
+    "options": ["Mozart", "Bach", "Beethoven", "Chopin"],
+    "answer": 2,
+    "image": null,
+    "info": "Beethoven's Symphony No. 5 in C minor debuted in 1808."
+  },
+  {
+    "id": 37,
+    "category": "Music",
+    "difficulty": "medium",
+    "question": "Which country did The Beatles come from?",
+    "options": ["USA", "England", "Ireland", "Australia"],
+    "answer": 1,
+    "image": null,
+    "info": "The Beatles formed in Liverpool, England, in 1960."
+  },
+  {
+    "id": 38,
+    "category": "Music",
+    "difficulty": "medium",
+    "question": "How many strings does a standard guitar have?",
+    "options": ["4", "5", "6", "12"],
+    "answer": 2,
+    "image": null,
+    "info": "Standard guitars have 6 strings, tuned E-A-D-G-B-E."
+  },
+  {
+    "id": 39,
+    "category": "Sports",
+    "difficulty": "easy",
+    "question": "How many players are on a soccer team on the field?",
+    "options": ["9", "10", "11", "12"],
+    "answer": 2,
+    "image": null,
+    "info": "Each soccer team fields 11 players, including one goalkeeper."
+  },
+  {
+    "id": 40,
+    "category": "Sports",
+    "difficulty": "medium",
+    "question": "In tennis, what is a score of zero called?",
+    "options": ["Nil", "Zero", "Love", "Ace"],
+    "answer": 2,
+    "image": null,
+    "info": "Love comes from 'l'oeuf', the French word for egg, representing zero."
+  },
+  {
+    "id": 41,
+    "category": "Sports",
+    "difficulty": "medium",
+    "question": "How many points is a touchdown worth in American football?",
+    "options": ["3", "6", "7", "10"],
+    "answer": 1,
+    "image": null,
+    "info": "A touchdown scores 6 points, with an optional extra point or two-point conversion."
+  },
+  {
+    "id": 42,
+    "category": "Sports",
+    "difficulty": "easy",
+    "question": "Which sport is played at Wimbledon?",
+    "options": ["Golf", "Tennis", "Cricket", "Badminton"],
+    "answer": 1,
+    "image": null,
+    "info": "Wimbledon is the oldest tennis tournament, founded in 1877."
+  },
+  {
+    "id": 43,
+    "category": "Sports",
+    "difficulty": "easy",
+    "question": "How many players per team are on the court in basketball?",
+    "options": ["4", "5", "6", "7"],
+    "answer": 1,
+    "image": null,
+    "info": "Each basketball team has 5 players on the court at a time."
+  },
+  {
+    "id": 44,
+    "category": "Sports",
+    "difficulty": "hard",
+    "question": "Which country won the first FIFA World Cup in 1930?",
+    "options": ["Brazil", "Argentina", "Uruguay", "Italy"],
+    "answer": 2,
+    "image": null,
+    "info": "Uruguay defeated Argentina 4-2 in the final in Montevideo."
+  },
+  {
+    "id": 45,
+    "category": "Sports",
+    "difficulty": "medium",
+    "question": "The Summer Olympics are held every how many years?",
+    "options": ["2", "3", "4", "5"],
+    "answer": 2,
+    "image": null,
+    "info": "The Games occur every four years, known as an Olympiad."
+  },
+  {
+    "id": 46,
+    "category": "Trivia",
+    "difficulty": "easy",
+    "question": "How many colors are there in a rainbow?",
+    "options": ["5", "6", "7", "8"],
+    "answer": 2,
+    "image": null,
+    "info": "ROYGBIV — red, orange, yellow, green, blue, indigo, violet."
+  },
+  {
+    "id": 47,
+    "category": "Trivia",
+    "difficulty": "easy",
+    "question": "What is the largest mammal on Earth?",
+    "options": ["Elephant", "Giraffe", "Blue whale", "Hippopotamus"],
+    "answer": 2,
+    "image": "https://picsum.photos/seed/whale/600/240",
+    "info": "The blue whale can reach over 30 meters long and weigh up to 200 tons."
+  },
+  {
+    "id": 48,
+    "category": "Trivia",
+    "difficulty": "medium",
+    "question": "How many bones are in the adult human body?",
+    "options": ["186", "206", "226", "246"],
+    "answer": 1,
+    "image": null,
+    "info": "Adults have 206 bones; babies are born with about 300 that fuse over time."
+  },
+  {
+    "id": 49,
+    "category": "Trivia",
+    "difficulty": "easy",
+    "question": "What is the fastest land animal?",
+    "options": ["Lion", "Horse", "Cheetah", "Greyhound"],
+    "answer": 2,
+    "image": null,
+    "info": "Cheetahs can sprint up to 110 km/h in short bursts."
+  },
+  {
+    "id": 50,
+    "category": "Trivia",
+    "difficulty": "medium",
+    "question": "How many sides does a hexagon have?",
+    "options": ["5", "6", "7", "8"],
+    "answer": 1,
+    "image": null,
+    "info": "'Hexa-' means six in Greek, so a hexagon has six sides."
+  },
+  {
+    "id": 51,
+    "category": "Languages",
+    "difficulty": "easy",
+    "question": "\"Hola\" means what in English?",
+    "options": ["Goodbye", "Please", "Hello", "Thank you"],
+    "answer": 2,
+    "image": null,
+    "info": "Hola is the universal Spanish greeting for 'hello'."
+  },
+  {
+    "id": 52,
+    "category": "Languages",
+    "difficulty": "medium",
+    "question": "\"Merci\" means 'thank you' in which language?",
+    "options": ["Spanish", "Italian", "French", "German"],
+    "answer": 2,
+    "image": null,
+    "info": "Merci is how you say thanks in French."
+  },
+  {
+    "id": 53,
+    "category": "Languages",
+    "difficulty": "easy",
+    "question": "Which language is primarily spoken in Japan?",
+    "options": ["Chinese", "Korean", "Japanese", "Mandarin"],
+    "answer": 2,
+    "image": null,
+    "info": "Japanese uses three scripts: hiragana, katakana, and kanji."
+  },
+  {
+    "id": 54,
+    "category": "Languages",
+    "difficulty": "hard",
+    "question": "What is the most widely spoken language in the world by native speakers?",
+    "options": ["English", "Hindi", "Spanish", "Mandarin Chinese"],
+    "answer": 3,
+    "image": null,
+    "info": "Over a billion people speak Mandarin Chinese as their first language."
+  },
+  {
+    "id": 55,
+    "category": "Languages",
+    "difficulty": "hard",
+    "question": "Arabic, Hebrew, and Amharic all belong to which language family?",
+    "options": ["Indo-European", "Semitic", "Sino-Tibetan", "Turkic"],
+    "answer": 1,
+    "image": null,
+    "info": "They are Semitic languages within the larger Afro-Asiatic family."
+  },
+  {
+    "id": 56,
+    "category": "Movies",
+    "difficulty": "easy",
+    "question": "Which film features the line \"May the Force be with you\"?",
+    "options": ["Star Trek", "Star Wars", "Dune", "Alien"],
+    "answer": 1,
+    "image": null,
+    "info": "It's the iconic blessing of the Jedi in the Star Wars saga."
+  },
+  {
+    "id": 57,
+    "category": "Movies",
+    "difficulty": "medium",
+    "question": "Who directed the 1997 film 'Titanic'?",
+    "options": ["Steven Spielberg", "James Cameron", "Martin Scorsese", "Christopher Nolan"],
+    "answer": 1,
+    "image": "https://picsum.photos/seed/titanic/600/240",
+    "info": "James Cameron's Titanic was the first film to gross over $1 billion."
+  },
+  {
+    "id": 58,
+    "category": "Movies",
+    "difficulty": "medium",
+    "question": "What is the name of the wizard school in the Harry Potter films?",
+    "options": ["Durmstrang", "Beauxbatons", "Hogwarts", "Ilvermorny"],
+    "answer": 2,
+    "image": null,
+    "info": "Hogwarts School of Witchcraft and Wizardry is where Harry studies."
+  },
+  {
+    "id": 59,
+    "category": "Movies",
+    "difficulty": "medium",
+    "question": "In which movie does the toy character Woody appear?",
+    "options": ["Cars", "Monsters Inc.", "Toy Story", "Shrek"],
+    "answer": 2,
+    "image": null,
+    "info": "Woody the cowboy first appeared in Pixar's Toy Story (1995)."
+  },
+  {
+    "id": 60,
+    "category": "Movies",
+    "difficulty": "hard",
+    "question": "Which actress played Katniss Everdeen in 'The Hunger Games'?",
+    "options": ["Emma Watson", "Shailene Woodley", "Jennifer Lawrence", "Scarlett Johansson"],
+    "answer": 2,
+    "image": null,
+    "info": "Jennifer Lawrence starred as Katniss across all four Hunger Games films."
+  },
+  {
+    "id": 61,
+    "category": "Culture",
+    "difficulty": "easy",
+    "question": "Which country is famous for sushi?",
+    "options": ["China", "Japan", "Thailand", "Korea"],
+    "answer": 1,
+    "image": "https://picsum.photos/seed/sushi/600/240",
+    "info": "Sushi is a Japanese dish of vinegared rice with seafood and vegetables."
+  },
+  {
+    "id": 62,
+    "category": "Culture",
+    "difficulty": "medium",
+    "question": "What is the traditional dress of Japan called?",
+    "options": ["Hanbok", "Cheongsam", "Kimono", "Sari"],
+    "answer": 2,
+    "image": null,
+    "info": "The kimono is the traditional garment worn in Japan."
+  },
+  {
+    "id": 63,
+    "category": "Culture",
+    "difficulty": "medium",
+    "question": "Oktoberfest, the beer festival, is held in which city?",
+    "options": ["Berlin", "Vienna", "Munich", "Zurich"],
+    "answer": 2,
+    "image": null,
+    "info": "Munich hosts Oktoberfest each year, drawing over six million visitors."
+  },
+  {
+    "id": 64,
+    "category": "Culture",
+    "difficulty": "medium",
+    "question": "What is the national sport of Japan?",
+    "options": ["Karate", "Judo", "Sumo", "Kendo"],
+    "answer": 2,
+    "image": null,
+    "info": "Sumo wrestling is recognized as Japan's national sport."
+  },
+  {
+    "id": 65,
+    "category": "Culture",
+    "difficulty": "hard",
+    "question": "Diwali, the Festival of Lights, is a major celebration of which religion?",
+    "options": ["Buddhism", "Sikhism", "Hinduism", "Jainism"],
+    "answer": 2,
+    "image": null,
+    "info": "Diwali is celebrated by Hindus, Sikhs, and Jains worldwide."
+  },
+  {
+    "id": 66,
+    "category": "Trivia",
+    "difficulty": "easy",
+    "question": "How many continents are there on Earth?",
+    "options": ["5", "6", "7", "8"],
+    "answer": 2,
+    "image": null,
+    "info": "Africa, Antarctica, Asia, Europe, North America, Oceania, and South America."
+  },
+  {
+    "id": 67,
+    "category": "Science",
+    "difficulty": "medium",
+    "question": "What is the study of living organisms called?",
+    "options": ["Geology", "Chemistry", "Biology", "Physics"],
+    "answer": 2,
+    "image": null,
+    "info": "Biology comes from the Greek 'bios' (life) and 'logia' (study)."
+  },
+  {
+    "id": 68,
+    "category": "Science",
+    "difficulty": "hard",
+    "question": "Who developed the theory of general relativity?",
+    "options": ["Isaac Newton", "Niels Bohr", "Albert Einstein", "Galileo Galilei"],
+    "answer": 2,
+    "image": null,
+    "info": "Einstein published general relativity in 1915, redefining gravity."
+  },
+  {
+    "id": 69,
+    "category": "Sports",
+    "difficulty": "easy",
+    "question": "In which sport would you perform a 'serve'?",
+    "options": ["Rugby", "Tennis", "Boxing", "Swimming"],
+    "answer": 1,
+    "image": null,
+    "info": "A serve starts every point in tennis and volleyball."
+  },
+  {
+    "id": 70,
+    "category": "Programming",
+    "difficulty": "easy",
+    "question": "Which symbol is used for comments in Python?",
+    "options": ["//", "/* */", "#", "--"],
+    "answer": 2,
+    "image": null,
+    "info": "Python uses the hash symbol (#) for single-line comments."
+  },
+  {
+    "id": 71,
+    "category": "Music",
+    "difficulty": "easy",
+    "question": "How many musicians are in a 'quartet'?",
+    "options": ["2", "3", "4", "5"],
+    "answer": 2,
+    "image": null,
+    "info": "'Quart-' means four, so a quartet has four performers."
+  },
+  {
+    "id": 72,
+    "category": "Geography",
+    "difficulty": "medium",
+    "question": "Which is the longest river in the world?",
+    "options": ["Amazon", "Nile", "Yangtze", "Mississippi"],
+    "answer": 1,
+    "image": null,
+    "info": "The Nile is traditionally cited as the longest, at about 6,650 km."
+  },
+  {
+    "id": 73,
+    "category": "Movies",
+    "difficulty": "easy",
+    "question": "Which animated film features the characters Nemo and Dory?",
+    "options": ["Finding Nemo", "The Little Mermaid", "Moana", "SpongeBob"],
+    "answer": 0,
+    "image": null,
+    "info": "Pixar's Finding Nemo (2003) follows a clownfish searching for his son."
+  },
+  {
+    "id": 74,
+    "category": "Trivia",
+    "difficulty": "medium",
+    "question": "What is the smallest prime number?",
+    "options": ["0", "1", "2", "3"],
+    "answer": 2,
+    "image": null,
+    "info": "2 is the smallest prime — the only even prime number."
+  },
+  {
+    "id": 75,
+    "category": "Culture",
+    "difficulty": "easy",
+    "question": "Which festival is celebrated in the USA on July 4th?",
+    "options": ["Thanksgiving", "Independence Day", "Memorial Day", "Labor Day"],
+    "answer": 1,
+    "image": null,
+    "info": "July 4th marks the adoption of the Declaration of Independence in 1776."
+  }
+]

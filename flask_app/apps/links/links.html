@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-accent="violet">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Links — Nedwork</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/apps/{{ app_name }}/style.css" />
+</head>
+<body>
+
+  <div class="shell">
+    <div class="main">
+      <!-- Topbar -->
+      <div class="topbar">
+        <h1>
+          <span>Links</span>
+          <small id="linkCountDisplay">0 saved</small>
+        </h1>
+        <div class="topbar-controls">
+          <div class="theme-toggle">
+            <span id="themeLabel">Dark</span>
+            <label class="switch">
+              <input type="checkbox" id="themeSwitch">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+          <div class="accent-picker">
+            <div class="accent-dot active" data-accent="violet" style="background:#6C5CE7" title="Violet"></div>
+            <div class="accent-dot" data-accent="green" style="background:#22C58B" title="Green"></div>
+            <div class="accent-dot" data-accent="red" style="background:#E5484D" title="Red"></div>
+          </div>
+          <div class="avatar">A</div>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <section class="block">
+          <div class="block-head">
+            <span class="eyebrow">Bookmarks</span>
+            <h2>Your links</h2>
+            <p>Collect, tag, and search your saved links</p>
+          </div>
+
+          <!-- Search + Add -->
+          <div class="search-bar">
+            <div class="search-input-wrap">
+              <span class="search-icon">⌕</span>
+              <input type="text" id="searchInput" placeholder="Search links by title, URL, or tag…" autocomplete="off">
+              <span class="kbd-hint">Ctrl+K</span>
+            </div>
+            <button class="btn btn-primary" id="addLinkBtn">+ New link</button>
+          </div>
+
+          <!-- Stats + tag filter -->
+          <div class="stats-bar">
+            <span>● <strong id="totalCount">0</strong> total</span>
+            <span>○ <strong id="filteredCount">0</strong> shown</span>
+            <span id="tagCountDisplay"></span>
+          </div>
+          <div class="tag-filter-bar" id="tagFilterBar">
+            <div class="tag-filter active" data-tag="__all__">All</div>
+          </div>
+
+          <!-- Link list -->
+          <div id="linkList" class="link-list"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modal: Add / Edit ===== -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <h3 id="modalTitle">New link</h3>
+      <p class="modal-sub" id="modalSub">Add a URL you want to keep handy.</p>
+
+      <div class="field">
+        <label for="linkTitle">Title</label>
+        <input type="text" id="linkTitle" placeholder="e.g. React Documentation">
+      </div>
+      <div class="field">
+        <label for="linkUrl">URL</label>
+        <input type="text" id="linkUrl" placeholder="https://react.dev">
+      </div>
+      <div class="field">
+        <label for="linkDesc">Short description <span class="hint">(optional)</span></label>
+        <textarea id="linkDesc" rows="2" placeholder="Why you saved this link…"></textarea>
+      </div>
+      <div class="field">
+        <label for="linkTags">Tags <span class="hint">comma-separated</span></label>
+        <input type="text" id="linkTags" placeholder="frontend, react, docs">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="modalCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="modalSaveBtn">Save link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Toast container ===== -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>window.APP_NAME = "{{ app_name }}";</script>
+  <script src="/apps/{{ app_name }}/app.js" defer></script>
+</body>
+</html>

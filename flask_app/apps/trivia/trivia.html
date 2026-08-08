@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-accent="violet">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trivia Quiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/apps/{{ app_name }}/style.css" />
+  <script>
+    window.QUESTIONS_URL = "/apps/{{ app_name }}/questions/questions.json";
+  </script>
+  <script src="/apps/{{ app_name }}/app.js" defer></script>
+</head>
+<body>
+  <main class="quiz-app">
+
+    <!-- Header -->
+    <header class="quiz-header">
+      <h1>Trivia Quiz</h1>
+      <p>Test your knowledge across every category</p>
+
+      <!-- Theme / Accent controls -->
+      <div class="topbar">
+        <div class="theme-toggle">
+          <span id="theme-label">Dark</span>
+          <label class="switch">
+            <input type="checkbox" id="theme-switch">
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <div class="accent-picker">
+          <div class="accent-dot active" data-accent="violet" style="background:#6C5CE7" title="Violet"></div>
+          <div class="accent-dot" data-accent="green" style="background:#22C58B" title="Green"></div>
+          <div class="accent-dot" data-accent="red" style="background:#E5484D" title="Red"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Score -->
+    <div class="score" id="score-display">Score: 0</div>
+
+    <!-- Progress -->
+    <div class="progress">
+      <span id="progress-text">Question 1 of 1</span>
+      <div class="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
+    </div>
+
+    <!-- Quiz Card -->
+    <section class="quiz-card" id="quiz-card">
+      <div class="meta">
+        <span class="badge category" id="category-badge"></span>
+        <span class="badge difficulty" id="difficulty-badge"></span>
+      </div>
+
+      <h2 class="question" id="question-text"></h2>
+
+      <img id="question-image" class="question-image" alt="Question image" />
+
+      <div class="options" id="options"></div>
+
+      <div class="feedback" id="feedback" hidden></div>
+
+      <button class="next-btn" id="next-btn" hidden>Next ➡</button>
+    </section>
+
+    <!-- Result Screen -->
+    <section class="result-card" id="result-card" hidden>
+      <h2 id="result-title"></h2>
+      <p id="result-message"></p>
+      <button class="next-btn" id="restart-btn">Play Again 🔄</button>
+    </section>
+  </main>
+</body>
+</html>

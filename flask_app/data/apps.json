@@ -44,19 +44,19 @@
     },
     {
         "id": 4,
-        "name": "CodePad",
+        "name": "Links",
         "permissions": [],
-        "url": "/placeholder",
-        "type": "Development",
-        "description": "A lightweight online code editor for quick snippets and testing."
+        "url": "/links",
+        "type": "Tools",
+        "description": "Store all your weblinks here"
     },
     {
         "id": 5,
-        "name": "NoteNest",
+        "name": "Trivia",
         "permissions": [],
-        "url": "/placeholder",
-        "type": "Organizing",
-        "description": "Keep your notes, ideas, and reminders organized in one place."
+        "url": "/trivia",
+        "type": "Games",
+        "description": "Play a Trivia quiz"
     },
     {
         "id": 6,

@@ -1,10 +1,3 @@
-/* ────────────────────────────────────────────────────────────────
-   Tasks — page-specific layout only.
-   Colors, spacing, and radius all come from colors.css / ui-elements.css.
-   Local derived vars below are accent-reactive (they update automatically
-   if the accent is switched to green/red), not separate hardcoded colors.
-   ──────────────────────────────────────────────────────────────── */
-
 .tasks {
     position: relative;
     overflow-x: hidden;
@@ -12,17 +5,7 @@
     --accent-border: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
-/* ── Header / Title ──────────────────────────────────────────────── */
-#tasks-header {
-    position: relative;
-    z-index: 1;
-    padding: var(--space-6) var(--space-5) var(--space-4);
-    max-width: 1400px;
-    margin: 0 auto var(--space-4);
-    border-bottom: 1px solid var(--line);
-}
-
-#tasks-title {
+.tasks-title {
     margin: 0;
     font-family: var(--font-display);
     font-size: 32px;
@@ -32,8 +15,8 @@
     width: fit-content;
 }
 
-/* ── container ───────────────────────────────────────────── */
-#container {
+/* ── section ───────────────────────────────────────────── */
+.section {
     position: relative;
     z-index: 1;
     max-width: 1400px;
@@ -43,6 +26,29 @@
     flex-direction: column;
     gap: var(--space-6);
 }
+
+
+
+/* ── card   ───────────────────────────────────────────── */ 
+
+.task-card {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    max-width: 400px;
+}
+
+.task-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px var(--shadow);
+    border-color: var(--accent-border);
+}
+
 
 
 /* ── Responsive ──────────────────────────────────────────────────── */
