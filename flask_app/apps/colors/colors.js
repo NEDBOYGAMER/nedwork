@@ -1189,6 +1189,162 @@ function roundRect(ctx, x, y, w, h, r){
    ============================================================ */
 document.getElementById('generate-btn').addEventListener('click', regenerate);
 
+/* ============================================================
+   EXTRACT PALETTE FROM IMAGE (upload + paste + drag & drop + AI)
+   ============================================================ */
+const imageModalOverlay = document.getElementById('image-modal-overlay');
+const imageFileInput = document.getElementById('image-file-input');
+const fileDrop = document.getElementById('file-drop');
+const colorCountSlider = document.getElementById('color-count-slider');
+const colorCountLabel = document.getElementById('color-count-label');
+const imageModalCancel = document.getElementById('image-modal-cancel');
+const imageModalGenerate = document.getElementById('image-modal-generate');
+
+let selectedImageFile = null;   // current File, or null
+let previewObjectURL = null;    // object URL we own (revoked on replace/reset)
+
+/* Shows the image as the background of the drop zone itself — no separate
+   preview element, no filename text. Works for file picker, paste and drop,
+   since all three go through this function. */
+function setSelectedImage(file){
+  if(previewObjectURL){
+    URL.revokeObjectURL(previewObjectURL);
+    previewObjectURL = null;
+  }
+
+  selectedImageFile = file;
+
+  if(file){
+    previewObjectURL = URL.createObjectURL(file);
+    fileDrop.style.backgroundImage = `url("${previewObjectURL}")`;
+    fileDrop.classList.add('has-image');
+  } else {
+    fileDrop.style.backgroundImage = '';
+    fileDrop.classList.remove('has-image');
+  }
+}
+
+document.getElementById('upload-btn').addEventListener('click', openImageModal);
+
+function openImageModal(){
+  // default = current palette length, clamped to the 1–12 slider range
+  colorCountSlider.value = Math.max(1, Math.min(12, palette.length));
+  colorCountLabel.textContent = `Number of colors: ${colorCountSlider.value}`;
+
+  setSelectedImage(null);
+  imageFileInput.value = '';
+  imageModalOverlay.classList.add('open');
+}
+
+imageFileInput.addEventListener('change', ()=>{
+  setSelectedImage(imageFileInput.files[0] || null);
+});
+
+/* Ctrl/Cmd+V paste support — only active while the image modal is open */
+document.addEventListener('paste', (e)=>{
+  if(!imageModalOverlay.classList.contains('open')) return;
+
+  const items = (e.clipboardData && e.clipboardData.items) || [];
+  for(const item of items){
+    if(item.type && item.type.startsWith('image/')){
+      const file = item.getAsFile();
+      if(file){
+        e.preventDefault();
+        setSelectedImage(file);
+        return;
+      }
+    }
+  }
+
+  // fallback for browsers that expose the image via clipboardData.files
+  const files = e.clipboardData && e.clipboardData.files;
+  if(files && files.length && files[0].type.startsWith('image/')){
+    e.preventDefault();
+    setSelectedImage(files[0]);
+  }
+});
+
+/* Drag & drop onto the same drop zone you click — no extra area.
+   The zone is still the <label>, so clicking it keeps opening the file
+   picker even after an image is already showing. */
+['dragenter','dragover'].forEach(evt=>{
+  fileDrop.addEventListener(evt, e=>{ e.preventDefault(); fileDrop.style.borderColor = 'var(--accent)'; });
+});
+['dragleave','drop'].forEach(evt=>{
+  fileDrop.addEventListener(evt, e=>{ e.preventDefault(); fileDrop.style.borderColor = ''; });
+});
+fileDrop.addEventListener('drop', e=>{
+  const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')){
+    setSelectedImage(file);
+  }
+});
+
+colorCountSlider.addEventListener('input', ()=>{
+  colorCountLabel.textContent = `Number of colors: ${colorCountSlider.value}`;
+});
+
+imageModalCancel.addEventListener('click', ()=> imageModalOverlay.classList.remove('open'));
+imageModalOverlay.addEventListener('mousedown', (e)=>{
+  if(e.target === imageModalOverlay) imageModalOverlay.classList.remove('open');
+});
+document.addEventListener('keydown', (e)=>{
+  if(!imageModalOverlay.classList.contains('open')) return;
+  if(e.key === 'Escape'){
+    imageModalOverlay.classList.remove('open');
+  } else if(e.key === 'Enter'){
+    imageModalGenerate.click();
+  }
+});
+
+imageModalGenerate.addEventListener('click', async ()=>{
+  if(!selectedImageFile){
+    alert('Please choose an image first.');
+    return;
+  }
+
+  const number = parseInt(colorCountSlider.value, 10);
+  const form = new FormData();
+  form.append('image', selectedImageFile);
+  form.append('number', number);
+
+  imageModalGenerate.disabled = true;
+  imageModalGenerate.textContent = 'Extracting…';
+
+  try{
+    const res = await fetch(API_BASE + 'palette-from-image', {
+      method: 'POST',
+      body: form,
+      credentials: 'same-origin'
+    });
+    if(res.redirected){ window.location.href = res.url; return; }
+
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Failed to extract palette');
+
+    let colors = data.palette || [];
+
+    // the model may occasionally return fewer than requested — top it up
+    // locally so the slider's count is always respected
+    if(colors.length < number){
+      const extra = generatePalette(number - colors.length).map(c=> c.hex);
+      colors = colors.concat(extra);
+    }
+
+    // full replacement — the palette now *is* the image's palette
+    palette = colors.slice(0, number).map(hex=> ({ id: nextId(), hex, locked:false }));
+
+    imageModalOverlay.classList.remove('open');
+    render();
+    flashHeaderToast('Palette extracted from image');
+  } catch(err){
+    alert(err.message || String(err));
+  } finally {
+    imageModalGenerate.disabled = false;
+    imageModalGenerate.textContent = 'Extract';
+  }
+});
+
 /* initial render */
 render();
 updateActivePaletteLabel();

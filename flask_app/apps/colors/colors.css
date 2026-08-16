@@ -625,6 +625,59 @@ main{
   margin-top: 8px;
 }
 
+/* ---------------- IMAGE UPLOAD MODAL (extract palette from image) ---------------- */
+.image-modal-box{ width: 420px; }
+
+.file-drop{
+  position: relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height: 150px;
+  border: 1.5px dashed var(--line);
+  border-radius: 8px;
+  background: var(--surface-hover);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: var(--text-muted);
+  padding: 14px 12px;
+  font-size: 13px;
+  font-weight:600;
+  cursor:pointer;
+  text-align:center;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+.file-drop:hover{
+  border-color: var(--accent);
+  background-color: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* once an image fills the drop zone, hide the hint text */
+.file-drop.has-image{
+  background-color: var(--surface);
+}
+.file-drop.has-image .file-drop-label{
+  display: none;
+}
+
+#color-count-slider{
+  width: 100%;
+  padding: 0;              /* undo the generic .modal-field input styling */
+  border: none;
+  background: transparent;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.range-labels{
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
 /* ---------------- SAVE TOAST ---------------- */
 .header-toast{
   position:fixed;

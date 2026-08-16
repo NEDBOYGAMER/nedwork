@@ -1,7 +1,7 @@
 # routes.py — Flask-Backend für "Monopoly Amriswil"
 # Registrierung im Haupt-Webserver:
 #   from apps.monopoly_amriswil import routes as mono
-#   app.register_blueprint(mono.bp)
+#   app.register_blueprint(mono.townclaim_bp)
 #   mono.attach_socketio(socketio)   # socketio = main app's SocketIO instance
 #
 # Alles liegt im App-Ordner – KEIN templates/ oder static/ Ordner.
@@ -13,10 +13,10 @@ import threading
 
 from flask import Blueprint, render_template_string, send_from_directory, request
 
-app_name = "monopoly-amriswil"
+app_name = "townclaim"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
-bp = Blueprint("monopoly_amriswil", __name__, url_prefix="/apps/" + app_name)
+townclaim_bp = bp = Blueprint("monopoly_amriswil", __name__, url_prefix="/apps/" + app_name)
 
 HTML_FILE = os.path.join(APP_DIR, "index.html")
 
@@ -47,13 +47,13 @@ def _broadcast_players(code):
 
 
 # ---------- HTTP-Routen ----------
-@bp.route("/")
+@townclaim_bp.route("/")
 def index():
     with open(HTML_FILE, "r", encoding="utf-8") as f:
         html = f.read()
     return render_template_string(html, app_name=app_name)   # {{ app_name }} wird gefüllt
 
-@bp.route("/<path:filename>")
+@townclaim_bp.route("/<path:filename>")
 def serve_file(filename):
     return send_from_directory(APP_DIR, filename)            # css/, js/, data/ aus dem App-Ordner
 
