@@ -48,57 +48,163 @@ function removeImageFromEverywhere(imgId) {
   });
 }
 
+// Revoke every currently-held blob: object URL. Only call this when
+// wholesale REPLACING the in-memory state (loading a file / autosave) —
+// never during a move (drag/drop, number-key jump), since those images
+// keep the same URL and just change location.
+function revokeAllImageUrls() {
+  [...pool, ...tiers.flatMap(t => t.images)].forEach(img => {
+    if (img.src && img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+  });
+}
+
+// ── Image <-> Blob helpers ──────────────────────────────────────────
+// Images are kept in memory as Blobs with a cheap URL.createObjectURL()
+// string for display (fast, no base64 encoding needed). Base64 data URLs
+// are only produced at the edges — when writing a portable .tierforge
+// file — since that's the one place we need a self-contained string.
+function dataURLtoBlob(dataURL) {
+  const [header, base64] = dataURL.split(',');
+  const mimeMatch = header.match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+  const binary = atob(base64);
+  const arr = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+function blobToDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 // ── Autosave (crash / reload recovery) ────────────────────────────
-const AUTOSAVE_KEY = 'tierforge_autosave_v1';
+// Uses IndexedDB rather than localStorage: it's async (doesn't block the
+// main thread), isn't capped at ~5-10MB, and can store Blobs directly —
+// no base64 re-encoding of every image on every save.
+const IDB_NAME  = 'tierforge_db';
+const IDB_STORE = 'autosave';
+const IDB_KEY   = 'state_v1';
+const OLD_LOCALSTORAGE_KEY = 'tierforge_autosave_v1'; // pre-migration key
+
 let autosaveTimer = null;
 let autosaveWarned = false;
+
+function openTierForgeDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(IDB_STORE)) {
+        req.result.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbPut(key, value) {
+  const db = await openTierForgeDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbGet(key) {
+  const db = await openTierForgeDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
 
 function scheduleAutosave() {
   clearTimeout(autosaveTimer);
   autosaveTimer = setTimeout(autosaveState, 300);
 }
 
-function autosaveState() {
+async function autosaveState() {
   try {
     const titleEl = document.getElementById('tierTitle');
     const data = {
-      _version: 1,
+      _version: 2,
       title: titleEl ? titleEl.value : '',
       savedAt: new Date().toISOString(),
       tiers: tiers.map(t => ({
         id: t.id,
         label: t.label,
         color: t.color,
-        images: [],
+        images: t.images.map(i => ({ id: i.id, blob: i.blob, name: i.name })),
       })),
-      pool: pool.map(i => ({ id: i.id, src: i.src, name: i.name })),
+      pool: pool.map(i => ({ id: i.id, blob: i.blob, name: i.name })),
       settings,
     };
-    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+    await idbPut(IDB_KEY, data);
   } catch (err) {
-    // Most likely storage quota exceeded (large images). Warn once so the
-    // user knows the safety net has stopped working, without being noisy.
+    // Most likely a transient IndexedDB error. Warn once so the user knows
+    // the safety net has stopped working, without being noisy.
     if (!autosaveWarned) {
       autosaveWarned = true;
-      console.warn('Autosave failed, browser storage may be full:', err);
+      console.warn('Autosave failed:', err);
     }
   }
 }
 
-function loadAutosave() {
+// One-time migration: earlier versions stored a base64 snapshot (title/
+// settings only, no images) in localStorage. Bring the title/settings
+// forward into IndexedDB, then remove the old key.
+async function migrateOldLocalStorageAutosave() {
   try {
-    const raw = localStorage.getItem(AUTOSAVE_KEY);
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    if (!data || !Array.isArray(data.tiers)) return false;
+    const raw = localStorage.getItem(OLD_LOCALSTORAGE_KEY);
+    if (!raw) return;
+    const old = JSON.parse(raw);
+    if (old && old.title) {
+      const titleEl = document.getElementById('tierTitle');
+      if (titleEl) titleEl.value = old.title;
+    }
+    if (old && old.settings) {
+      settings = { ...DEFAULT_SETTINGS, ...old.settings };
+    }
+    localStorage.removeItem(OLD_LOCALSTORAGE_KEY);
+  } catch (err) {
+    // Corrupt old data, nothing to salvage — ignore.
+  }
+}
+
+async function loadAutosave() {
+  try {
+    const data = await idbGet(IDB_KEY);
+    if (!data || !Array.isArray(data.tiers)) {
+      await migrateOldLocalStorageAutosave();
+      return false;
+    }
 
     tiers = data.tiers.map(t => ({
       id: t.id || uid(),
       label: t.label,
       color: t.color,
-      images: (t.images || []).map(i => ({ id: i.id || uid(), src: i.src, name: i.name })),
+      images: (t.images || []).map(i => ({
+        id: i.id || uid(),
+        blob: i.blob,
+        src: URL.createObjectURL(i.blob),
+        name: i.name,
+      })),
     }));
-    pool = (data.pool || []).map(i => ({ id: i.id || uid(), src: i.src, name: i.name }));
+    pool = (data.pool || []).map(i => ({
+      id: i.id || uid(),
+      blob: i.blob,
+      src: URL.createObjectURL(i.blob),
+      name: i.name,
+    }));
 
     if (data.title) {
       const titleEl = document.getElementById('tierTitle');
@@ -219,6 +325,7 @@ function makeCard(img, tierId) {
     e.stopPropagation();
     if (settings.confirmDelete && !confirm(`Remove "${img.name}"?`)) return;
     removeImageFromEverywhere(img.id);
+    if (img.src && img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
     render();
   });
 
@@ -472,16 +579,19 @@ function setupPoolDropZone() {
 }
 
 // ── Upload ─────────────────────────────────────────────────────────
+// Object URLs are created synchronously (no async base64 encode/decode
+// pass per file), and every file is pushed into the pool before a single
+// render() call — a 50-image upload does 1 board rebuild instead of 50.
 document.getElementById('imageUpload').addEventListener('change', (e) => {
   const files = Array.from(e.target.files);
-  Promise.all(files.map(file => new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => resolve({ id: uid(), src: ev.target.result, name: file.name.replace(/\.[^.]+$/, '') });
-    reader.readAsDataURL(file);
-  }))).then(newImages => {
-    pool.push(...newImages);
-    render();   // once, not 50 times
-  });
+  const newImages = files.map(file => ({
+    id: uid(),
+    blob: file,
+    src: URL.createObjectURL(file),
+    name: file.name.replace(/\.[^.]+$/, ''),
+  }));
+  pool.push(...newImages);
+  render();
   e.target.value = '';
 });
 
@@ -663,20 +773,20 @@ document.getElementById('exportPngBtn').addEventListener('click', async () => {
 });
 
 // ── Save / Load ────────────────────────────────────────────────────
-document.getElementById('saveBtn').addEventListener('click', () => {
+document.getElementById('saveBtn').addEventListener('click', async () => {
   closeFileMenu();
   const title = document.getElementById('tierTitle').value.trim() || 'Untitled Tier List';
   const data = {
     _version: 1,
     title,
     savedAt: new Date().toISOString(),
-    tiers: tiers.map(t => ({
+    tiers: await Promise.all(tiers.map(async t => ({
       id: t.id,
       label: t.label,
       color: t.color,
-      images: t.images.map(i => ({ id: i.id, src: i.src, name: i.name })),
-    })),
-    pool: pool.map(i => ({ id: i.id, src: i.src, name: i.name })),
+      images: await Promise.all(t.images.map(async i => ({ id: i.id, src: await blobToDataURL(i.blob), name: i.name }))),
+    }))),
+    pool: await Promise.all(pool.map(async i => ({ id: i.id, src: await blobToDataURL(i.blob), name: i.name }))),
   };
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   const link = document.createElement('a');
@@ -695,13 +805,20 @@ document.getElementById('loadFileInput').addEventListener('change', (e) => {
     try {
       const data = JSON.parse(ev.target.result);
       if (!data._version || !data.tiers) throw new Error('Invalid file format');
+
+      revokeAllImageUrls(); // replacing state wholesale — release the old blob URLs
+
+      const toImage = (i) => {
+        const blob = dataURLtoBlob(i.src);
+        return { id: i.id || uid(), blob, src: URL.createObjectURL(blob), name: i.name };
+      };
       tiers = data.tiers.map(t => ({
         id: t.id || uid(),
         label: t.label,
         color: t.color,
-        images: (t.images || []).map(i => ({ id: i.id || uid(), src: i.src, name: i.name })),
+        images: (t.images || []).map(toImage),
       }));
-      pool = (data.pool || []).map(i => ({ id: i.id || uid(), src: i.src, name: i.name }));
+      pool = (data.pool || []).map(toImage);
       if (data.title) {
         document.getElementById('tierTitle').value = data.title;
       }
@@ -927,12 +1044,18 @@ document.body.appendChild(ghost);
 
 // ── Init ───────────────────────────────────────────────────────────
 // If a previous session exists (e.g. the browser crashed or the tab was
-// closed/reloaded), silently restore it so nothing is lost.
-if (loadAutosave()) {
-  applySettings();
-}
-setupPoolDropZone();
-render();
+// closed/reloaded), silently restore it so nothing is lost. IndexedDB
+// access is async, so the rest of setup waits on this IIFE.
+(async () => {
+  if (await loadAutosave()) {
+    applySettings();
+  }
+  setupPoolDropZone();
+  render();
+})();
 
 // Also catch the moment the page is about to unload, as a last-chance save.
+// Note: this is best-effort — IndexedDB writes are async and the browser
+// may terminate the page before the transaction finishes. The 300ms
+// debounced autosave after every change is the primary safety net.
 window.addEventListener('beforeunload', autosaveState);
