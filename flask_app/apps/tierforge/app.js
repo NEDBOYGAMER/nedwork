@@ -453,6 +453,7 @@ function makeCard(img, tierId) {
   card.addEventListener('dragend', () => {
     card.classList.remove('dragging');
     dragItem = null;
+    cancelPendingDragOverUpdate();
     document.querySelectorAll('.drag-active').forEach(el => el.classList.remove('drag-active'));
     document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
     hideDropIndicator();
@@ -549,6 +550,43 @@ function hideDropIndicator() {
   }
 }
 
+// ── Drag-over throttling ─────────────────────────────────────────────
+// `dragover` fires continuously while the mouse moves — often far more
+// often than the screen can repaint. The naive version of this handler
+// called getBoundingClientRect() on every card in the container AND
+// wrote to the DOM (moving the drop indicator) on every single one of
+// those events. Reading layout right after writing it forces the browser
+// to do a synchronous reflow before it can answer the next read — with
+// ~100 cards on screen that's "layout thrashing", and it's what actually
+// made dragging feel slow (it scales with image *count*, not size).
+//
+// Fix: collapse all events within a frame into a single rAF callback, so
+// there's at most one read-then-write pass per repaint instead of one
+// per raw event.
+let dragRafHandle = null;
+let pendingDragOver = null; // { el, clientX, clientY }
+
+function scheduleDragOverUpdate(el, clientX, clientY) {
+  pendingDragOver = { el, clientX, clientY };
+  if (dragRafHandle) return; // already scheduled for this frame
+  dragRafHandle = requestAnimationFrame(() => {
+    dragRafHandle = null;
+    const pending = pendingDragOver;
+    pendingDragOver = null;
+    if (!pending || !dragItem) return;
+    const afterElement = getDragAfterElement(pending.el, pending.clientX, pending.clientY);
+    showDropIndicator(pending.el, afterElement);
+  });
+}
+
+function cancelPendingDragOverUpdate() {
+  if (dragRafHandle) {
+    cancelAnimationFrame(dragRafHandle);
+    dragRafHandle = null;
+  }
+  pendingDragOver = null;
+}
+
 function setupDropZone(el, tierId) {
   el.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -556,8 +594,7 @@ function setupDropZone(el, tierId) {
     el.classList.add('drag-active');
     el.closest('.tier-row')?.classList.add('drag-over');
     if (dragItem) {
-      const afterElement = getDragAfterElement(el, e.clientX, e.clientY);
-      showDropIndicator(el, afterElement);
+      scheduleDragOverUpdate(el, e.clientX, e.clientY);
     }
   });
 
@@ -571,6 +608,7 @@ function setupDropZone(el, tierId) {
 
   el.addEventListener('drop', (e) => {
     e.preventDefault();
+    cancelPendingDragOverUpdate();
     el.classList.remove('drag-active');
     el.closest('.tier-row')?.classList.remove('drag-over');
     hideDropIndicator();
@@ -626,8 +664,7 @@ function setupPoolDropZone() {
     e.preventDefault();
     poolEl.classList.add('drag-active');
     if (dragItem) {
-      const afterElement = getDragAfterElement(poolEl, e.clientX, e.clientY);
-      showDropIndicator(poolEl, afterElement);
+      scheduleDragOverUpdate(poolEl, e.clientX, e.clientY);
     }
   });
   poolEl.addEventListener('dragleave', (e) => {
@@ -638,6 +675,7 @@ function setupPoolDropZone() {
   });
   poolEl.addEventListener('drop', (e) => {
     e.preventDefault();
+    cancelPendingDragOverUpdate();
     poolEl.classList.remove('drag-active');
     hideDropIndicator();
     if (!dragItem) return;
