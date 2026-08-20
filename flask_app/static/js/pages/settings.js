@@ -45,10 +45,12 @@ async function init() {
         setTimeout(() => toast.remove(), 3000);
     }
 
-    // =========================
-    // SIDEBAR NAVIGATION
-    // Shows/hides panels in place - no scrolling or anchor jumping.
-    // =========================
+// =========================
+// SIDEBAR NAVIGATION
+// Shows/hides panels in place - no scrolling or anchor jumping.
+// After the panel becomes visible, re-position any segmented thumbs
+// inside it: while the panel was display:none their offsets were 0.
+// =========================
     function initSettingsNav() {
         const navItems = document.querySelectorAll('.settings-nav-item');
         const panels = document.querySelectorAll('.settings-panel');
@@ -58,32 +60,51 @@ async function init() {
                 const target = item.dataset.panel;
                 navItems.forEach(n => n.classList.toggle('active', n === item));
                 panels.forEach(p => p.classList.toggle('active', p.dataset.panel === target));
+                // Give the browser a frame to render the panel, then measure.
+                requestAnimationFrame(positionAllThumbs);
             });
         });
     }
 
-    // =========================
-    // SEGMENTED CONTROL
-    // Positions the sliding thumb behind the active option. Re-run on
-    // resize since option widths can change with the viewport.
-    // =========================
+// =========================
+// SEGMENTED CONTROL
+// Positions the sliding thumb behind the active option. Re-run on
+// resize since option widths can change with the viewport.
+//
+// IMPORTANT: thumb position is only measurable while the container is
+// actually rendered. Settings panels are display:none until opened, so
+// if the control is hidden we just track the active value and defer the
+// positioning until the panel is shown (see initSettingsNav above).
+// =========================
+    const segmentedInstances = [];
+
     function initSegmented(container, { onChange, initial } = {}) {
         const options = [...container.querySelectorAll('.segmented-option')];
         const thumb = container.querySelector('.segmented-thumb');
+        let currentValue = null;
 
-        function setActive(value, animate = true) {
-            const active = options.find(o => o.dataset.value === value) || options[0];
+        const isVisible = () => container.offsetParent !== null;
+
+        function positionThumb(animate = true) {
+            const active = options.find(o => o.dataset.value === currentValue) || options[0];
             if (!active) return;
 
             options.forEach(o => o.classList.toggle('active', o === active));
 
-            if (thumb) {
+            // offsetLeft/offsetWidth are 0 inside a display:none panel -
+            // store the value, position later once the panel is visible.
+            if (thumb && isVisible()) {
                 thumb.style.transition = animate ? '' : 'none';
                 thumb.style.left = active.offsetLeft + 'px';
                 thumb.style.width = active.offsetWidth + 'px';
                 if (!animate) thumb.offsetHeight; // force reflow before re-enabling transition
                 thumb.style.transition = '';
             }
+        }
+
+        function setActive(value, animate = true) {
+            currentValue = value;
+            positionThumb(animate);
         }
 
         options.forEach(o => {
@@ -94,13 +115,18 @@ async function init() {
         });
 
         window.addEventListener('resize', () => {
-            const current = options.find(o => o.classList.contains('active'));
-            if (current) setActive(current.dataset.value, false);
+            if (currentValue) setActive(currentValue, false);
         });
 
         if (initial) setActive(initial, false);
+
+        segmentedInstances.push({ reposition: () => positionThumb(false) });
         return setActive;
     }
+
+    function positionAllThumbs() {
+        segmentedInstances.forEach(seg => seg.reposition());
+    }   
 
     // =========================
     // DROPDOWN (custom select)
@@ -308,6 +334,7 @@ async function init() {
             cacheSet('accent_color', accentInput ? accentInput.value : '');
             cacheSet('accent_color_soft', accentSoftInput ? accentSoftInput.value : '');
             cacheSet('accent_color_ink', accentInkInput ? accentInkInput.value : '');
+            positionAllThumbs();
         } else {
             showToast('Could not load settings', true);
         }

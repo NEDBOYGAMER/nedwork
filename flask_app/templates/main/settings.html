@@ -38,6 +38,10 @@
                 <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-palette.svg') }}');"></span>
                 Appearance
             </button>
+            <button type="button" class="settings-nav-item" data-panel="dashboard">
+                <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-grid-dots.svg') }}');"></span>
+                Dashboard
+            </button>
             <button type="button" class="settings-nav-item" data-panel="notifications">
                 <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-bell.svg') }}');"></span>
                 Notifications
@@ -205,6 +209,17 @@
                     </div>
                 </div>
             </div>
+        </section>
+
+
+        <!-- ===================== Dashboard ===================== -->
+        <section class="settings-panel" data-panel="dashboard">
+            <div class="settings-panel-head">
+                <h2>Dashboard</h2>
+                <p>Change Dashboard settings.</p>
+            </div>
+
+
         </section>
 
         <!-- ===================== Notifications ===================== -->

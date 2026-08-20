@@ -474,13 +474,13 @@ function setupPoolDropZone() {
 // ── Upload ─────────────────────────────────────────────────────────
 document.getElementById('imageUpload').addEventListener('change', (e) => {
   const files = Array.from(e.target.files);
-  files.forEach(file => {
+  Promise.all(files.map(file => new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      pool.push({ id: uid(), src: ev.target.result, name: file.name.replace(/\.[^.]+$/, '') });
-      render();
-    };
+    reader.onload = (ev) => resolve({ id: uid(), src: ev.target.result, name: file.name.replace(/\.[^.]+$/, '') });
     reader.readAsDataURL(file);
+  }))).then(newImages => {
+    pool.push(...newImages);
+    render();   // once, not 50 times
   });
   e.target.value = '';
 });
