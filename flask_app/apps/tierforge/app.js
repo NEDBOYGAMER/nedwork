@@ -587,6 +587,47 @@ function cancelPendingDragOverUpdate() {
   pendingDragOver = null;
 }
 
+// ── Lightweight drop handling ────────────────────────────────────────
+// A drop only ever moves ONE card. Calling render() rebuilt every card in
+// every tier and the whole pool (~100 elements) from scratch just to
+// reflect that one move — that full rebuild, not the drag itself, was
+// the real cause of the pause you feel right when you release the mouse.
+//
+// Instead: relocate the existing card's actual DOM node. Because it's the
+// same node (not a new one), its <img> keeps its already-decoded/painted
+// state — nothing needs to redecode or reflow beyond the single move.
+function moveImageCardDom(img, targetContainer, afterElement, isPoolTarget) {
+  let card = document.querySelector(`.img-card[data-img-id="${img.id}"]`);
+
+  if (!card) {
+    // Shouldn't normally happen, but stay correct if it ever does.
+    card = makeCard(img, isPoolTarget ? null : targetContainer.dataset.tierId);
+  }
+  card.classList.remove('dragging');
+
+  if (afterElement) {
+    targetContainer.insertBefore(card, afterElement);
+  } else {
+    targetContainer.appendChild(card);
+  }
+
+  updatePoolCountDisplay();
+  scheduleAutosave();
+}
+
+function updatePoolCountDisplay() {
+  const emptyEl = document.getElementById('poolEmpty');
+  const countEl = document.getElementById('poolCount');
+  if (!emptyEl || !countEl) return;
+  if (pool.length === 0) {
+    emptyEl.style.display = 'flex';
+    countEl.textContent = '0 images';
+  } else {
+    emptyEl.style.display = 'none';
+    countEl.textContent = `${pool.length} image${pool.length !== 1 ? 's' : ''}`;
+  }
+}
+
 function setupDropZone(el, tierId) {
   el.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -630,7 +671,7 @@ function setupDropZone(el, tierId) {
       insertImageAt(targetTier.images, img, afterElement);
     }
 
-    render();
+    moveImageCardDom(img, el, afterElement, false);
   });
 }
 
@@ -687,7 +728,7 @@ function setupPoolDropZone() {
 
     removeImageFromEverywhere(img.id);
     insertImageAt(pool, img, afterElement);
-    render();
+    moveImageCardDom(img, poolEl, afterElement, true);
   });
 }
 
