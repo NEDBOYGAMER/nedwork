@@ -13,8 +13,18 @@ const PRESET_COLORS = [
   '#adb5bd','#6c757d',
 ];
 
+// Every image object is now just a thin reference to server-held bytes:
+// { id, src (thumbnail URL), fullUrl (full-res URL), name }. No Blobs are
+// held in memory anymore — the server does the decode/resize work at
+// upload time, and the browser only ever downloads what it's about to
+// paint (a ~480px thumbnail per card, or the full copy on demand for a
+// right-click preview). This is the single biggest lag fix in this file:
+// the old version kept a full-resolution Blob *and* a thumbnail Blob for
+// every image alive in tab memory the whole session, which is what made
+// big batches (dozens of multi-MB phone photos) slow to upload, slow to
+// autosave, and heavy on the tab.
 let tiers   = DEFAULT_TIERS.map(t => ({ ...t, images: [] }));
-let pool    = []; // { id, src, name }
+let pool    = []; // { id, src, fullUrl, name }
 let editing = null; // tier id being edited
 
 let dragItem     = null; // { imgId, fromTierId (null = pool) }
@@ -41,6 +51,11 @@ function getImage(id) {
     || tiers.flatMap(t => t.images).find(i => i.id === id);
 }
 
+// Pure array mutation only — this is used both for permanent removal
+// (img-remove button) AND for ordinary moves (drag/drop, number-key
+// jump), so it must never talk to the network. Server-side deletion is
+// triggered explicitly by whichever call site actually means "gone for
+// good" — see deleteImageFromServer().
 function removeImageFromEverywhere(imgId) {
   pool = pool.filter(i => i.id !== imgId);
   tiers.forEach(t => {
@@ -48,21 +63,43 @@ function removeImageFromEverywhere(imgId) {
   });
 }
 
-// Revoke every currently-held blob: object URL. Only call this when
-// wholesale REPLACING the in-memory state (loading a file / autosave) —
-// never during a move (drag/drop, number-key jump), since those images
-// keep the same URL and just change location.
-function revokeAllImageUrls() {
-  [...pool, ...tiers.flatMap(t => t.images)].forEach(img => {
-    if (img.src && img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
-  });
+// ── Server image store ────────────────────────────────────────────
+// The backend at /apps/tierforge/images does the actual thumbnailing
+// (Pillow: EXIF-transpose, downscale, re-encode) and hands back URLs for
+// a small thumbnail + a capped "full" copy. A whole file-picker selection
+// is sent as ONE multipart POST rather than one request per file — for a
+// 50-image upload that's 1 round trip instead of 50, and the resize work
+// happens off the user's main thread entirely (on the server), so the UI
+// never stalls while it's happening.
+const API_BASE = '/apps/tierforge';
+
+async function uploadImagesToServer(files) {
+  const formData = new FormData();
+  files.forEach(f => formData.append('images', f, f.name));
+
+  const res = await fetch(`${API_BASE}/images`, { method: 'POST', body: formData });
+  let body = null;
+  try { body = await res.json(); } catch (_) { /* fall through to status-based error */ }
+
+  if (!res.ok && (!body || !body.images || body.images.length === 0)) {
+    const msg = (body && body.error) || `Upload failed (${res.status})`;
+    throw new Error(msg);
+  }
+  return { images: (body && body.images) || [], errors: (body && body.errors) || [] };
 }
 
-// ── Image <-> Blob helpers ──────────────────────────────────────────
-// Images are kept in memory as Blobs with a cheap URL.createObjectURL()
-// string for display (fast, no base64 encoding needed). Base64 data URLs
-// are only produced at the edges — when writing a portable .tierforge
-// file — since that's the one place we need a self-contained string.
+// Fire-and-forget: an orphaned file left on the server isn't worth
+// blocking or retrying the UI over. `keepalive` lets the request survive
+// even if this happens right as the user navigates away.
+function deleteImageFromServer(imageId) {
+  fetch(`${API_BASE}/images/${imageId}`, { method: 'DELETE', keepalive: true }).catch(() => {});
+}
+
+// ── Image <-> data URL helpers ──────────────────────────────────────
+// Only needed at the two edges that produce/consume a portable
+// .tierforge file (Save embeds full images as base64; Load has to turn
+// that base64 back into a file to re-upload). Nothing else in this file
+// touches Blobs anymore.
 function dataURLtoBlob(dataURL) {
   const [header, base64] = dataURL.split(',');
   const mimeMatch = header.match(/:(.*?);/);
@@ -82,77 +119,13 @@ function blobToDataURL(blob) {
   });
 }
 
-// ── Thumbnails ───────────────────────────────────────────────────────
-// The card views (pool + tier rows) only ever need a small preview — they
-// never need the full-resolution original decoded and painted. A phone
-// photo can be 3000x4000px / several MB; decoding 50 of those to draw
-// them at 120px is the real cost with lots of images, independent of how
-// the image data is referenced (base64 vs blob: URL makes no difference
-// here — it's decode + paint cost, not encoding cost).
-//
-// So: decode each original once at upload time, downscale it onto a
-// canvas, and re-encode as a small JPEG. That thumbnail — not the
-// original — is what gets displayed and re-painted on every render/drag.
-// The original blob is kept only for the right-click full preview and
-// for Save/Export, and is decoded again only in those moments (one image
-// at a time), not for every card on every render.
-const THUMB_MAX_DIM = 480;
-const THUMB_QUALITY  = 0.82;
-
-async function makeThumbnailBlob(file, maxDim = THUMB_MAX_DIM, quality = THUMB_QUALITY) {
-  let width, height, drawSource;
-
-  if (typeof createImageBitmap === 'function') {
-    // Preferred path: decode is handled by the browser's image pipeline
-    // (often off the main thread), and we get pixel dimensions directly.
-    const bitmap = await createImageBitmap(file);
-    width = bitmap.width;
-    height = bitmap.height;
-    drawSource = bitmap;
-  } else {
-    // Fallback for older browsers without createImageBitmap support.
-    drawSource = await new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
-      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to decode image')); };
-      img.src = url;
-    });
-    width = drawSource.naturalWidth;
-    height = drawSource.naturalHeight;
-  }
-
-  if (width > maxDim || height > maxDim) {
-    if (width >= height) {
-      height = Math.round(height * (maxDim / width));
-      width = maxDim;
-    } else {
-      width = Math.round(width * (maxDim / height));
-      height = maxDim;
-    }
-  }
-
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(drawSource, 0, 0, width, height);
-  if (drawSource.close) drawSource.close(); // release the ImageBitmap
-
-  const thumbBlob = await new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error('Thumbnail encode failed'))),
-      'image/jpeg',
-      quality
-    );
-  });
-  return thumbBlob;
-}
-
 // ── Autosave (crash / reload recovery) ────────────────────────────
 // Uses IndexedDB rather than localStorage: it's async (doesn't block the
-// main thread), isn't capped at ~5-10MB, and can store Blobs directly —
-// no base64 re-encoding of every image on every save.
+// main thread) and isn't capped at ~5-10MB. Now that images are just
+// {id, src, fullUrl, name} references instead of Blobs, this write is
+// tiny — a board of a few hundred images used to mean serializing
+// hundreds of MB of image data into IndexedDB on every debounced
+// autosave; now it's a few KB of JSON either way.
 const IDB_NAME  = 'tierforge_db';
 const IDB_STORE = 'autosave';
 const IDB_KEY   = 'state_v1';
@@ -203,16 +176,16 @@ async function autosaveState() {
   try {
     const titleEl = document.getElementById('tierTitle');
     const data = {
-      _version: 3,
+      _version: 4,
       title: titleEl ? titleEl.value : '',
       savedAt: new Date().toISOString(),
       tiers: tiers.map(t => ({
         id: t.id,
         label: t.label,
         color: t.color,
-        images: t.images.map(i => ({ id: i.id, blob: i.blob, thumbBlob: i.thumbBlob, name: i.name })),
+        images: t.images.map(i => ({ id: i.id, src: i.src, fullUrl: i.fullUrl, name: i.name })),
       })),
-      pool: pool.map(i => ({ id: i.id, blob: i.blob, thumbBlob: i.thumbBlob, name: i.name })),
+      pool: pool.map(i => ({ id: i.id, src: i.src, fullUrl: i.fullUrl, name: i.name })),
       settings,
     };
     await idbPut(IDB_KEY, data);
@@ -247,6 +220,39 @@ async function migrateOldLocalStorageAutosave() {
   }
 }
 
+// Pre-v4 autosave (_version 3 and earlier) stored raw Blobs client-side
+// instead of server refs. Migrate it once by re-uploading each original
+// to the server, so switching to server-side thumbnailing doesn't just
+// wipe out anyone's in-progress session.
+async function migrateBlobAutosaveToServer(data) {
+  const toImage = async (i) => {
+    const blob = i.blob || i.thumbBlob;
+    if (!blob) return null;
+    try {
+      const { images } = await uploadImagesToServer([new File([blob], (i.name || 'image') + '.jpg')]);
+      const uploaded = images[0];
+      if (!uploaded) return null;
+      return { id: uploaded.id, src: uploaded.thumbUrl, fullUrl: uploaded.fullUrl, name: i.name || uploaded.name };
+    } catch (err) {
+      console.warn('Failed to migrate an autosaved image:', err);
+      return null;
+    }
+  };
+
+  const tierImages = await Promise.all(data.tiers.map(t => Promise.all((t.images || []).map(toImage))));
+  const poolImages = await Promise.all((data.pool || []).map(toImage));
+
+  return {
+    tiers: data.tiers.map((t, idx) => ({
+      id: t.id || uid(),
+      label: t.label,
+      color: t.color,
+      images: (tierImages[idx] || []).filter(Boolean),
+    })),
+    pool: (poolImages || []).filter(Boolean),
+  };
+}
+
 async function loadAutosave() {
   try {
     const data = await idbGet(IDB_KEY);
@@ -255,30 +261,23 @@ async function loadAutosave() {
       return false;
     }
 
-    // Older autosave versions didn't store a separate thumbnail — fall
-    // back to generating one so display stays fast either way.
-    const toImage = async (i) => {
-      const thumbBlob = i.thumbBlob || await makeThumbnailBlob(i.blob).catch(() => i.blob);
-      return {
-        id: i.id || uid(),
-        blob: i.blob,
-        thumbBlob,
-        src: URL.createObjectURL(thumbBlob),
-        name: i.name,
+    let restored;
+    if (!data._version || data._version < 4) {
+      restored = await migrateBlobAutosaveToServer(data);
+    } else {
+      restored = {
+        tiers: data.tiers.map(t => ({
+          id: t.id || uid(),
+          label: t.label,
+          color: t.color,
+          images: (t.images || []).map(i => ({ id: i.id, src: i.src, fullUrl: i.fullUrl, name: i.name })),
+        })),
+        pool: (data.pool || []).map(i => ({ id: i.id, src: i.src, fullUrl: i.fullUrl, name: i.name })),
       };
-    };
+    }
 
-    const tierImagePromises = data.tiers.map(t => Promise.all((t.images || []).map(toImage)));
-    const poolImagePromises = Promise.all((data.pool || []).map(toImage));
-    const [tierImages, poolImages] = await Promise.all([Promise.all(tierImagePromises), poolImagePromises]);
-
-    tiers = data.tiers.map((t, idx) => ({
-      id: t.id || uid(),
-      label: t.label,
-      color: t.color,
-      images: tierImages[idx],
-    }));
-    pool = poolImages;
+    tiers = restored.tiers;
+    pool = restored.pool;
 
     if (data.title) {
       const titleEl = document.getElementById('tierTitle');
@@ -303,10 +302,12 @@ function render() {
 
 function renderTiers() {
   const board = document.getElementById('tierBoard');
+  // Build off-DOM and swap in one shot — one reflow for the whole board
+  // instead of one per appendChild.
+  const frag = document.createDocumentFragment();
+  tiers.forEach(tier => frag.appendChild(makeTierRow(tier)));
   board.innerHTML = '';
-  tiers.forEach(tier => {
-    board.appendChild(makeTierRow(tier));
-  });
+  board.appendChild(frag);
 }
 
 function makeTierRow(tier) {
@@ -344,9 +345,9 @@ function makeTierRow(tier) {
   imgArea.className = 'tier-images';
   imgArea.dataset.tierId = tier.id;
 
-  tier.images.forEach(img => {
-    imgArea.appendChild(makeCard(img, tier.id));
-  });
+  const imgFrag = document.createDocumentFragment();
+  tier.images.forEach(img => imgFrag.appendChild(makeCard(img, tier.id)));
+  imgArea.appendChild(imgFrag);
 
   // Drop events on imgArea
   setupDropZone(imgArea, tier.id);
@@ -386,6 +387,11 @@ function makeCard(img, tierId) {
   image.src = img.src;
   image.alt = img.name;
   image.draggable = false;
+  // Thumbnails now come over the network rather than an instant blob:
+  // URL, so let the browser defer decoding/loading of off-screen cards
+  // instead of doing it all eagerly on every render.
+  image.loading = 'lazy';
+  image.decoding = 'async';
 
   const name = document.createElement('div');
   name.className = 'img-name';
@@ -399,7 +405,7 @@ function makeCard(img, tierId) {
     e.stopPropagation();
     if (settings.confirmDelete && !confirm(`Remove "${img.name}"?`)) return;
     removeImageFromEverywhere(img.id);
-    if (img.src && img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+    deleteImageFromServer(img.id);
     render();
   });
 
@@ -413,11 +419,12 @@ function makeCard(img, tierId) {
     if (hoveredImgId === img.id) hoveredImgId = null;
   });
 
-  // Right-click to preview big — uses the full-resolution original (img.blob),
-  // not the small display thumbnail (img.src), so zooming in looks sharp.
+  // Right-click to preview big — fetches the full-resolution copy from
+  // the server on demand (img.fullUrl), rather than keeping every
+  // original decoded in the tab the whole time.
   card.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    showImagePreview(img.blob, img.name);
+    showImagePreview(img);
   });
 
   // Double-click an unranked image to bring it to the front of the pool
@@ -689,9 +696,9 @@ function renderPool() {
   } else {
     emptyEl.style.display = 'none';
     countEl.textContent = `${pool.length} image${pool.length !== 1 ? 's' : ''}`;
-    pool.forEach(img => {
-      poolEl.appendChild(makeCard(img, null));
-    });
+    const frag = document.createDocumentFragment();
+    pool.forEach(img => frag.appendChild(makeCard(img, null)));
+    poolEl.appendChild(frag);
   }
 }
 
@@ -733,44 +740,42 @@ function setupPoolDropZone() {
 }
 
 // ── Upload ─────────────────────────────────────────────────────────
-// Object URLs are created synchronously (no async base64 encode/decode
-// pass per file), and every file is pushed into the pool before a single
-// render() call — a 50-image upload does 1 board rebuild instead of 50.
+// The whole file-picker selection is sent to the server as one multipart
+// POST. The server normalizes + thumbnails every file and hands back
+// {id, name, thumbUrl, fullUrl} for each — no canvas work, no per-file
+// decode, happens on the user's device at all. One render() call adds
+// the whole batch to the pool at once.
 document.getElementById('imageUpload').addEventListener('change', async (e) => {
   const files = Array.from(e.target.files);
   if (files.length === 0) return;
 
   const uploadLabel = document.querySelector('label[for="imageUpload"]');
-  const countEl = document.getElementById('poolCount');
   const originalLabelHTML = uploadLabel ? uploadLabel.innerHTML : null;
 
   try {
-    let done = 0;
-    if (uploadLabel) uploadLabel.style.pointerEvents = 'none';
+    if (uploadLabel) {
+      uploadLabel.style.pointerEvents = 'none';
+      uploadLabel.textContent = files.length > 1 ? `Uploading ${files.length} images…` : 'Uploading…';
+    }
 
-    const newImages = await Promise.all(files.map(async (file) => {
-      let thumbBlob;
-      try {
-        thumbBlob = await makeThumbnailBlob(file);
-      } catch (err) {
-        // If thumbnailing fails for some reason (e.g. corrupt/odd file),
-        // fall back to showing the original rather than dropping the image.
-        console.warn('Thumbnail generation failed, using original:', err);
-        thumbBlob = file;
-      }
-      done++;
-      if (uploadLabel) uploadLabel.textContent = `Processing ${done}/${files.length}…`;
-      return {
-        id: uid(),
-        blob: file,           // full-resolution original — kept for preview/export
-        thumbBlob,             // small re-encoded copy — used for on-screen display
-        src: URL.createObjectURL(thumbBlob),
-        name: file.name.replace(/\.[^.]+$/, ''),
-      };
-    }));
+    const { images, errors } = await uploadImagesToServer(files);
 
-    pool.push(...newImages);
-    render();
+    if (images.length > 0) {
+      pool.push(...images.map(img => ({
+        id: img.id,
+        src: img.thumbUrl,
+        fullUrl: img.fullUrl,
+        name: img.name,
+      })));
+      render();
+    }
+
+    if (errors.length > 0) {
+      const names = errors.map(er => er.name).join(', ');
+      alert(`${errors.length} image(s) could not be uploaded: ${names}`);
+    }
+  } catch (err) {
+    alert('Upload failed: ' + err.message);
   } finally {
     if (uploadLabel) {
       uploadLabel.style.pointerEvents = '';
@@ -958,21 +963,42 @@ document.getElementById('exportPngBtn').addEventListener('click', async () => {
 });
 
 // ── Save / Load ────────────────────────────────────────────────────
+// The exported .tierforge file stays fully self-contained (base64 image
+// data embedded directly), unchanged from before — that's what lets a
+// downloaded file be reopened later even if the server-side copies it
+// was built from are long gone. Saving now means fetching each image's
+// full-resolution copy from the server once, at export time, instead of
+// reading it out of an in-memory Blob.
 document.getElementById('saveBtn').addEventListener('click', async () => {
   closeFileMenu();
   const title = document.getElementById('tierTitle').value.trim() || 'Untitled Tier List';
-  const data = {
-    _version: 1,
-    title,
-    savedAt: new Date().toISOString(),
-    tiers: await Promise.all(tiers.map(async t => ({
-      id: t.id,
-      label: t.label,
-      color: t.color,
-      images: await Promise.all(t.images.map(async i => ({ id: i.id, src: await blobToDataURL(i.blob), name: i.name }))),
-    }))),
-    pool: await Promise.all(pool.map(async i => ({ id: i.id, src: await blobToDataURL(i.blob), name: i.name }))),
+
+  const fetchAsDataURL = async (img) => {
+    const res = await fetch(img.fullUrl);
+    if (!res.ok) throw new Error(`Failed to fetch "${img.name}"`);
+    const blob = await res.blob();
+    return blobToDataURL(blob);
   };
+
+  let data;
+  try {
+    data = {
+      _version: 1,
+      title,
+      savedAt: new Date().toISOString(),
+      tiers: await Promise.all(tiers.map(async t => ({
+        id: t.id,
+        label: t.label,
+        color: t.color,
+        images: await Promise.all(t.images.map(async i => ({ id: i.id, src: await fetchAsDataURL(i), name: i.name }))),
+      }))),
+      pool: await Promise.all(pool.map(async i => ({ id: i.id, src: await fetchAsDataURL(i), name: i.name }))),
+    };
+  } catch (err) {
+    alert('Could not prepare file for saving: ' + err.message);
+    return;
+  }
+
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   const link = document.createElement('a');
   link.download = `${title.replace(/\s+/g, '-').toLowerCase()}.tierforge`;
@@ -991,12 +1017,17 @@ document.getElementById('loadFileInput').addEventListener('change', (e) => {
       const data = JSON.parse(ev.target.result);
       if (!data._version || !data.tiers) throw new Error('Invalid file format');
 
-      revokeAllImageUrls(); // replacing state wholesale — release the old blob URLs
+      // Remember what's currently on the board so it can be cleaned up on
+      // the server once the new board has loaded successfully — otherwise
+      // every previous session's uploads just leak on disk.
+      const oldIds = [...pool, ...tiers.flatMap(t => t.images)].map(i => i.id);
 
       const toImage = async (i) => {
         const blob = dataURLtoBlob(i.src);
-        const thumbBlob = await makeThumbnailBlob(blob).catch(() => blob);
-        return { id: i.id || uid(), blob, thumbBlob, src: URL.createObjectURL(thumbBlob), name: i.name };
+        const { images } = await uploadImagesToServer([new File([blob], (i.name || 'image') + '.jpg')]);
+        const uploaded = images[0];
+        if (!uploaded) throw new Error(`Failed to re-upload "${i.name}"`);
+        return { id: uploaded.id, src: uploaded.thumbUrl, fullUrl: uploaded.fullUrl, name: i.name };
       };
       const tierImages = await Promise.all(data.tiers.map(t => Promise.all((t.images || []).map(toImage))));
       const poolImages = await Promise.all((data.pool || []).map(toImage));
@@ -1012,6 +1043,8 @@ document.getElementById('loadFileInput').addEventListener('change', (e) => {
         document.getElementById('tierTitle').value = data.title;
       }
       render();
+
+      oldIds.forEach(deleteImageFromServer);
     } catch (err) {
       alert('Could not load file: ' + err.message);
     }
@@ -1037,25 +1070,50 @@ document.addEventListener('dragover', (e) => {
 });
 
 // ── Right-click Image Preview ─────────────────────────────────────
-// Takes a Blob (the full-resolution original) rather than a ready-made
-// URL, and creates the object URL only for the moment it's shown — this
-// is the one place a full decode of the original happens, and it's just
-// one image at a time, not all 50 at once.
+// Full-resolution bytes live on the server, not in tab memory, so this
+// fetches them on demand. To keep it feeling instant, the overlay opens
+// immediately showing the already-loaded thumbnail (blurred up to full
+// size via CSS) and swaps to the sharp version the moment the fetch
+// resolves — no blank/loading flash, and the common "just glancing"
+// case never even needs the network round trip to feel done.
 let currentPreviewUrl = null;
+let previewRequestToken = 0;
 
-function showImagePreview(blob, name) {
+async function showImagePreview(img) {
   const overlay = document.getElementById('imgPreviewOverlay');
-  const img = document.getElementById('imgPreviewImage');
-  if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
-  currentPreviewUrl = URL.createObjectURL(blob);
-  img.src = currentPreviewUrl;
-  img.alt = name || '';
+  const imageEl = document.getElementById('imgPreviewImage');
+  const myToken = ++previewRequestToken;
+
+  if (currentPreviewUrl) {
+    URL.revokeObjectURL(currentPreviewUrl);
+    currentPreviewUrl = null;
+  }
+
+  imageEl.src = img.src; // instant: the thumbnail, shown large as a placeholder
+  imageEl.alt = img.name || '';
+  overlay.classList.add('loading');
   overlay.hidden = false;
+
+  try {
+    const res = await fetch(img.fullUrl);
+    if (!res.ok) throw new Error('Failed to load full-resolution image');
+    const blob = await res.blob();
+    if (myToken !== previewRequestToken) return; // superseded by a newer preview / already closed
+
+    currentPreviewUrl = URL.createObjectURL(blob);
+    imageEl.src = currentPreviewUrl;
+  } catch (err) {
+    console.warn('Preview failed, showing thumbnail only:', err);
+  } finally {
+    if (myToken === previewRequestToken) overlay.classList.remove('loading');
+  }
 }
 
 function hideImagePreview() {
+  previewRequestToken++; // invalidate any in-flight fetch for the old preview
   const overlay = document.getElementById('imgPreviewOverlay');
   if (!overlay.hidden) overlay.hidden = true;
+  overlay.classList.remove('loading');
   if (currentPreviewUrl) {
     URL.revokeObjectURL(currentPreviewUrl);
     currentPreviewUrl = null;

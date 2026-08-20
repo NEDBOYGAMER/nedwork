@@ -3,6 +3,8 @@ from flask_app.apps.colors.routes import colors_bp
 from flask_app.apps.links.routes import links_bp
 from flask_app.apps.polywars.routes import polywars_bp
 from flask_app.apps.townclaim.routes import townclaim_bp
+from flask_app.apps.tierforge.routes import tierforge_bp
+
 
 # Store blueprints in a list of tuples: (blueprint_object, url_prefix)
 # add      (app_corner_bp, '/app_corner'),
@@ -11,6 +13,7 @@ ALL_BLUEPRINTS = [
     (links_bp, '/apps/links'),
     (polywars_bp, '/apps/polywars'),
     (townclaim_bp, '/apps/townclaim'),
+    (tierforge_bp, '/apps/tierforge'),
 ]
 
 def register_all_blueprints(app):

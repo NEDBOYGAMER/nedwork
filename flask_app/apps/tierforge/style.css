@@ -373,9 +373,28 @@ body {
   box-shadow: 0 20px 60px rgba(0,0,0,0.6);
   background: var(--surface-2);
   border: 1px solid var(--line);
+  transition: filter 0.15s;
 }
 
 @keyframes preview-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* While the full-resolution copy is still being fetched from the server,
+   the overlay already shows the on-screen thumbnail blown up — blur it
+   slightly so it reads as "still loading" rather than as the final image. */
+.img-preview-overlay.loading img {
+  filter: blur(3px);
+}
+
+/* Thumbnails now arrive over the network instead of an instant blob: URL —
+   fade each one in as it finishes loading so a slow/large batch reads as
+   progressive loading rather than a layout jump. */
+.img-card img {
+  animation: card-img-fade-in 0.15s ease-out;
+}
+@keyframes card-img-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
