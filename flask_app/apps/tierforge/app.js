@@ -82,6 +82,73 @@ function blobToDataURL(blob) {
   });
 }
 
+// ── Thumbnails ───────────────────────────────────────────────────────
+// The card views (pool + tier rows) only ever need a small preview — they
+// never need the full-resolution original decoded and painted. A phone
+// photo can be 3000x4000px / several MB; decoding 50 of those to draw
+// them at 120px is the real cost with lots of images, independent of how
+// the image data is referenced (base64 vs blob: URL makes no difference
+// here — it's decode + paint cost, not encoding cost).
+//
+// So: decode each original once at upload time, downscale it onto a
+// canvas, and re-encode as a small JPEG. That thumbnail — not the
+// original — is what gets displayed and re-painted on every render/drag.
+// The original blob is kept only for the right-click full preview and
+// for Save/Export, and is decoded again only in those moments (one image
+// at a time), not for every card on every render.
+const THUMB_MAX_DIM = 480;
+const THUMB_QUALITY  = 0.82;
+
+async function makeThumbnailBlob(file, maxDim = THUMB_MAX_DIM, quality = THUMB_QUALITY) {
+  let width, height, drawSource;
+
+  if (typeof createImageBitmap === 'function') {
+    // Preferred path: decode is handled by the browser's image pipeline
+    // (often off the main thread), and we get pixel dimensions directly.
+    const bitmap = await createImageBitmap(file);
+    width = bitmap.width;
+    height = bitmap.height;
+    drawSource = bitmap;
+  } else {
+    // Fallback for older browsers without createImageBitmap support.
+    drawSource = await new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to decode image')); };
+      img.src = url;
+    });
+    width = drawSource.naturalWidth;
+    height = drawSource.naturalHeight;
+  }
+
+  if (width > maxDim || height > maxDim) {
+    if (width >= height) {
+      height = Math.round(height * (maxDim / width));
+      width = maxDim;
+    } else {
+      width = Math.round(width * (maxDim / height));
+      height = maxDim;
+    }
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(drawSource, 0, 0, width, height);
+  if (drawSource.close) drawSource.close(); // release the ImageBitmap
+
+  const thumbBlob = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error('Thumbnail encode failed'))),
+      'image/jpeg',
+      quality
+    );
+  });
+  return thumbBlob;
+}
+
 // ── Autosave (crash / reload recovery) ────────────────────────────
 // Uses IndexedDB rather than localStorage: it's async (doesn't block the
 // main thread), isn't capped at ~5-10MB, and can store Blobs directly —
@@ -136,16 +203,16 @@ async function autosaveState() {
   try {
     const titleEl = document.getElementById('tierTitle');
     const data = {
-      _version: 2,
+      _version: 3,
       title: titleEl ? titleEl.value : '',
       savedAt: new Date().toISOString(),
       tiers: tiers.map(t => ({
         id: t.id,
         label: t.label,
         color: t.color,
-        images: t.images.map(i => ({ id: i.id, blob: i.blob, name: i.name })),
+        images: t.images.map(i => ({ id: i.id, blob: i.blob, thumbBlob: i.thumbBlob, name: i.name })),
       })),
-      pool: pool.map(i => ({ id: i.id, blob: i.blob, name: i.name })),
+      pool: pool.map(i => ({ id: i.id, blob: i.blob, thumbBlob: i.thumbBlob, name: i.name })),
       settings,
     };
     await idbPut(IDB_KEY, data);
@@ -188,23 +255,30 @@ async function loadAutosave() {
       return false;
     }
 
-    tiers = data.tiers.map(t => ({
+    // Older autosave versions didn't store a separate thumbnail — fall
+    // back to generating one so display stays fast either way.
+    const toImage = async (i) => {
+      const thumbBlob = i.thumbBlob || await makeThumbnailBlob(i.blob).catch(() => i.blob);
+      return {
+        id: i.id || uid(),
+        blob: i.blob,
+        thumbBlob,
+        src: URL.createObjectURL(thumbBlob),
+        name: i.name,
+      };
+    };
+
+    const tierImagePromises = data.tiers.map(t => Promise.all((t.images || []).map(toImage)));
+    const poolImagePromises = Promise.all((data.pool || []).map(toImage));
+    const [tierImages, poolImages] = await Promise.all([Promise.all(tierImagePromises), poolImagePromises]);
+
+    tiers = data.tiers.map((t, idx) => ({
       id: t.id || uid(),
       label: t.label,
       color: t.color,
-      images: (t.images || []).map(i => ({
-        id: i.id || uid(),
-        blob: i.blob,
-        src: URL.createObjectURL(i.blob),
-        name: i.name,
-      })),
+      images: tierImages[idx],
     }));
-    pool = (data.pool || []).map(i => ({
-      id: i.id || uid(),
-      blob: i.blob,
-      src: URL.createObjectURL(i.blob),
-      name: i.name,
-    }));
+    pool = poolImages;
 
     if (data.title) {
       const titleEl = document.getElementById('tierTitle');
@@ -339,10 +413,11 @@ function makeCard(img, tierId) {
     if (hoveredImgId === img.id) hoveredImgId = null;
   });
 
-  // Right-click to preview big
+  // Right-click to preview big — uses the full-resolution original (img.blob),
+  // not the small display thumbnail (img.src), so zooming in looks sharp.
   card.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    showImagePreview(img.src, img.name);
+    showImagePreview(img.blob, img.name);
   });
 
   // Double-click an unranked image to bring it to the front of the pool
@@ -582,17 +657,48 @@ function setupPoolDropZone() {
 // Object URLs are created synchronously (no async base64 encode/decode
 // pass per file), and every file is pushed into the pool before a single
 // render() call — a 50-image upload does 1 board rebuild instead of 50.
-document.getElementById('imageUpload').addEventListener('change', (e) => {
+document.getElementById('imageUpload').addEventListener('change', async (e) => {
   const files = Array.from(e.target.files);
-  const newImages = files.map(file => ({
-    id: uid(),
-    blob: file,
-    src: URL.createObjectURL(file),
-    name: file.name.replace(/\.[^.]+$/, ''),
-  }));
-  pool.push(...newImages);
-  render();
-  e.target.value = '';
+  if (files.length === 0) return;
+
+  const uploadLabel = document.querySelector('label[for="imageUpload"]');
+  const countEl = document.getElementById('poolCount');
+  const originalLabelHTML = uploadLabel ? uploadLabel.innerHTML : null;
+
+  try {
+    let done = 0;
+    if (uploadLabel) uploadLabel.style.pointerEvents = 'none';
+
+    const newImages = await Promise.all(files.map(async (file) => {
+      let thumbBlob;
+      try {
+        thumbBlob = await makeThumbnailBlob(file);
+      } catch (err) {
+        // If thumbnailing fails for some reason (e.g. corrupt/odd file),
+        // fall back to showing the original rather than dropping the image.
+        console.warn('Thumbnail generation failed, using original:', err);
+        thumbBlob = file;
+      }
+      done++;
+      if (uploadLabel) uploadLabel.textContent = `Processing ${done}/${files.length}…`;
+      return {
+        id: uid(),
+        blob: file,           // full-resolution original — kept for preview/export
+        thumbBlob,             // small re-encoded copy — used for on-screen display
+        src: URL.createObjectURL(thumbBlob),
+        name: file.name.replace(/\.[^.]+$/, ''),
+      };
+    }));
+
+    pool.push(...newImages);
+    render();
+  } finally {
+    if (uploadLabel) {
+      uploadLabel.style.pointerEvents = '';
+      uploadLabel.innerHTML = originalLabelHTML;
+    }
+    e.target.value = '';
+  }
 });
 
 document.getElementById('tierTitle').addEventListener('input', scheduleAutosave);
@@ -801,24 +907,28 @@ document.getElementById('loadFileInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = (ev) => {
+  reader.onload = async (ev) => {
     try {
       const data = JSON.parse(ev.target.result);
       if (!data._version || !data.tiers) throw new Error('Invalid file format');
 
       revokeAllImageUrls(); // replacing state wholesale — release the old blob URLs
 
-      const toImage = (i) => {
+      const toImage = async (i) => {
         const blob = dataURLtoBlob(i.src);
-        return { id: i.id || uid(), blob, src: URL.createObjectURL(blob), name: i.name };
+        const thumbBlob = await makeThumbnailBlob(blob).catch(() => blob);
+        return { id: i.id || uid(), blob, thumbBlob, src: URL.createObjectURL(thumbBlob), name: i.name };
       };
-      tiers = data.tiers.map(t => ({
+      const tierImages = await Promise.all(data.tiers.map(t => Promise.all((t.images || []).map(toImage))));
+      const poolImages = await Promise.all((data.pool || []).map(toImage));
+
+      tiers = data.tiers.map((t, idx) => ({
         id: t.id || uid(),
         label: t.label,
         color: t.color,
-        images: (t.images || []).map(toImage),
+        images: tierImages[idx],
       }));
-      pool = (data.pool || []).map(toImage);
+      pool = poolImages;
       if (data.title) {
         document.getElementById('tierTitle').value = data.title;
       }
@@ -848,10 +958,18 @@ document.addEventListener('dragover', (e) => {
 });
 
 // ── Right-click Image Preview ─────────────────────────────────────
-function showImagePreview(src, name) {
+// Takes a Blob (the full-resolution original) rather than a ready-made
+// URL, and creates the object URL only for the moment it's shown — this
+// is the one place a full decode of the original happens, and it's just
+// one image at a time, not all 50 at once.
+let currentPreviewUrl = null;
+
+function showImagePreview(blob, name) {
   const overlay = document.getElementById('imgPreviewOverlay');
   const img = document.getElementById('imgPreviewImage');
-  img.src = src;
+  if (currentPreviewUrl) URL.revokeObjectURL(currentPreviewUrl);
+  currentPreviewUrl = URL.createObjectURL(blob);
+  img.src = currentPreviewUrl;
   img.alt = name || '';
   overlay.hidden = false;
 }
@@ -859,6 +977,10 @@ function showImagePreview(src, name) {
 function hideImagePreview() {
   const overlay = document.getElementById('imgPreviewOverlay');
   if (!overlay.hidden) overlay.hidden = true;
+  if (currentPreviewUrl) {
+    URL.revokeObjectURL(currentPreviewUrl);
+    currentPreviewUrl = null;
+  }
 }
 
 document.getElementById('imgPreviewOverlay').addEventListener('click', hideImagePreview);
