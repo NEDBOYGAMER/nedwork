@@ -43,6 +43,11 @@ input, select { font-family: var(--font-body); }
 .eyebrow { font-size: .72rem; font-weight: 800; letter-spacing: .18em;
   text-transform: uppercase; color: var(--brass); margin: 0 0 8px; }
 
+.toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  background: var(--danger); color: #fff; font-weight: 800; font-size: .88rem;
+  padding: 10px 18px; border-radius: 999px; box-shadow: var(--shadow);
+  z-index: 2000; max-width: 90vw; text-align: center; }
+
 .btn {
   border: 1px solid var(--line); background: var(--cream-2); color: var(--ink);
   padding: 12px 18px; border-radius: 14px; font-weight: 800; font-size: .92rem;
@@ -90,9 +95,9 @@ input:focus, select:focus { outline: none; border-color: var(--brass-dark); }
 /* ---------- LOBBY ---------- */
 .lobby-wrap { max-width: 480px; margin: 0 auto; padding: 70px 24px; text-align: center; }
 .code-display { font-family: var(--font-display); font-size: 3rem; font-weight: 800;
-  letter-spacing: .3em; color: var(--brass); background: var(--cream);
+  letter-spacing: .3em; background: var(--cream); color: var(--ink);
   border: 4px dashed var(--brass-dark); border-radius: 16px;
-  padding: 18px 8px 18px 22px; margin-bottom: 34px; color: var(--ink); }
+  padding: 18px 8px 18px 22px; margin-bottom: 34px; }
 .lobby-players { text-align: left; margin-bottom: 20px; }
 .lobby-players h2 { font-size: .9rem; text-transform: uppercase; color: var(--cream-2);
   letter-spacing: .12em; margin-bottom: 10px; }

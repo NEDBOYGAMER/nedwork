@@ -150,6 +150,7 @@ $("#btn-buy").addEventListener("click", async () => {
 $("#btn-auction").addEventListener("click", async () => {
   try {
     await api("auction", { code: session.code, player_id: session.playerId });
+    auctionDismissed = false;
     $("#auction-modal").classList.remove("hidden");
   } catch (e) { flashError(e.message); }
 });
@@ -187,6 +188,7 @@ $("#btn-new-game").addEventListener("click", () => {
 
 $("#card-ok").addEventListener("click", () => $("#card-modal").classList.add("hidden"));
 $("#auction-close").addEventListener("click", () => {
+  auctionDismissed = true;
   $("#auction-modal").classList.add("hidden");
   clearInterval(auctionTimer);
 });
@@ -383,6 +385,17 @@ function renderSide(state) {
   renderDie(d1, state.dice ? state.dice[0] : null);
   renderDie(d2, state.dice ? state.dice[1] : null);
 
+  const diceKey = state.dice ? state.dice.join("-") : "";
+  if (diceKey && diceKey !== lastDiceKey) {
+    d1.classList.add("rolling");
+    d2.classList.add("rolling");
+    setTimeout(() => {
+      d1.classList.remove("rolling");
+      d2.classList.remove("rolling");
+    }, 420);
+    lastDiceKey = diceKey;
+  }
+
   $("#doubles-badge").classList.toggle("hidden", !(state.doubles > 0 && isTurn));
 
   $("#btn-roll").classList.toggle("hidden", !isTurn);
@@ -519,17 +532,14 @@ function openTradeModal() {
   const me = session.playerId;
   const target = $("#trade-target");
   target.innerHTML = "";
-  const opt = document.createElement("option");
-  opt.value = ""; opt.textContent = "— choose —";
-  target.appendChild(opt);
-  currentPlayers.forEach((p) => {
-    if (p.id !== me && !p.bankrupt) {
-      const o = document.createElement("option");
-      o.value = p.id;
-      o.textContent = p.name;
-      target.appendChild(o);
-    }
+  const players = currentPlayers.filter((p) => p.id !== me && !p.bankrupt);
+  players.forEach((p) => {
+    const o = document.createElement("option");
+    o.value = p.id;
+    o.textContent = p.name;
+    target.appendChild(o);
   });
+  if (players.length > 0) target.value = players[0].id;
   $("#trade-give-money").value = "";
   $("#trade-want-money").value = "";
   buildTradeProps("give");
@@ -564,13 +574,23 @@ function buildTradeProps(side) {
 $("#trade-target").addEventListener("change", () => buildTradeProps("want"));
 
 /* ---------- auction ---------- */
+let auctionDismissed = false;
+let lastAuctionKey = null;
+
 function renderAuction(state) {
   const a = state.auction;
   const modal = $("#auction-modal");
   if (!a) {
     modal.classList.add("hidden");
     clearInterval(auctionTimer);
+    auctionDismissed = false;
+    lastAuctionKey = null;
     return;
+  }
+  const key = `${a.tile_index}:${a.ends_at}`;
+  if (key !== lastAuctionKey) {
+    lastAuctionKey = key;
+    auctionDismissed = false;   // a new auction instance pops up again
   }
   $("#auction-tile-name").textContent = a.tile_name;
   const me = state.players.find((p) => p.id === session.playerId);
@@ -589,10 +609,16 @@ function renderAuction(state) {
     $("#auction-timer").classList.toggle("low", s2 <= 5);
   }, 250);
   $("#btn-bid").disabled = !(me && !me.bankrupt);
+  if (auctionDismissed) {
+    modal.classList.add("hidden");
+  } else {
+    modal.classList.remove("hidden");
+  }
 }
 
 /* ---------- render ---------- */
 let lastBoardTiles = 0;
+let lastDiceKey = "";
 
 function renderGame(state) {
   currentPlayers = state.players;

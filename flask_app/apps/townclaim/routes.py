@@ -22,6 +22,13 @@ import string as _string
 
 from flask import Blueprint, request, jsonify
 
+# The session layer comes from the host app. When this module is loaded
+# standalone (tests / dev without the app), auth is skipped.
+try:
+    from flask_app.models import Session as _Session
+except Exception:
+    _Session = None
+
 townclaim_bp = Blueprint("townclaim", __name__)
 LOCK = threading.Lock()
 
@@ -29,6 +36,7 @@ LOCK = threading.Lock()
 # data loader
 # --------------------------------------------------------------------------
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+GAMES_DIR = os.path.join(os.path.dirname(__file__), "games")
 _CACHE = {}
 
 
@@ -47,6 +55,21 @@ def load(name):
 
 def cfg():
     return load("config")
+
+
+def _require_user():
+    """True when the caller is logged in (or no session layer is present)."""
+    if _Session is None:
+        return True
+    valid, _ = _Session.check(request.cookies.get("session_id"))
+    return valid
+
+
+def _to_int(value, fallback=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return fallback
 
 
 CORNER_NAMES = {
@@ -108,6 +131,43 @@ TOKEN_NAMES = ["cat", "fox", "bear", "owl", "rabbit", "dog", "horse", "frog"]
 TOKEN_EMOJI = {"cat": "🐱", "fox": "🦊", "bear": "🐻", "owl": "🦉",
                "rabbit": "🐰", "dog": "🐶", "horse": "🐴", "frog": "🐸"}
 GAMES = {}
+
+
+# --------------------------------------------------------------------------
+# persistence (games survive a server restart)
+# --------------------------------------------------------------------------
+def _game_path(code):
+    return os.path.join(GAMES_DIR, code + ".json")
+
+
+def _save_game(game):
+    try:
+        os.makedirs(GAMES_DIR, exist_ok=True)
+        with open(_game_path(game["code"]), "w", encoding="utf-8") as fh:
+            json.dump(game, fh)
+    except OSError:
+        pass
+
+
+def _load_game(code):
+    path = _game_path(code)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def get_game(code):
+    """Memory lookup with disk fallback (games persist across restarts)."""
+    game = GAMES.get(code)
+    if game is None:
+        game = _load_game(code)
+        if game is not None:
+            GAMES[code] = game
+    return game
 
 
 def new_game(code):
@@ -230,7 +290,7 @@ def resolve_landing(game, player):
                 log(game, f"{player['name']} rests at FREE PARKING.")
         elif kind == "go_to_jail":
             send_to_jail(game, player)
-    elif t == "chance":
+    elif t == "chance" or t == "community":
         draw_card(game, player, tile["deck"])
     elif t == "tax":
         pay_bank(game, player, tile["amount"], tile["name"])
@@ -276,11 +336,15 @@ def bankrupt(game, player):
         return
     player["bankrupt"] = True
     player["money"] = 0
+    # an ownerless bankrupt also cancels any auction they won
+    if game.get("auction") and game["auction"].get("highest_bidder") == player["id"]:
+        game["auction"] = None
     for tile in game["board"].values():
         if tile.get("owner") == player["id"]:
             tile["owner"] = None
             tile["houses"] = 0
-    game["pending_trades"] = [t for t in game["pending_trades"] if t["from"] != player["id"] and t["to"] != player["id"]]
+    game["pending_trades"] = [t for t in game["pending_trades"]
+                              if t["from"] != player["id"] and t["to"] != player["id"]]
     log(game, f"{player['name']} goes bankrupt and loses all property.")
     check_win(game)
 
@@ -408,6 +472,29 @@ def start_auction(game, tile):
     log(game, f"Auction for {tile['name']} opens — starting bid {cur(game)}{game['auction']['min_bid']}.")
 
 
+def close_auction(game):
+    a = game.get("auction")
+    if not a:
+        return
+    tile = game["board"][a["tile_index"]]
+    winner = player_by(game, a["highest_bidder"]) if a["highest_bidder"] else None
+    if winner and not winner["bankrupt"]:
+        winner["money"] -= a["highest_bid"]
+        tile["owner"] = winner["id"]
+        log(game, f"{winner['name']} wins the auction for {tile['name']} at {cur(game)}{a['highest_bid']}.")
+    else:
+        log(game, f"No bids for {tile['name']} — it stays on the market.")
+    game["auction"] = None
+
+
+def ensure_auction_closed(game):
+    """Auction expires on its own — resolve it lazily so an idle player
+    never leaves a tile locked forever (no reliance on end_turn)."""
+    a = game.get("auction")
+    if a and time.time() >= a["ends_at"]:
+        close_auction(game)
+
+
 def public_auction(game):
     a = game.get("auction")
     if not a:
@@ -464,11 +551,13 @@ def public_state(game, viewer_id=None):
 # --------------------------------------------------------------------------
 @townclaim_bp.route("/create", methods=["POST"])
 def create_game():
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     data = request.get_json(force=True)
     name = (data.get("name") or "Mayor").strip()[:20] or "Mayor"
     with LOCK:
         code = new_code()
-        while code in GAMES:
+        while get_game(code) is not None:
             code = new_code()
         game = new_game(code)
         pid = "p1"
@@ -476,17 +565,20 @@ def create_game():
         player["is_host"] = True
         game["players"].append(player)
         GAMES[code] = game
+        _save_game(game)
         log(game, f"{name} founded a new town.")
     return jsonify({"code": code, "player_id": pid})
 
 
 @townclaim_bp.route("/join", methods=["POST"])
 def join_game():
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     data = request.get_json(force=True)
     code = (data.get("code") or "").strip().upper()
     name = (data.get("name") or "Mayor").strip()[:20] or "Mayor"
     with LOCK:
-        game = GAMES.get(code)
+        game = get_game(code)
         if not game:
             return jsonify({"error": "No town found with that code."}), 404
         if game["status"] != "lobby":
@@ -500,16 +592,19 @@ def join_game():
         token = TOKEN_NAMES[len(game["players"])]
         player = new_player(pid, name, color, token)
         game["players"].append(player)
+        _save_game(game)
         log(game, f"{name} joined the town.")
     return jsonify({"code": code, "player_id": pid})
 
 
 @townclaim_bp.route("/start", methods=["POST"])
 def start_game():
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     data = request.get_json(force=True)
     code, pid = data.get("code"), data.get("player_id")
     with LOCK:
-        game = GAMES.get(code)
+        game = get_game(code)
         if not game:
             return jsonify({"error": "Unknown town."}), 404
         player = next((p for p in game["players"] if p["id"] == pid), None)
@@ -519,27 +614,35 @@ def start_game():
             return jsonify({"error": "Need at least 2 players to start."}), 400
         game["status"] = "active"
         game["round"] = 1
+        _save_game(game)
         log(game, "The town opens! Roll to move.")
     return jsonify(public_state(game, pid))
 
 
 @townclaim_bp.route("/state/<code>")
 def get_state(code):
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     pid = request.args.get("player_id")
-    game = GAMES.get(code.upper())
-    if not game:
-        return jsonify({"error": "Unknown town."}), 404
+    with LOCK:
+        game = get_game(code.upper())
+        if not game:
+            return jsonify({"error": "Unknown town."}), 404
+        ensure_auction_closed(game)
     return jsonify(public_state(game, pid))
 
 
 @townclaim_bp.route("/roll", methods=["POST"])
 def roll_dice():
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     data = request.get_json(force=True)
     code, pid = data.get("code"), data.get("player_id")
     with LOCK:
-        game = GAMES.get(code)
+        game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        ensure_auction_closed(game)
         cp = current_player(game)
         if not cp or cp["id"] != pid:
             return jsonify({"error": "It is not your turn."}), 403
@@ -575,29 +678,36 @@ def roll_dice():
                     game["dice"] = None
                     log(game, f"{cp['name']} rolls three doubles — straight to jail!")
                     check_win(game)
+                    _save_game(game)
                     return jsonify(public_state(game, pid))
                 log(game, f"{cp['name']} rolls doubles ({d1}+{d2}) — roll again!")
             else:
                 game["doubles"] = 0
             advance(game, cp, d1 + d2)
         check_win(game)
+        _save_game(game)
     return jsonify(public_state(game, pid))
 
 
 @townclaim_bp.route("/buy", methods=["POST"])
 def buy_property():
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     data = request.get_json(force=True)
     code, pid = data.get("code"), data.get("player_id")
     with LOCK:
-        game = GAMES.get(code)
+        game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        ensure_auction_closed(game)
         cp = current_player(game)
         if not cp or cp["id"] != pid:
             return jsonify({"error": "It is not your turn."}), 403
         tile = game["board"][cp["position"]]
         if tile["type"] not in ("street", "railway") or tile["owner"] is not None:
             return jsonify({"error": "This tile cannot be bought right now."}), 400
+        if game.get("auction") and game["auction"]["tile_index"] == cp["position"]:
+            return jsonify({"error": "This property is being auctioned."}), 400
         if cp["money"] < tile["price"]:
             return jsonify({"error": "Not enough money."}), 400
         cp["money"] -= tile["price"]
@@ -612,17 +722,21 @@ def buy_property():
                 label = load("streets")["territories"][tile["territory"]]["label"]
                 log(game, f"{cp['name']} now owns the whole {label} district!")
             log(game, f"{cp['name']} claims {tile['name']} for {cur(game)}{tile['price']}.")
+        _save_game(game)
     return jsonify(public_state(game, pid))
 
 
 @townclaim_bp.route("/auction", methods=["POST"])
 def auction_property():
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     data = request.get_json(force=True)
     code, pid = data.get("code"), data.get("player_id")
     with LOCK:
-        game = GAMES.get(code)
+        game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        ensure_auction_closed(game)
         cp = current_player(game)
         if not cp or cp["id"] != pid:
             return jsonify({"error": "It is not your turn."}), 403
@@ -632,22 +746,26 @@ def auction_property():
         if tile["type"] not in ("street", "railway") or tile["owner"] is not None:
             return jsonify({"error": "This tile cannot be auctioned."}), 400
         start_auction(game, tile)
+        _save_game(game)
     return jsonify(public_state(game, pid))
 
 
 @townclaim_bp.route("/bid", methods=["POST"])
 def bid():
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     data = request.get_json(force=True)
     code, pid = data.get("code"), data.get("player_id")
-    bid = int(data.get("bid") or 0)
+    bid = _to_int(data.get("bid"))
     with LOCK:
-        game = GAMES.get(code)
+        game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        ensure_auction_closed(game)
         a = game.get("auction")
         if not a:
             return jsonify({"error": "No auction running."}), 400
-        if time.time() > a["ends_at"]:
+        if time.time() >= a["ends_at"]:
             return jsonify({"error": "Auction already closed."}), 400
         player = player_by(game, pid)
         if not player or player["bankrupt"]:
@@ -661,35 +779,22 @@ def bid():
         a["highest_bid"] = bid
         a["last_bid"] = player["name"]
         a["ends_at"] = max(a["ends_at"], time.time() + 8)
+        _save_game(game)
         log(game, f"{player['name']} bids {cur(game)}{bid} for {game['board'][a['tile_index']]['name']}.")
     return jsonify(public_state(game, pid))
 
 
-def close_auction(game):
-    a = game.get("auction")
-    if not a:
-        return
-    if time.time() < a["ends_at"]:
-        return
-    tile = game["board"][a["tile_index"]]
-    winner = player_by(game, a["highest_bidder"]) if a["highest_bidder"] else None
-    if winner:
-        winner["money"] -= a["highest_bid"]
-        tile["owner"] = winner["id"]
-        log(game, f"{winner['name']} wins the auction for {tile['name']} at {cur(game)}{a['highest_bid']}.")
-    else:
-        log(game, f"No bids for {tile['name']} — it stays on the market.")
-    game["auction"] = None
-
-
 @townclaim_bp.route("/build", methods=["POST"])
 def build_house():
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     data = request.get_json(force=True)
     code, pid = data.get("code"), data.get("player_id")
     with LOCK:
-        game = GAMES.get(code)
+        game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        ensure_auction_closed(game)
         cp = current_player(game)
         if not cp or cp["id"] != pid:
             return jsonify({"error": "It is not your turn."}), 403
@@ -705,18 +810,22 @@ def build_house():
             return jsonify({"error": "Not enough money to build."}), 400
         cp["money"] -= cost
         tile["houses"] += 1
+        _save_game(game)
         log(game, f"{cp['name']} builds a house on {tile['name']} (now level {tile['houses']}).")
     return jsonify(public_state(game, pid))
 
 
 @townclaim_bp.route("/bail", methods=["POST"])
 def bail_player():
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     data = request.get_json(force=True)
     code, pid = data.get("code"), data.get("player_id")
     with LOCK:
-        game = GAMES.get(code)
+        game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        ensure_auction_closed(game)
         cp = current_player(game)
         if not cp or cp["id"] != pid:
             return jsonify({"error": "It is not your turn."}), 403
@@ -725,6 +834,7 @@ def bail_player():
         if cp["get_out_of_jail"] > 0:
             cp["get_out_of_jail"] -= 1
             cp["jail_turns"] = None
+            _save_game(game)
             log(game, f"{cp['name']} uses a Get Out of Jail Free card and is released.")
             return jsonify(public_state(game, pid))
         bail = cfg()["jail"]["bail"]
@@ -734,23 +844,27 @@ def bail_player():
         cp["jail_turns"] = None
         if cfg().get("free_parking_jackpot", True):
             game["jackpot"] += bail
+        _save_game(game)
         log(game, f"{cp['name']} posts bail and is released.")
     return jsonify(public_state(game, pid))
 
 
 @townclaim_bp.route("/trade", methods=["POST"])
 def propose_trade():
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     data = request.get_json(force=True)
     code, pid = data.get("code"), data.get("player_id")
     to = data.get("to")
     give = data.get("give") or []
     want = data.get("want") or []
-    money_give = int(data.get("money_give") or 0)
-    money_want = int(data.get("money_want") or 0)
+    money_give = _to_int(data.get("money_give"))
+    money_want = _to_int(data.get("money_want"))
     with LOCK:
-        game = GAMES.get(code)
+        game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        ensure_auction_closed(game)
         sender = player_by(game, pid)
         target = player_by(game, to)
         if not sender or not target or sender["bankrupt"] or target["bankrupt"]:
@@ -762,38 +876,42 @@ def propose_trade():
         if money_give > sender["money"] or money_want > target["money"]:
             return jsonify({"error": "A party can't afford this trade."}), 400
         for idx in list(give) + list(want):
-            tile = game["board"].get(int(idx))
+            tile = game["board"].get(_to_int(idx, -1))
             if not tile or tile["type"] not in ("street", "railway"):
                 return jsonify({"error": "Invalid property in trade."}), 400
         for idx in give:
-            if game["board"][int(idx)].get("owner") != sender["id"]:
+            if game["board"][_to_int(idx, -1)].get("owner") != sender["id"]:
                 return jsonify({"error": "You don't own something you're giving."}), 400
         for idx in want:
-            if game["board"][int(idx)].get("owner") != target["id"]:
+            if game["board"][_to_int(idx, -1)].get("owner") != target["id"]:
                 return jsonify({"error": "You can't request property you don't own."}), 400
         game["pending_trades"].append({
             "id": f"t{int(time.time() * 1000)}",
             "from": sender["id"], "from_name": sender["name"],
             "to": target["id"], "to_name": target["name"],
-            "give": [int(i) for i in give],
-            "want": [int(i) for i in want],
+            "give": [_to_int(i, -1) for i in give],
+            "want": [_to_int(i, -1) for i in want],
             "money_give": money_give, "money_want": money_want,
             "created": time.time(),
         })
+        _save_game(game)
         log(game, f"{sender['name']} offers a trade to {target['name']}.")
     return jsonify(public_state(game, pid))
 
 
 @townclaim_bp.route("/trade_response", methods=["POST"])
 def trade_response():
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     data = request.get_json(force=True)
     code, pid = data.get("code"), data.get("player_id")
     tid = data.get("trade_id")
     accept = bool(data.get("accept"))
     with LOCK:
-        game = GAMES.get(code)
+        game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        ensure_auction_closed(game)
         trade = next((t for t in game["pending_trades"] if t["id"] == tid), None)
         if not trade:
             return jsonify({"error": "Trade not found."}), 404
@@ -805,17 +923,20 @@ def trade_response():
         if accept:
             if sender["money"] < a["money_give"] or target["money"] < a["money_want"]:
                 game["pending_trades"] = [t for t in game["pending_trades"] if t["id"] != tid]
+                _save_game(game)
                 log(game, "Trade failed — one party can no longer afford it.")
                 return jsonify(public_state(game, pid))
             for idx in a["give"]:
                 tile = game["board"][idx]
                 if tile.get("owner") != sender["id"]:
                     game["pending_trades"] = [t for t in game["pending_trades"] if t["id"] != tid]
+                    _save_game(game)
                     log(game, "Trade failed — property ownership changed.")
                     return jsonify(public_state(game, pid))
             for idx in a["want"]:
                 if game["board"][idx].get("owner") != target["id"]:
                     game["pending_trades"] = [t for t in game["pending_trades"] if t["id"] != tid]
+                    _save_game(game)
                     log(game, "Trade failed — property ownership changed.")
                     return jsonify(public_state(game, pid))
             for idx in a["give"]:
@@ -830,15 +951,18 @@ def trade_response():
         else:
             log(game, f"{target['name']} declines a trade from {sender['name']}.")
         game["pending_trades"] = [t for t in game["pending_trades"] if t["id"] != tid]
+        _save_game(game)
     return jsonify(public_state(game, pid))
 
 
 @townclaim_bp.route("/end_turn", methods=["POST"])
 def end_turn():
+    if not _require_user():
+        return jsonify({"error": "Not logged in."}), 401
     data = request.get_json(force=True)
     code, pid = data.get("code"), data.get("player_id")
     with LOCK:
-        game = GAMES.get(code)
+        game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
         cp = current_player(game)
@@ -846,7 +970,7 @@ def end_turn():
             return jsonify({"error": "It is not your turn."}), 403
         if game["dice"] is None:
             return jsonify({"error": "Roll before ending your turn."}), 400
-        close_auction(game)
+        ensure_auction_closed(game)
         check_win(game)
         game["dice"] = None
         game["doubles"] = 0
@@ -860,4 +984,5 @@ def end_turn():
             if nxt <= game["turn"]:
                 game["round"] += 1
             game["turn"] = nxt
+        _save_game(game)
     return jsonify(public_state(game, pid))
