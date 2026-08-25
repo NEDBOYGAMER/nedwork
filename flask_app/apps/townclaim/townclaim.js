@@ -308,15 +308,21 @@ function buildBoard(state) {
   emblem.style.gridColumn = `2 / ${grid}`;
   emblem.style.gridRow = `2 / ${grid}`;
 
-  const decks = Object.entries(state.chance_decks || {})
-    .map(([k, v]) => `${k === "community" ? "Chest" : "Chance"} · ${v}`)
-    .join(" · ");
-
   emblem.innerHTML = `
     <img class="em-logo" src="${API_BASE}assets/logo.svg" alt="" onerror="this.remove()">
     <div class="em-label">TOWN CLAIM</div>
     <div class="em-pot" id="em-pot">Jackpot · ${money(0)}</div>
-    <div class="em-decks"><span>${decks || "Chance · —"}</span></div>`;
+    <div class="deck-stack deck-chance" id="deck-stack-chance" title="Chance">
+      <span class="deck-card back">?</span>
+      <span class="deck-card top">?</span>
+      <span class="deck-count" id="deck-count-chance">0</span>
+    </div>
+    <div class="deck-stack deck-community" id="deck-stack-community" title="Community Chest">
+      <span class="deck-card back">+</span>
+      <span class="deck-card top">+</span>
+      <span class="deck-count" id="deck-count-community">0</span>
+    </div>
+    <div id="dice-layer" class="dice-layer"></div>`;
   board.appendChild(emblem);
 
   const positions = gridPositions(n);
@@ -395,6 +401,67 @@ function placeToken(pid, tileIndex) {
   (box || document.body).appendChild(token);
 }
 
+/* ---------- deck stacks in the board center ---------- */
+function setDeckCount(name, n) {
+  const el = document.getElementById(`deck-count-${name}`);
+  if (!el) return;
+  if (parseInt(el.textContent, 10) !== n) {
+    el.textContent = n;
+    el.classList.remove("deck-count-pulse");
+    void el.offsetWidth;
+    el.classList.add("deck-count-pulse");
+  }
+}
+
+function animateDeckDraw(title) {
+  const stack = /community/i.test(title) && !/chance/i.test(title)
+    ? $("#deck-stack-community")
+    : /chance/i.test(title) ? $("#deck-stack-chance") : null;
+  if (!stack) return;
+  stack.classList.remove("drawing");
+  void stack.offsetWidth;
+  stack.classList.add("drawing");
+}
+
+/* ---------- dice fall over the board center (for everyone) ---------- */
+function showDiceFall(v1, v2) {
+  if (REDUCED) return;
+  const layer = $("#dice-layer");
+  if (!layer) return;
+  layer.innerHTML = "";
+  const r = layer.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const cx = r.width / 2, cy = r.height / 2;
+  const spread = Math.min(r.width, r.height) * 0.16;
+  const size = Math.min(r.width, r.height) * 0.2;
+
+  const mk = (value, side) => {
+    const die = document.createElement("div");
+    die.className = "fall-die";
+    die.style.width = `${size}px`;
+    die.style.height = `${size}px`;
+    // random central landing spot (may cover the logo) + random rotation
+    const lx = cx + (Math.random() * 2 - 1) * spread;
+    const ly = cy + (Math.random() * 2 - 1) * spread;
+    die.style.setProperty("--lx", `${lx}px`);
+    die.style.setProperty("--ly", `${ly}px`);
+    die.style.setProperty("--rot", `${Math.round(Math.random() * 70 - 35)}deg`);
+    die.style.setProperty("--sx", `${side === "l" ? -r.width * 0.35 : r.width * 1.35}px`);
+    die.style.setProperty("--sy", `${-r.height * (0.25 + Math.random() * 0.2)}px`);
+    const cells = DICE_LAYOUT[value] || [];
+    for (let i = 0; i < 9; i++) {
+      const pip = document.createElement("div");
+      pip.className = "fall-pip";
+      pip.style.visibility = cells.includes(i) ? "visible" : "hidden";
+      die.appendChild(pip);
+    }
+    return die;
+  };
+
+  layer.append(mk(v1, "l"), mk(v2, "r"));
+  setTimeout(() => { layer.innerHTML = ""; }, 1750);
+}
+
 function startWalk(player, from, to, state) {
   if (REDUCED || from === to) {
     placeToken(player.id, to);
@@ -438,11 +505,21 @@ function finalizeLanding(pid, tileIndex, state) {
     tile.classList.add("land-burst");
   }
   const line = state.log && state.log[0] ? state.log[0] : "";
-  const m = line.match(/[+\-]?CHF\s?[\d'’.\s]+/);
-  if (m && tile) {
-    const neg = /^[\-−]/.test(m[0]) || /pays/.test(line);
-    showMoneyFloat(tile, m[0], neg);
+  if (isMoneyEvent(line) && tile) {
+    const m = line.match(/[+\-]?CHF\s?[\d'’.\s]+/);
+    if (m) {
+      const neg = /^[\-−]/.test(m[0]) || /pays|bail|fee|tax|cost|rent/.test(line);
+      showMoneyFloat(tile, m[0], neg);
+    }
   }
+}
+
+/* Only show the floating amount when the newest log line is an actual
+   money transfer - not for "is unclaimed", "moves", "lands on", etc. */
+function isMoneyEvent(line) {
+  if (!line) return false;
+  if (/is unclaimed|is unowned|moves \d|doors? of|lands on|visiting|rests at|opens .*(station|market)|wins? without|no bids/.test(line)) return false;
+  return /collects?|pays?|rent|tax|bail|jackpot|auction|dividend|refund|inherit|fees?|repairs|wins the auction|\+CHF|−CHF|-CHF/.test(line);
 }
 
 function showMoneyFloat(tile, text, negative) {
@@ -464,12 +541,9 @@ function renderBoard(state) {
     emPot.classList.add("jackpot-pulse");
   }
   lastJackpot = state.jackpot;
-  const emDecks = document.querySelector(".em-decks span");
-  if (emDecks) {
-    emDecks.textContent = Object.entries(state.chance_decks || {})
-      .map(([k, v]) => `${k === "community" ? "Chest" : "Chance"} · ${v}`)
-      .join(" · ");
-  }
+  const deckCounts = state.chance_decks || {};
+  setDeckCount("chance", deckCounts.chance || 0);
+  setDeckCount("community", deckCounts.community || 0);
 
   const turnP = state.players.find((p) => p.id === state.turn_player_id);
   const landedIdx = turnP && !turnP.bankrupt ? turnP.position : -1;
@@ -563,6 +637,7 @@ function renderSide(state) {
         d1.classList.remove("rolling");
         d2.classList.remove("rolling");
       }, 420);
+      showDiceFall(state.dice[0], state.dice[1]);
     }
     lastDiceKey = diceKey;
   }
@@ -868,6 +943,7 @@ function renderGame(state) {
   sizeBoard();
   initBoardResizer();
   if (state.last_card && state.last_card.seq !== seenCardSeq) {
+    animateDeckDraw(state.last_card.title);
     $("#card-modal").classList.remove("hidden");
     $("#card-title").textContent = state.last_card.title;
     $("#card-text").textContent = state.last_card.text;
