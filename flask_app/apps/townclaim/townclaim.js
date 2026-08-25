@@ -238,14 +238,17 @@ function renderDie(el, value) {
 }
 
 /* ---------- board geometry ---------- */
+/* GO sits in the bottom-left corner and travel goes clockwise:
+   bottom edge left→right, up the right edge, top edge right→left,
+   down the left edge. */
 function gridPositions(n) {
   const side = n / 4 + 1;
   const pos = new Array(n);
   let k = 0;
-  for (let i = 0; i < side; i++) pos[k++] = { r: side, c: side - i };
-  for (let j = 1; j <= side - 1; j++) pos[k++] = { r: side - j, c: 1 };
-  for (let c = 2; c <= side; c++)   pos[k++] = { r: 1, c };
-  for (let r = 2; r <= side - 1; r++) pos[k++] = { r, c: side };
+  for (let c = 1; c <= side; c++) pos[k++] = { r: side, c };          // bottom edge: GO (bottom-left) → JAIL
+  for (let r = side - 1; r >= 1; r--) pos[k++] = { r, c: side };      // right edge: bottom → top
+  for (let c = side - 1; c >= 1; c--) pos[k++] = { r: 1, c };         // top edge: right → left
+  for (let r = 2; r <= side - 1; r++) pos[k++] = { r, c: 1 };         // left edge: top → bottom
   return pos;
 }
 
@@ -324,6 +327,9 @@ function renderBoard(state) {
       .join(" · ");
   }
 
+  const turnP = state.players.find((p) => p.id === state.turn_player_id);
+  const landedIdx = turnP && !turnP.bankrupt ? turnP.position : -1;
+
   for (let i = 0; i < state.board.length; i++) {
     const tile = state.board[i];
     const div = document.querySelector(`.tile[data-index="${i}"]`);
@@ -333,17 +339,22 @@ function renderBoard(state) {
       tokens.innerHTML = "";
       state.players.forEach((p) => {
         if (p.position === i && !p.bankrupt) {
-          const t = document.createElement("div");
-          t.className = "token";
-          t.style.background = p.color;
-          tokens.appendChild(t);
+          const img = document.createElement("img");
+          img.className = "token-svg";
+          img.src = `${API_BASE}assets/token-${p.token}.svg`;
+          img.alt = "";
+          img.addEventListener("error", () => {
+            const s = document.createElement("span");
+            s.className = "token-svg token-emoji";
+            s.textContent = TOKEN_EMOJI[p.token] || "🐱";
+            img.replaceWith(s);
+          });
+          tokens.appendChild(img);
         }
       });
     }
     if (tile.type === "street" || tile.type === "railway") {
       div.classList.toggle("owned", !!tile.owner);
-      const owner = tile.owner ? state.players.find((p) => p.id === tile.owner) : null;
-      div.style.outline = owner ? `2px solid ${owner.color}` : "";
     }
     if (tile.type === "street") {
       const housesEl = div.querySelector(".tile-houses");
@@ -356,6 +367,8 @@ function renderBoard(state) {
         }
       }
     }
+    div.classList.toggle("landed", i === landedIdx);
+    div.classList.toggle("landed-me", i === landedIdx && state.turn_player_id === session.playerId);
   }
 }
 
@@ -616,6 +629,44 @@ function renderAuction(state) {
   }
 }
 
+/* ---------- board fits the viewport (square, always fully visible) ---------- */
+function sizeBoard() {
+  const board = $("#board");
+  const main = document.querySelector(".game-main");
+  if (!board || !main) return;
+  const rect = main.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const cs = getComputedStyle(main);
+  const padL = parseFloat(cs.paddingLeft) || 0;
+  const padR = parseFloat(cs.paddingRight) || 0;
+  const padT = parseFloat(cs.paddingTop) || 0;
+  const padB = parseFloat(cs.paddingBottom) || 0;
+  const stacked = rect.width < 900;
+  const gap = 16;
+  const sideEl = document.querySelector(".side-panel");
+  const sideW = (!stacked && sideEl) ? sideEl.getBoundingClientRect().width : 0;
+  let size;
+  const availW = rect.width - padL - padR;
+  const availH = rect.height - padT - padB;
+  if (stacked) {
+    size = Math.min(availW - 8, availH * 0.44);
+  } else {
+    size = Math.min(availW - sideW - gap, availH);
+  }
+  const s = Math.max(220, Math.floor(size));
+  board.style.width = s + "px";
+  board.style.height = s + "px";
+}
+
+function initBoardResizer() {
+  const main = document.querySelector(".game-main");
+  if (!main || main.dataset.resizer) return;
+  main.dataset.resizer = "1";
+  const ro = new ResizeObserver(() => sizeBoard());
+  ro.observe(main);
+  window.addEventListener("resize", () => sizeBoard());
+}
+
 /* ---------- render ---------- */
 let lastBoardTiles = 0;
 let lastDiceKey = "";
@@ -630,6 +681,8 @@ function renderGame(state) {
   }
   renderBoard(state);
   renderSide(state);
+  sizeBoard();
+  initBoardResizer();
   if (state.last_card && state.last_card.seq !== seenCardSeq) {
     $("#card-modal").classList.remove("hidden");
     $("#card-title").textContent = state.last_card.title;
