@@ -66,6 +66,14 @@ export class GridManager {
         }
     }
 
+/* Tier of a widget cell rect: how much room it has to show info */
+    tierOf(w, h) {
+        const cells = w * h
+        if (cells <= 2) return "small"     // 1x1, 1x2, 2x1 - minimal info
+        if (cells > 8 || h >= 3) return "large"
+        return "standard"
+    }
+
     /* Place a card on its cells */
     apply(widget) {
         const e = this.entries.get(widget.id)
@@ -73,6 +81,11 @@ export class GridManager {
         const p = this.norm(widget)
         e.card.style.gridColumn = `${p.x + 1} / span ${p.w}`
         e.card.style.gridRow = `${p.y + 1} / span ${p.h}`
+        e.card.dataset.w = p.w
+        e.card.dataset.h = p.h
+        e.card.dataset.cells = p.w * p.h
+        e.card.dataset.tier = this.tierOf(p.w, p.h)
+        e.card.dataset.orientation = p.w > p.h ? "wide" : p.h > p.w ? "tall" : "square"
     }
 
     applyAll() {

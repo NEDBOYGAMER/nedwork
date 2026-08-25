@@ -592,11 +592,17 @@
 
 /* ==========================================================================
    Link (generic website opener - favicon + hostname)
+   The icon keeps the size it has on a 1-row tile; text and "Open" appear
+   and scale up with the widget. Orientation drives the layout:
+     wide/square -> icon | text | open (one row)
+     tall        -> icon / text / open (stacked)
    ========================================================================== */
 
 .link-widget {
-    padding: 12px 14px;
-    gap: 8px;
+    padding: 0;
+    display: flex;
+    flex: 1;
+    min-height: 0;
 }
 
 .link-widget-link {
@@ -606,14 +612,28 @@
     text-decoration: none;
     color: var(--text);
     min-width: 0;
+    flex: 1;
+    padding: var(--space-3) var(--space-4);
 }
 
 .link-widget-link:hover { text-decoration: none; }
 
+/* tall tiles stack icon / text / open vertically */
+.card[data-orientation="tall"] .link-widget-link {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.card[data-orientation="tall"] .link-widget-text {
+    flex: 0 1 auto;
+}
+
+/* icon is a fixed square, sized to a 1-row tile (~90% of the content) */
 .link-widget-icon {
     flex-shrink: 0;
-    width: 40px;
-    height: 40px;
+    width: 56px;
+    height: 56px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -667,6 +687,23 @@
     align-self: flex-end;
     font-size: 11px;
     color: var(--accent);
+    white-space: nowrap;
+}
+
+/* 1x1: icon only */
+.card[data-cells="1"] .link-widget-text,
+.card[data-cells="1"] .link-widget-hint {
+    display: none;
+}
+
+/* 2x1 / 1x2: icon + text, no "Open" yet */
+.card[data-cells="2"] .link-widget-hint {
+    display: none;
+}
+
+/* bigger tiles: "Open" appears - next to the text (wide) or under it (tall) */
+.card[data-orientation="tall"] .link-widget-hint {
+    align-self: flex-start;
 }
 
 /* ==========================================================================
@@ -991,3 +1028,88 @@
     color: var(--text-muted);
     padding: 4px 0;
 }
+
+/* ==========================================================================
+   Size-aware behavior (driven by data-tier / data-cells / data-orientation
+   set on the card in grid.js:apply()).
+     small    (<= 2 cells)   show only the essential info
+     standard (default)      unchanged - current look
+     large    (> 8 cells or >= 3 rows) bigger info + text
+   ========================================================================== */
+
+/* ---- small: keep only the core content ---- */
+
+.card[data-tier="small"] .field-secondary { display: none; }
+
+.card[data-tier="small"] .weather-condition,
+.card[data-tier="small"] .weather-location,
+.card[data-tier="small"] .weather-details { display: none; }
+
+.card[data-tier="small"] .timer-controls { display: none; }
+
+.card[data-tier="small"] .quote-badge,
+.card[data-tier="small"] .quote-source { display: none; }
+
+.card[data-tier="small"] .notes-toggle { display: none; }
+
+.card[data-tier="small"] .welcome-date,
+.card[data-tier="small"] .welcome-sub { display: none; }
+
+.card[data-tier="small"] .task-progress-wrap,
+.card[data-tier="small"] .task-add { display: none; }
+
+.card[data-tier="small"] .events-today,
+.card[data-tier="small"] .events-heading { display: none; }
+
+.card[data-tier="small"] .finance-categories,
+.card[data-tier="small"] .finance-transactions { display: none; }
+
+.card[data-tier="small"] .notifications-head,
+.card[data-tier="small"] .notification-mark { display: none; }
+
+.card[data-tier="small"] .news-head,
+.card[data-tier="small"] .news-status { display: none; }
+.card[data-tier="small"] .news-item:nth-child(n+4) { display: none; }
+
+.card[data-tier="small"] .calendar-day-events { display: none; }
+
+/* ---- large: more breathing room, bigger type ---- */
+
+.card[data-tier="large"] .field-primary { font-size: 34px; letter-spacing: 4px; }
+.card[data-tier="large"] .clock.field-primary { font-size: 42px; }
+.card[data-tier="large"] .field-secondary { font-size: 14px; }
+
+.card[data-tier="large"] .weather-icon { font-size: 46px; }
+.card[data-tier="large"] .weather-temp { font-size: 34px; }
+.card[data-tier="large"] .weather-condition { font-size: 14px; }
+
+.card[data-tier="large"] .timer-ring { width: 140px; height: 140px; }
+.card[data-tier="large"] .timer-display { font-size: 22px; }
+
+.card[data-tier="large"] .quote-text { font-size: 18px; }
+
+.card[data-tier="large"] .welcome-greeting { font-size: 28px; }
+.card[data-tier="large"] .welcome-date { font-size: 14px; }
+
+.card[data-tier="large"] .task-text { font-size: 15px; }
+.card[data-tier="large"] .task-progress-label { font-size: 13px; }
+
+.card[data-tier="large"] .calendar-title { font-size: 17px; }
+.card[data-tier="large"] .calendar-weekday { font-size: 11px; }
+.card[data-tier="large"] .calendar-day { height: 40px; font-size: 15px; }
+.card[data-tier="large"] .calendar-day-events { font-size: 14px; }
+
+.card[data-tier="large"] .events-day { font-size: 17px; }
+.card[data-tier="large"] .event-name { font-size: 15px; }
+
+.card[data-tier="large"] .finance-balance-value { font-size: 30px; }
+.card[data-tier="large"] .finance-tx { font-size: 14px; }
+
+.card[data-tier="large"] .notification-message { font-size: 14px; }
+
+.card[data-tier="large"] .news-link { font-size: 15px; }
+.card[data-tier="large"] .news-meta { font-size: 11px; }
+
+.card[data-tier="large"] .link-widget-name { font-size: 20px; }
+.card[data-tier="large"] .link-widget-host { font-size: 13px; }
+.card[data-tier="large"] .link-widget-hint { font-size: 13px; }

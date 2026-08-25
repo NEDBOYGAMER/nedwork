@@ -1,0 +1,11 @@
+{
+  "game_name": "TOWN CLAIM",
+  "currency": "CHF",
+  "starting_money": 1500,
+  "pass_go": 200,
+  "dice": { "count": 2, "sides": 6 },
+  "max_rounds": 40,
+  "jail": { "bail": 100, "max_turns": 3, "doubles_free": true },
+  "railway_rent_mode": "double",
+  "free_parking_jackpot": true
+}

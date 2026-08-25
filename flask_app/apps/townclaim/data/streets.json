@@ -1,0 +1,37 @@
+{
+  "territories": {
+    "meadow":  { "label": "Meadow",    "color": "#4e9f52", "house_price": 50 },
+    "harbor":  { "label": "Harbor",    "color": "#2f7fb3", "house_price": 150 },
+    "highland":{ "label": "Highland",  "color": "#c94f4f", "house_price": 250 },
+    "gold":    { "label": "Gold",      "color": "#c9972f", "house_price": 350 }
+  },
+  "streets": {
+    "south_1": { "name": "Cedar Lane",        "territory": "meadow",  "price": 60,  "rents": [15, 45, 90, 180, 300, 450] },
+    "south_2": { "name": "Willow Way",        "territory": "meadow",  "price": 100, "rents": [25, 90, 140, 260, 390, 550] },
+    "south_3": { "name": "Pumpkin Row",       "territory": "meadow",  "price": 180, "rents": [40, 110, 220, 400, 520, 800] },
+    "south_4": { "name": "Sunbeam Street",    "territory": "meadow",  "price": 220, "rents": [55, 140, 240, 500, 720, 1000] },
+    "south_5": { "name": "Clover Corner",     "territory": "meadow",  "price": 240, "rents": [55, 150, 300, 540, 780, 1100] },
+    "south_6": { "name": "Bluebell Walk",     "territory": "meadow",  "price": 280, "rents": [60, 170, 340, 600, 900, 1250] },
+
+    "east_1": { "name": "Mermaid Wharf",      "territory": "harbor",  "price": 320, "rents": [70, 190, 380, 680, 1000, 1450] },
+    "east_2": { "name": "Anchorage Avenue",   "territory": "harbor",  "price": 360, "rents": [78, 210, 420, 740, 1100, 1650] },
+    "east_3": { "name": "Seagull Pier",       "territory": "harbor",  "price": 380, "rents": [82, 220, 440, 780, 1200, 1750] },
+    "east_4": { "name": "Tidepool Terrace",   "territory": "harbor",  "price": 400, "rents": [85, 230, 460, 820, 1260, 1850] },
+    "east_5": { "name": "Driftwood Drive",    "territory": "harbor",  "price": 420, "rents": [90, 240, 480, 860, 1320, 1950] },
+    "east_6": { "name": "Harbour House",      "territory": "harbor",  "price": 460, "rents": [100, 270, 520, 940, 1450, 2150] },
+
+    "north_1": { "name": "Old Mill Road",     "territory": "highland","price": 480, "rents": [110, 280, 540, 980, 1500, 2250] },
+    "north_2": { "name": "Stonecrop Street",  "territory": "highland","price": 500, "rents": [110, 290, 560, 1020, 1560, 2350] },
+    "north_3": { "name": "Iron Forge Lane",   "territory": "highland","price": 520, "rents": [115, 300, 580, 1060, 1620, 2450] },
+    "north_4": { "name": "Crow's Nest Row",   "territory": "highland","price": 540, "rents": [120, 310, 600, 1100, 1680, 2550] },
+    "north_5": { "name": "Bramble Hill",      "territory": "highland","price": 560, "rents": [125, 320, 620, 1140, 1740, 2650] },
+    "north_6": { "name": "Summit Avenue",     "territory": "highland","price": 600, "rents": [135, 340, 660, 1220, 1860, 2850] },
+
+    "west_1": { "name": "Golden Dragon",      "territory": "gold",    "price": 620, "rents": [140, 350, 680, 1260, 1920, 2950] },
+    "west_2": { "name": "Coin Street",        "territory": "gold",    "price": 640, "rents": [145, 360, 700, 1300, 1980, 3050] },
+    "west_3": { "name": "Treasure Trove",     "territory": "gold",    "price": 660, "rents": [150, 370, 720, 1340, 2020, 3150] },
+    "west_4": { "name": "Mayor's Mile",       "territory": "gold",    "price": 680, "rents": [155, 380, 740, 1380, 2100, 3250] },
+    "west_5": { "name": "Jeweler's Row",      "territory": "gold",    "price": 700, "rents": [160, 390, 760, 1420, 2140, 3350] },
+    "west_6": { "name": "Paramount Place",    "territory": "gold",    "price": 800, "rents": [180, 430, 840, 1580, 2350, 3800] }
+  }
+}

@@ -1,8 +1,0 @@
-{
-  "stations": {
-    "south_station": { "name": "Greenfield Central", "price": 200, "color": "#8d99ae", "base_rent": 25 },
-    "east_station":  { "name": "Bluewater Junction", "price": 200, "color": "#8d99ae", "base_rent": 25 },
-    "north_station": { "name": "Redmoor Central",   "price": 200, "color": "#8d99ae", "base_rent": 25 },
-    "west_station":  { "name": "Goldpeak Depot",    "price": 200, "color": "#8d99ae", "base_rent": 25 }
-  }
-}

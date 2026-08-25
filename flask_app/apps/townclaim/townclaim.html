@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Town Claim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/apps/townclaim/townclaim.css" />
+<script>window.APP_BASE = "/apps/townclaim/";</script>
+<script src="/apps/townclaim/townclaim.js" type="module" defer></script>
+</head>
+<body>
+
+<div id="toast" class="toast hidden"></div>
+
+<!-- ============================ HOME ============================ -->
+<section id="screen-home" class="screen active">
+  <div class="home-wrap">
+    <img class="logo-art" src="/apps/townclaim/assets/logo.svg" alt="Town Claim" onerror="this.remove()">
+    <div class="brand">
+      <h1>Town Claim</h1>
+      <p class="tagline">Buy the streets. Build the town. Own it all.</p>
+    </div>
+    <div class="home-cards">
+      <div class="card">
+        <h2><span class="num">01</span> Found a town</h2>
+        <label for="create-name">Your name</label>
+        <input id="create-name" type="text" maxlength="20" placeholder="e.g. Avalon">
+        <button id="btn-create" class="btn btn-primary btn-block">Found town</button>
+      </div>
+      <div class="card">
+        <h2><span class="num">02</span> Join with a code</h2>
+        <label for="join-name">Your name</label>
+        <input id="join-name" type="text" maxlength="20" placeholder="e.g. Maple">
+        <label for="join-code">Town code</label>
+        <input id="join-code" class="code-input" type="text" maxlength="5"
+               placeholder="A1B2C" style="text-transform:uppercase; letter-spacing:.3em; font-family:'Nunito',monospace; font-weight:800;">
+        <button id="btn-join" class="btn btn-primary btn-block">Join town</button>
+      </div>
+    </div>
+    <p id="home-error" class="error-msg"></p>
+  </div>
+</section>
+
+<!-- ============================ LOBBY ============================ -->
+<section id="screen-lobby" class="screen">
+  <div class="lobby-wrap">
+    <p class="eyebrow">Town code — share this</p>
+    <div class="code-display" id="lobby-code">— — — — —</div>
+    <div class="lobby-players">
+      <h2>Players</h2>
+      <ul id="lobby-player-list" class="player-list"></ul>
+    </div>
+    <button id="btn-start" class="btn btn-primary btn-block">Start the town</button>
+    <p id="lobby-hint" class="hint">Waiting for the host to start…</p>
+  </div>
+</section>
+
+<!-- ============================ GAME ============================ -->
+<section id="screen-game" class="screen">
+  <header class="game-header">
+    <div class="ghdr-left">
+      <img class="logo-mini" src="/apps/townclaim/assets/logo.svg" alt="" onerror="this.remove()">
+      <span class="ghdr-title">Town Claim</span>
+      <span class="ghdr-code">CODE <b id="ghdr-code-val">— — — — —</b></span>
+    </div>
+    <div class="ghdr-right">
+      <span id="ghdr-round" class="round-chip">Round 1</span>
+    </div>
+  </header>
+
+  <main class="game-main">
+    <div class="board-frame">
+      <div id="board" class="board"></div>
+    </div>
+
+    <aside class="side-panel">
+      <div class="panel-block" id="turn-block">
+        <h3>Turn</h3>
+        <div class="turn-line">
+          <span id="turn-token" class="turn-token"></span>
+          <div>
+            <div id="turn-indicator" class="turn-indicator">—</div>
+            <div id="your-badge" class="your-badge hidden">YOUR MOVE 🎲</div>
+            <div id="doubles-badge" class="doubles-badge hidden">DOUBLES — ROLL AGAIN!</div>
+          </div>
+        </div>
+
+        <div class="dice-row">
+          <div class="die" id="die1"><div class="die-grid"></div></div>
+          <span class="dice-plus">+</span>
+          <div class="die" id="die2"><div class="die-grid"></div></div>
+        </div>
+
+        <button id="btn-roll" class="btn btn-primary btn-block">🎲 Roll dice</button>
+        <button id="btn-bail" class="btn btn-bail btn-block hidden">Pay bail</button>
+        <button id="btn-jail-free" class="btn btn-jail-free btn-block hidden">Use Get Out of Jail Free</button>
+
+        <div id="buy-box" class="alert-box styled hidden">
+          <p id="buy-text"></p>
+          <div id="station-name-row" class="hidden">
+            <label for="rail-name">Name your station</label>
+            <input id="rail-name" type="text" maxlength="18">
+          </div>
+          <div class="buy-row">
+            <button id="btn-buy" class="btn btn-secondary btn-block">Claim it</button>
+            <button id="btn-auction" class="btn btn-tertiary btn-block">Auction it</button>
+          </div>
+        </div>
+
+        <div id="build-box" class="alert-box styled hidden">
+          <p id="build-text"></p>
+          <button id="btn-build" class="btn btn-secondary btn-block">Build</button>
+        </div>
+
+        <button id="btn-trade" class="btn btn-tertiary btn-block">🤝 Propose trade</button>
+        <button id="btn-end" class="btn btn-ghost btn-block">End turn</button>
+      </div>
+
+      <div class="panel-block">
+        <h3>Players</h3>
+        <ul id="player-list" class="player-list"></ul>
+      </div>
+
+      <div class="panel-block">
+        <h3>Pending trades</h3>
+        <div id="trade-inbox" class="trade-inbox"><span class="dim">No pending trades</span></div>
+      </div>
+
+      <div class="panel-block legend-block">
+        <h3>The board</h3>
+        <ul class="legend-list" id="legend-list">
+          <li><span class="legend-swatch" style="background:#4e9f52"></span> Meadow — streets</li>
+          <li><span class="legend-swatch" style="background:#2f7fb3"></span> Harbor — streets</li>
+          <li><span class="legend-swatch" style="background:#c94f4f"></span> Highland — streets</li>
+          <li><span class="legend-swatch" style="background:#c9972f"></span> Gold — streets</li>
+          <li><span class="legend-rail"></span> Station — buy &amp; name it</li>
+          <li><span class="legend-swatch legend-chance">?</span> Chance — draw a card</li>
+          <li><span class="legend-swatch legend-community">✚</span> Community Chest</li>
+          <li><span class="legend-token"></span> You — your token</li>
+        </ul>
+      </div>
+
+      <div class="panel-block log-block">
+        <h3>Town report</h3>
+        <ul id="log-list" class="log-list"></ul>
+      </div>
+    </aside>
+  </main>
+
+  <div id="winner-banner" class="winner-banner hidden">
+    <div class="winner-inner">
+      <div class="crown">👑</div>
+      <p class="eyebrow">Town closed</p>
+      <h2 id="winner-text">—</h2>
+      <button id="btn-new-game" class="btn btn-primary">New town</button>
+    </div>
+  </div>
+
+  <div id="card-modal" class="card-modal hidden">
+    <div class="card-inner paper">
+      <img class="card-art" src="/apps/townclaim/assets/card_back.svg" alt="" onerror="this.remove()">
+      <p class="eyebrow" id="card-title">Chance</p>
+      <p id="card-text"></p>
+      <p id="card-result" class="card-result"></p>
+      <button id="card-ok" class="btn btn-primary">OK</button>
+    </div>
+  </div>
+
+  <div id="auction-modal" class="card-modal hidden">
+    <div class="auction-inner">
+      <h2>⚒ Auction</h2>
+      <p class="eyebrow" id="auction-tile-name">—</p>
+      <div class="auction-timer" id="auction-timer">20</div>
+      <p id="auction-status">No bids yet</p>
+      <div class="auction-input-row">
+        <input id="auction-bid" type="number" min="1" step="1" placeholder="0">
+        <button id="btn-bid" class="btn btn-primary">Bid</button>
+      </div>
+      <button id="auction-close" class="btn btn-ghost btn-block">Leave</button>
+    </div>
+  </div>
+
+  <div id="trade-modal" class="card-modal hidden">
+    <div class="trade-inner">
+      <h2>🤝 Propose trade</h2>
+      <label>Trade with</label>
+      <select id="trade-target"></select>
+
+      <div class="trade-columns">
+        <div class="trade-col">
+          <h3>You give</h3>
+          <label>Cash (CHF)</label>
+          <input id="trade-give-money" type="number" min="0" placeholder="0">
+          <div id="trade-give-props" class="trade-props"></div>
+        </div>
+        <div class="trade-col">
+          <h3>You want</h3>
+          <label>Cash (CHF)</label>
+          <input id="trade-want-money" type="number" min="0" placeholder="0">
+          <div id="trade-want-props" class="trade-props"></div>
+        </div>
+      </div>
+
+      <div class="trade-actions">
+        <button id="trade-send" class="btn btn-primary">Send offer</button>
+        <button id="trade-cancel" class="btn btn-ghost">Cancel</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

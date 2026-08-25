@@ -1,0 +1,8 @@
+{
+  "stations": {
+    "south_station": { "name": "Meadow Market",  "price": 200, "color": "#4e9f52", "base_rent": 25 },
+    "east_station":  { "name": "Harbor Station", "price": 200, "color": "#2f7fb3", "base_rent": 25 },
+    "north_station": { "name": "Highland Depot", "price": 200, "color": "#c94f4f", "base_rent": 25 },
+    "west_station":  { "name": "Gold Exchange",  "price": 200, "color": "#c9972f", "base_rent": 25 }
+  }
+}

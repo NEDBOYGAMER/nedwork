@@ -6,12 +6,12 @@
     { "i": 1, "type": "street", "street": "south_1" },
     { "i": 2, "type": "street", "street": "south_2" },
     { "i": 3, "type": "railway", "rail": "south_station" },
-    { "i": 4, "type": "chance", "deck": "chance" },
+    { "i": 4, "type": "tax", "name": "INCOME TAX", "amount": 100 },
     { "i": 5, "type": "street", "street": "south_3" },
     { "i": 6, "type": "street", "street": "south_4" },
-    { "i": 7, "type": "street", "street": "south_5" },
-    { "i": 8, "type": "street", "street": "south_6" },
-    { "i": 9, "type": "street", "street": "south_7" },
+    { "i": 7, "type": "chance", "deck": "chance" },
+    { "i": 8, "type": "street", "street": "south_5" },
+    { "i": 9, "type": "street", "street": "south_6" },
 
     { "i": 10, "type": "corner", "kind": "jail" },
 
@@ -21,9 +21,9 @@
     { "i": 14, "type": "chance", "deck": "chance" },
     { "i": 15, "type": "street", "street": "east_3" },
     { "i": 16, "type": "street", "street": "east_4" },
-    { "i": 17, "type": "street", "street": "east_5" },
-    { "i": 18, "type": "street", "street": "east_6" },
-    { "i": 19, "type": "street", "street": "east_7" },
+    { "i": 17, "type": "community", "deck": "community" },
+    { "i": 18, "type": "street", "street": "east_5" },
+    { "i": 19, "type": "street", "street": "east_6" },
 
     { "i": 20, "type": "corner", "kind": "free_parking" },
 
@@ -33,20 +33,20 @@
     { "i": 24, "type": "chance", "deck": "chance" },
     { "i": 25, "type": "street", "street": "north_3" },
     { "i": 26, "type": "street", "street": "north_4" },
-    { "i": 27, "type": "street", "street": "north_5" },
-    { "i": 28, "type": "street", "street": "north_6" },
-    { "i": 29, "type": "street", "street": "north_7" },
+    { "i": 27, "type": "tax", "name": "PROPERTY FEE", "amount": 150 },
+    { "i": 28, "type": "street", "street": "north_5" },
+    { "i": 29, "type": "street", "street": "north_6" },
 
     { "i": 30, "type": "corner", "kind": "go_to_jail" },
 
     { "i": 31, "type": "street", "street": "west_1" },
     { "i": 32, "type": "street", "street": "west_2" },
     { "i": 33, "type": "railway", "rail": "west_station" },
-    { "i": 34, "type": "chance", "deck": "chance" },
+    { "i": 34, "type": "community", "deck": "community" },
     { "i": 35, "type": "street", "street": "west_3" },
     { "i": 36, "type": "street", "street": "west_4" },
-    { "i": 37, "type": "street", "street": "west_5" },
-    { "i": 38, "type": "street", "street": "west_6" },
-    { "i": 39, "type": "street", "street": "west_7" }
+    { "i": 37, "type": "chance", "deck": "chance" },
+    { "i": 38, "type": "street", "street": "west_5" },
+    { "i": 39, "type": "street", "street": "west_6" }
   ]
 }

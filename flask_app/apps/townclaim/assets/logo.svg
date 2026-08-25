@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#2e7d32"/>
+  <circle cx="32" cy="31" r="18" fill="#f9f1dd" stroke="#1c5d20" stroke-width="3"/>
+  <path d="M32 14 L38 26 L51 26 L40 35 L44 48 L32 40 L20 48 L24 35 L13 26 L26 26 Z" fill="#e8b64c" stroke="#c9972f" stroke-width="2"/>
+  <text x="32" y="57" text-anchor="middle" font-size="10" font-family="sans-serif" font-weight="700" fill="#1c5d20">TOWN CLAIM</text>
+</svg>

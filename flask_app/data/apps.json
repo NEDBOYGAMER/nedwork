@@ -19,12 +19,12 @@
     },
         {
         "id": 2,
-        "name": "PolyWars",
-        "image": "/locologo",
+        "name": "TownClaim",
+        "image": "/townclaim.png",
         "permissions": [],
-        "url": "/polywars",
+        "url": "/townclaim",
         "type": "Games",
-        "description": "A board with places to buy on each side. Friend must pay rent"
+        "description": "A playful monopoly-style board game. Buy streets, build houses, own the town"
     },
     {
         "id": 3,

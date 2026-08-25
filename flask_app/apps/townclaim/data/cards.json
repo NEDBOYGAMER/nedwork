@@ -1,0 +1,36 @@
+{
+  "decks": {
+    "chance": {
+      "title": "Chance",
+      "cards": [
+        { "text": "Advance to GO. Collect CHF 200.", "action": "go_to", "tile": "go", "collect": 200 },
+        { "text": "Go directly to JAIL. Do not pass GO.", "action": "jail" },
+        { "text": "The Town pays you a dividend.", "action": "collect", "amount": 150 },
+        { "text": "Hospital fees — pay the Town.", "action": "pay", "amount": 100 },
+        { "text": "School fees — pay the Town.", "action": "pay", "amount": 50 },
+        { "text": "Advance to the nearest station. Buy it if unowned, else pay double rent.", "action": "nearest_rail" },
+        { "text": "Go back 3 spaces.", "action": "move", "steps": -3 },
+        { "text": "Street repairs — pay per house and per hotel.", "action": "repairs", "house": 30, "hotel": 120 },
+        { "text": "You won a beauty contest! Collect from each rival.", "action": "collect_all", "amount": 50 },
+        { "text": "Buy a round of drinks — give each rival a present.", "action": "pay_all", "amount": 50 },
+        { "text": "Tax refund — collect.", "action": "collect", "amount": 20 },
+        { "text": "Bank error in your favour — collect.", "action": "collect", "amount": 200 }
+      ]
+    },
+    "community": {
+      "title": "Community Chest",
+      "cards": [
+        { "text": "Advance to GO. Collect CHF 200.", "action": "go_to", "tile": "go", "collect": 200 },
+        { "text": "Your birthday! Collect CHF 100 from each rival.", "action": "collect_all", "amount": 100 },
+        { "text": "You inherit CHF 100.", "action": "collect", "amount": 100 },
+        { "text": "Pay the hospital bill.", "action": "pay", "amount": 120 },
+        { "text": "Sell your old wardrobe — collect CHF 50.", "action": "collect", "amount": 50 },
+        { "text": "Income tax due.", "action": "pay", "amount": 75 },
+        { "text": "Get Out of Jail Free — keep this card until needed.", "action": "jail_free" },
+        { "text": "Go directly to JAIL.", "action": "jail" },
+        { "text": "Street repairs — pay per house and per hotel.", "action": "repairs", "house": 40, "hotel": 115 },
+        { "text": "You won second prize in a raffle — collect CHF 25.", "action": "collect", "amount": 25 }
+      ]
+    }
+  }
+}
