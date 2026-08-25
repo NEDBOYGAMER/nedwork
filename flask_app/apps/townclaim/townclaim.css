@@ -37,6 +37,7 @@ input, select { font-family: var(--font-body); }
 
 .screen { display: none; min-height: 100vh; }
 .screen.active { display: block; }
+body.game-locked { overflow: hidden; height: 100vh; }
 .eyebrow { font-size: .72rem; font-weight: 800; letter-spacing: .18em;
   text-transform: uppercase; color: var(--brass-dark); margin: 0 0 8px; }
 
@@ -130,18 +131,15 @@ input:focus, select:focus { outline: none; border-color: var(--brass-dark); }
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  grid-template-rows: 1fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: 16px;
   padding: 14px 18px;
   overflow: hidden;
 }
 
-.board-frame { display: flex; align-items: center; justify-content: center;
-  min-height: 0; min-width: 0; overflow: hidden; }
-
-/* board width/height are set to an exact square by townclaim.js so the
-   whole board is always visible without scrolling */
-#board { aspect-ratio: 1/1; display: grid; gap: 3px;
+/* --bp is set by townclaim.js to the board's pixel size, so every piece of
+   tile art scales with the board and never overflows its cell */
+#board { --bp: 860px; aspect-ratio: 1/1; display: grid; gap: 3px;
   background: var(--board-deep); border: 6px solid var(--paper-2); border-radius: 18px;
   overflow: hidden; position: relative; box-shadow: var(--shadow); }
 
@@ -154,13 +152,17 @@ input:focus, select:focus { outline: none; border-color: var(--brass-dark); }
 .tile.corner .tile-name { font-family: var(--font-display); font-weight: 800;
   font-size: .58rem; letter-spacing: .03em; color: var(--ink); }
 .tile.corner-go_to_jail .tile-name { color: var(--danger); }
-.corner-art { width: 34px; height: 34px; border-radius: 10px; object-fit: cover; }
+/* art scales with the board so it never overflows the tile or clips text */
+.corner-art { width: clamp(20px, calc(var(--bp) * 0.042), 38px); height: auto;
+  aspect-ratio: 1/1; border-radius: 10px; object-fit: contain; }
 
 .tile.property { padding-top: 8px; }
 .tile.property .tile-band { position: absolute; top: 0; left: 0; right: 0; height: 7px; }
 .tile.property .tile-name { font-weight: 800; line-height: 1.1; margin-bottom: 2px; }
 .tile.property .tile-price { font-weight: 700; color: var(--ink-dim); font-size: .52rem; }
 .tile.owned .tile-price { color: var(--ink); }
+.board-frame { display: flex; align-items: center; justify-content: center;
+  min-height: 0; min-width: 0; overflow: hidden; }
 
 .tile.railway { background: #e9ecf0; }
 .tile.railway .tile-name { color: var(--ink-dim); }
@@ -181,16 +183,19 @@ input:focus, select:focus { outline: none; border-color: var(--brass-dark); }
 .tile.landed { background: rgba(201, 151, 47, .30); }
 .tile.landed.landed-me { background: rgba(201, 80, 60, .30); }
 
-.tile-tokens { position: absolute; bottom: 2px; right: 2px; display: flex; gap: 2px;
-  flex-wrap: wrap; max-width: 92%; justify-content: flex-end; }
-.tile-tokens .token-svg { width: 18px; height: 18px; border-radius: 50%;
+.tile-tokens { position: absolute; bottom: 2px; right: 3px; display: flex; gap: 2px;
+  flex-wrap: wrap; max-width: 92%; justify-content: flex-end; pointer-events: none; }
+.tile-tokens .token-svg { width: clamp(11px, calc(var(--bp) * 0.023), 22px);
+  height: clamp(11px, calc(var(--bp) * 0.023), 22px); border-radius: 50%;
   background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.45);
-  border: 1px solid var(--line); object-fit: cover; }
-.tile-tokens .token-emoji { font-size: 14px; line-height: 18px; text-align: center; }
+  border: 1px solid var(--line); object-fit: contain; }
+.tile-tokens .token-emoji { font-size: clamp(10px, calc(var(--bp) * 0.017), 16px);
+  line-height: clamp(11px, calc(var(--bp) * 0.023), 22px); text-align: center; }
 .tile-houses { font-size: .5rem; color: var(--good); letter-spacing: -0.1em;
   line-height: 1; margin-top: 1px; overflow: hidden; white-space: nowrap; }
 .tile-houses .house-pip {
-  display: inline-block; width: 8px; height: 8px; margin-right: 1px; border-radius: 2px;
+  display: inline-block; width: clamp(5px, calc(var(--bp) * 0.011), 9px);
+  height: clamp(5px, calc(var(--bp) * 0.011), 9px); margin-right: 1px; border-radius: 2px;
   background: var(--good);
 }
 .tile-houses .hotel-pip { background: var(--danger); }
@@ -199,7 +204,8 @@ input:focus, select:focus { outline: none; border-color: var(--brass-dark); }
   flex-direction: column; gap: 5px; background: var(--paper);
   background-image: radial-gradient(circle at 50% 42%, rgba(162,138,82,.14) 0, transparent 62%);
   border-radius: 14px; }
-.center-emblem .em-logo { width: 52px; height: 52px; border-radius: 14px;
+.center-emblem .em-logo { width: clamp(40px, calc(var(--bp) * 0.065), 56px);
+  height: clamp(40px, calc(var(--bp) * 0.065), 56px); border-radius: 14px;
   box-shadow: 0 6px 14px rgba(0,0,0,.25); background: #fff; }
 .center-emblem .em-label { font-family: var(--font-display); font-weight: 800; font-size: .85rem;
   color: var(--ink-dim); letter-spacing: .14em; text-transform: uppercase; }
@@ -331,13 +337,155 @@ input:focus, select:focus { outline: none; border-color: var(--brass-dark); }
 .trade-prop.selected { border-color: var(--brass-dark); background: #fbe9c3; box-shadow: 0 0 0 1px var(--brass-dark); }
 .trade-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 
-/* ---------- responsive: stack side panel under the board ---------- */
-@media (max-width: 900px) {
+/* ---------- responsive: split board / side panel so nothing scrolls ---------- */
+
+/* medium screens: keep the board on the left, side panel on the right
+   (narrower right column) - still one screenful, no page scroll */
+@media (max-width: 980px) and (min-width: 680px) {
+  .game-main {
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 320px);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px 12px;
+  }
+  .side-panel { gap: 8px; }
+  .panel-block { padding: 10px 12px; }
+  .log-block { max-height: 130px; }
+}
+
+/* small screens: board on top, panel below - both fit, page never scrolls */
+@media (max-width: 680px) {
   .game-main {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(0, auto) minmax(0, 1fr);
-    gap: 10px;
+    gap: 8px;
+    padding: 8px 10px;
   }
-  .board-frame { justify-content: center; }
-  .side-panel { overflow-y: auto; }
+  .game-header { padding: 8px 12px; }
+  .board-frame { min-height: 0; }
+  .side-panel { gap: 6px; overflow-y: auto; }
+  .panel-block { padding: 8px 10px; }
+  .legend-block { display: none; }
+  .log-block { max-height: 110px; }
+  .die { width: 46px; height: 46px; }
+  .die-grid { width: 30px; height: 30px; }
+}
+
+/* =========================================================================
+   ANIMATIONS
+   ========================================================================= */
+
+/* board materializes on entry */
+@keyframes boardIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+#board { animation: boardIn .5s ease; }
+
+/* tiles stagger-pop into place */
+@keyframes tileIn { from { opacity: 0; transform: scale(.5); } to { opacity: 1; transform: scale(1); } }
+.tile.tile-pop { animation: tileIn .38s cubic-bezier(.34,1.56,.64,1) backwards; }
+
+/* token hop while walking */
+@keyframes tokenHop { 0% { transform: translateY(0) scale(1); } 40% { transform: translateY(-5px) scale(1.14); } 100% { transform: translateY(0) scale(1); } }
+.token-svg.token-hop { animation: tokenHop .3s ease; }
+.token-svg.token-walking { z-index: 6; }
+
+/* landing thud on the tile */
+@keyframes landBurst { 0% { transform: scale(1); } 45% { transform: scale(1.09); } 100% { transform: scale(1); } }
+.tile.land-burst { animation: landBurst .4s ease; }
+
+/* floating money indicator over the tile */
+@keyframes moneyUp { 0% { opacity: 0; transform: translate(-50%, 8px); } 18% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -20px); } }
+.tile-money-float {
+  position: absolute; top: 14%; left: 50%; z-index: 6; pointer-events: none;
+  font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(10px, calc(var(--bp) * 0.013), 13px); color: var(--good);
+  background: rgba(249,239,216,.95); border: 1px solid var(--line); padding: 1px 8px;
+  border-radius: 999px; box-shadow: var(--shadow); white-space: nowrap;
+  animation: moneyUp 1.5s ease forwards;
+}
+.tile-money-float.negative { color: var(--danger); }
+
+/* dice pips pop in with a stagger; rolling wiggle already exists */
+@keyframes pipPop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.pip.pip-pop { animation: pipPop .28s cubic-bezier(.34,1.56,.64,1) backwards; }
+
+/* doubles flash golden */
+@keyframes diceFlash { 0%,100% { filter: none; } 50% { filter: brightness(1.3) drop-shadow(0 0 8px var(--brass)); } }
+.dice-row.dice-doubles .die { animation: diceFlash .7s ease 2; }
+
+/* center emblem logo idles with a soft float */
+@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.center-emblem .em-logo { animation: floaty 3.6s ease-in-out infinite; }
+
+/* jackpot pulses when it changes */
+@keyframes jpulse { 0% { transform: scale(1); } 50% { transform: scale(1.14); color: var(--brass-dark); } 100% { transform: scale(1); } }
+#em-pot.jackpot-pulse { animation: jpulse .6s ease; }
+
+/* turn indicator slides in on change */
+@keyframes turnIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+.turn-indicator.turn-in { animation: turnIn .3s ease; }
+
+/* player money flashes on change */
+@keyframes moneyFlashUp { 0% { color: var(--good); transform: scale(1.2); } 100% { transform: scale(1); } }
+@keyframes moneyFlashDown { 0% { color: var(--danger); transform: scale(1.2); } 100% { transform: scale(1); } }
+.pl-money.flash-up { animation: moneyFlashUp .7s ease; }
+.pl-money.flash-down { animation: moneyFlashDown .7s ease; }
+
+/* active turn row gently pulses */
+@keyframes turnPulseBg { 0%,100% { background: rgba(201,151,47,.14); } 50% { background: rgba(201,151,47,.3); } }
+.player-list li.active-turn { animation: turnPulseBg 1.6s ease-in-out infinite; }
+
+/* newest log line slides in */
+@keyframes logIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+.log-list li:first-child { animation: logIn .25s ease; }
+
+/* chance / community card flips in like paper */
+@keyframes cardFlip { from { transform: rotateY(90deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
+.card-inner.paper { animation: cardFlip .5s cubic-bezier(.34,1.4,.64,1) backwards; }
+
+/* auction: modal pops in, top-bid flashes, low timer pulses */
+@keyframes popIn { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.auction-inner { animation: popIn .35s cubic-bezier(.34,1.4,.64,1); }
+.screen .card-modal .trade-inner { animation: popIn .35s cubic-bezier(.34,1.4,.64,1); }
+@keyframes bidFlash { 0%,100% { background: transparent; } 50% { background: rgba(201,151,47,.4); } }
+#auction-status.bid-flash { animation: bidFlash .55s ease; border-radius: 8px; }
+@keyframes timerPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+.auction-timer.low { animation: timerPulse .6s ease infinite; }
+
+/* winner: crown springs, banner slides up, confetti falls */
+@keyframes crownSpring { 0% { transform: scale(0) rotate(-18deg); } 60% { transform: scale(1.22) rotate(8deg); } 100% { transform: scale(1) rotate(0); } }
+.winner-inner .crown { display: inline-block; animation: crownSpring .6s cubic-bezier(.34,1.56,.64,1); }
+@keyframes winIn { from { opacity: 0; transform: translateY(26px) scale(.9); } to { opacity: 1; transform: none; } }
+.winner-inner { animation: winIn .5s cubic-bezier(.34,1.4,.64,1); }
+.confetti-piece {
+  position: absolute; top: -14px; width: 8px; height: 14px; border-radius: 2px;
+  opacity: .9; pointer-events: none; animation: confettiFall 3s linear forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(-14px) rotate(0deg); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(108vh) rotate(720deg); opacity: 0; }
+}
+
+/* toast slides down in */
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, -14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.toast.show { animation: toastIn .3s ease; }
+
+/* buttons: hover lift + press squish (micro polish) */
+.btn { transition: transform .08s ease, box-shadow .15s ease, filter .15s ease; }
+.btn:hover { transform: translateY(-1px); }
+.btn-primary:hover { box-shadow: 0 6px 0 #a97f1e; transform: translateY(-2px); }
+.btn-primary:active { box-shadow: 0 1px 0 #a97f1e; transform: translateY(3px); }
+
+/* pending trade offers pop in */
+@keyframes offerIn { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+.trade-offer { animation: offerIn .3s ease; }
+
+/* reduced motion: kill the fancy stuff, keep it calm */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .confetti-piece { display: none; }
 }

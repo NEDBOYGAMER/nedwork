@@ -23,6 +23,16 @@ let pollTimer = null;
 let lastStatus = "lobby";
 let seenCardSeq = 0;
 let auctionTimer = null;
+let lastTurnId = null;
+let winnerShown = false;
+
+/* animation state */
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const tokenEls = new Map();      // playerId -> persistent token element
+const walkers = new Map();       // playerId -> active walk { timer, current }
+const lastPositions = new Map(); // playerId -> tile index
+const lastMoney = new Map();     // playerId -> money
+let lastJackpot = null;
 
 const $ = (sel) => document.querySelector(sel);
 function el(tag, cls, text) {
@@ -57,8 +67,12 @@ function flashError(msg) {
   const t = $("#toast");
   t.textContent = msg;
   t.classList.remove("hidden");
+  t.classList.add("show");
   clearTimeout(flashError._t);
-  flashError._t = setTimeout(() => t.classList.add("hidden"), 3200);
+  flashError._t = setTimeout(() => {
+    t.classList.remove("show");
+    t.classList.add("hidden");
+  }, 3200);
 }
 
 /* ---------- token art ---------- */
@@ -178,13 +192,37 @@ $("#btn-end").addEventListener("click", async () => {
 $("#btn-new-game").addEventListener("click", () => {
   stopPolling();
   session = { code: null, playerId: null, name: null };
+  setBodyLock(false);
   $("#winner-banner").classList.add("hidden");
+  winnerShown = false;
+  clearConfetti();
   $("#create-name").value = "";
   $("#join-name").value = "";
   $("#join-code").value = "";
   seenCardSeq = 0;
   showScreen("#screen-home");
 });
+
+/* ---------- confetti (winner banner) ---------- */
+const CONFETTI_COLORS = ["#e2b13c", "#c94f4f", "#4f8f57", "#2f7fb3", "#9b8ce6", "#e078b0", "#f9efd8"];
+function spawnConfetti() {
+  const banner = $("#winner-banner");
+  if (!banner || REDUCED) return;
+  if (document.querySelector(".confetti-piece")) return;
+  for (let i = 0; i < 42; i++) {
+    const p = document.createElement("span");
+    p.className = "confetti-piece";
+    p.style.left = `${Math.random() * 100}%`;
+    p.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+    p.style.animationDelay = `${(Math.random() * 1.8).toFixed(2)}s`;
+    p.style.animationDuration = `${(2.8 + Math.random() * 1.8).toFixed(2)}s`;
+    p.style.transform = `rotate(${Math.floor(Math.random() * 360)}deg)`;
+    banner.appendChild(p);
+  }
+}
+function clearConfetti() {
+  document.querySelectorAll(".confetti-piece").forEach((c) => c.remove());
+}
 
 $("#card-ok").addEventListener("click", () => $("#card-modal").classList.add("hidden"));
 $("#auction-close").addEventListener("click", () => {
@@ -231,7 +269,8 @@ function renderDie(el, value) {
   const cells = DICE_LAYOUT[value] || [];
   for (let i = 0; i < 9; i++) {
     const pip = document.createElement("div");
-    pip.className = "pip";
+    pip.className = "pip pip-pop";
+    pip.style.animationDelay = `${i * 45}ms`;
     pip.style.visibility = cells.includes(i) ? "visible" : "hidden";
     grid.appendChild(pip);
   }
@@ -281,9 +320,10 @@ function buildBoard(state) {
     const tile = state.board[i];
     const pos = positions[i];
     const div = document.createElement("div");
-    div.className = "tile";
+    div.className = "tile tile-pop";
     div.style.gridRow = pos.r;
     div.style.gridColumn = pos.c;
+    div.style.animationDelay = `${Math.min(i * 14, 520)}ms`;
     div.setAttribute("data-index", i);
 
     if (tile.type === "corner") {
@@ -317,9 +357,109 @@ function buildBoard(state) {
   }
 }
 
+/* ---------- tokens + walking ---------- */
+function ensureTokenEl(player) {
+  let t = tokenEls.get(player.id);
+  if (!t) {
+    t = document.createElement("img");
+    t.className = "token-svg";
+    t.src = `${API_BASE}assets/token-${player.token}.svg`;
+    t.alt = "";
+    t.addEventListener("error", () => {
+      const s = document.createElement("span");
+      s.className = "token-svg token-emoji";
+      s.textContent = TOKEN_EMOJI[player.token] || "🐱";
+      t.replaceWith(s);
+      tokenEls.set(player.id, s);
+    });
+    tokenEls.set(player.id, t);
+  }
+  return t;
+}
+
+function removeTokenEl(pid) {
+  const t = tokenEls.get(pid);
+  if (t) t.remove();
+  tokenEls.delete(pid);
+}
+
+function placeToken(pid, tileIndex) {
+  const token = tokenEls.get(pid);
+  if (!token) return;
+  const tile = document.querySelector(`.tile[data-index="${tileIndex}"]`);
+  const box = tile && tile.querySelector(".tile-tokens");
+  (box || document.body).appendChild(token);
+}
+
+function startWalk(player, from, to, state) {
+  if (REDUCED || from === to) {
+    placeToken(player.id, to);
+    finalizeLanding(player.id, to, state);
+    return;
+  }
+  const n = state.board.length;
+  const cw = (to - from + n) % n;
+  const ccw = (from - to + n) % n;
+  const dir = cw <= ccw ? 1 : -1;
+  const steps = Math.min(cw, ccw);
+  const token = ensureTokenEl(player);
+  token.classList.add("token-walking");
+  const w = { timer: null, current: from };
+  let cur = from;
+  let count = 0;
+  w.timer = setInterval(() => {
+    count++;
+    cur = (cur + dir + n) % n;
+    w.current = cur;
+    placeToken(player.id, cur);
+    token.classList.remove("token-hop");
+    void token.offsetWidth;
+    token.classList.add("token-hop");
+    if (count >= steps) {
+      clearInterval(w.timer);
+      walkers.delete(player.id);
+      token.classList.remove("token-walking");
+      finalizeLanding(player.id, to, state);
+    }
+  }, 150);
+  walkers.set(player.id, w);
+}
+
+function finalizeLanding(pid, tileIndex, state) {
+  const tile = document.querySelector(`.tile[data-index="${tileIndex}"]`);
+  if (tile) {
+    tile.style.animationDelay = "0ms";   // cancel the build-time stagger delay
+    tile.classList.remove("land-burst");
+    void tile.offsetWidth;
+    tile.classList.add("land-burst");
+  }
+  const line = state.log && state.log[0] ? state.log[0] : "";
+  const m = line.match(/[+\-]?CHF\s?[\d'’.\s]+/);
+  if (m && tile) {
+    const neg = /^[\-−]/.test(m[0]) || /pays/.test(line);
+    showMoneyFloat(tile, m[0], neg);
+  }
+}
+
+function showMoneyFloat(tile, text, negative) {
+  const old = tile.querySelector(".tile-money-float");
+  if (old) old.remove();
+  const f = document.createElement("span");
+  f.className = "tile-money-float" + (negative ? " negative" : "");
+  f.textContent = text;
+  tile.appendChild(f);
+  setTimeout(() => f.remove(), 1500);
+}
+
 function renderBoard(state) {
   const emPot = $("#em-pot");
   if (emPot) emPot.textContent = `Jackpot · ${money(state.jackpot)}`;
+  if (lastJackpot !== null && lastJackpot !== state.jackpot && emPot) {
+    emPot.classList.remove("jackpot-pulse");
+    void emPot.offsetWidth;
+    emPot.classList.add("jackpot-pulse");
+  }
+  lastJackpot = state.jackpot;
   const emDecks = document.querySelector(".em-decks span");
   if (emDecks) {
     emDecks.textContent = Object.entries(state.chance_decks || {})
@@ -330,29 +470,29 @@ function renderBoard(state) {
   const turnP = state.players.find((p) => p.id === state.turn_player_id);
   const landedIdx = turnP && !turnP.bankrupt ? turnP.position : -1;
 
+  /* walks: anyone whose tile changed steps tile by tile */
+  state.players.forEach((p) => {
+    if (p.bankrupt) {
+      const w = walkers.get(p.id);
+      if (w) { clearInterval(w.timer); walkers.delete(p.id); }
+      removeTokenEl(p.id);
+      lastPositions.delete(p.id);
+      return;
+    }
+    const prev = lastPositions.get(p.id);
+    if (prev !== undefined && prev !== p.position) {
+      const existing = walkers.get(p.id);
+      if (existing) { clearInterval(existing.timer); walkers.delete(p.id); }
+      startWalk(p, existing ? existing.current : prev, p.position, state);
+    }
+    lastPositions.set(p.id, p.position);
+  });
+
+  /* static placement + houses + ownership + landed flags */
   for (let i = 0; i < state.board.length; i++) {
     const tile = state.board[i];
     const div = document.querySelector(`.tile[data-index="${i}"]`);
     if (!div) continue;
-    const tokens = div.querySelector(".tile-tokens");
-    if (tokens) {
-      tokens.innerHTML = "";
-      state.players.forEach((p) => {
-        if (p.position === i && !p.bankrupt) {
-          const img = document.createElement("img");
-          img.className = "token-svg";
-          img.src = `${API_BASE}assets/token-${p.token}.svg`;
-          img.alt = "";
-          img.addEventListener("error", () => {
-            const s = document.createElement("span");
-            s.className = "token-svg token-emoji";
-            s.textContent = TOKEN_EMOJI[p.token] || "🐱";
-            img.replaceWith(s);
-          });
-          tokens.appendChild(img);
-        }
-      });
-    }
     if (tile.type === "street" || tile.type === "railway") {
       div.classList.toggle("owned", !!tile.owner);
     }
@@ -370,6 +510,12 @@ function renderBoard(state) {
     div.classList.toggle("landed", i === landedIdx);
     div.classList.toggle("landed-me", i === landedIdx && state.turn_player_id === session.playerId);
   }
+
+  /* place static tokens (a player mid-walk is owned by the walker) */
+  state.players.forEach((p) => {
+    if (p.bankrupt || walkers.has(p.id)) return;
+    placeToken(p.id, p.position);
+  });
 }
 
 function fullSet(state, pid, terr) {
@@ -390,24 +536,34 @@ function renderSide(state) {
   if (turnP) turnToken.appendChild(tokenImg(turnP.token, "token-img"));
 
   $("#turn-indicator").textContent = turnP ? `${turnP.name}'s move` : "—";
-  $("#turn-indicator").style.color = turnP ? turnP.color : "var(--cream)";
+  $("#turn-indicator").style.color = turnP ? turnP.color : "var(--ink)";
   if (inJail) $("#turn-indicator").textContent = `${turnP.name} is IN JAIL`;
+  if (state.turn_player_id !== lastTurnId) {
+    const ti = $("#turn-indicator");
+    ti.classList.remove("turn-in");
+    void ti.offsetWidth;
+    ti.classList.add("turn-in");
+    lastTurnId = state.turn_player_id;
+  }
   $("#ghdr-round").textContent = `Round ${state.round}`;
 
   const d1 = $("#die1"), d2 = $("#die2");
-  renderDie(d1, state.dice ? state.dice[0] : null);
-  renderDie(d2, state.dice ? state.dice[1] : null);
-
   const diceKey = state.dice ? state.dice.join("-") : "";
-  if (diceKey && diceKey !== lastDiceKey) {
-    d1.classList.add("rolling");
-    d2.classList.add("rolling");
-    setTimeout(() => {
-      d1.classList.remove("rolling");
-      d2.classList.remove("rolling");
-    }, 420);
+  if (diceKey !== lastDiceKey) {
+    renderDie(d1, state.dice ? state.dice[0] : null);
+    renderDie(d2, state.dice ? state.dice[1] : null);
+    if (diceKey) {
+      d1.classList.add("rolling");
+      d2.classList.add("rolling");
+      setTimeout(() => {
+        d1.classList.remove("rolling");
+        d2.classList.remove("rolling");
+      }, 420);
+    }
     lastDiceKey = diceKey;
   }
+  const diceRow = document.querySelector(".dice-row");
+  if (diceRow) diceRow.classList.toggle("dice-doubles", !!(state.dice && state.dice[0] === state.dice[1]));
 
   $("#doubles-badge").classList.toggle("hidden", !(state.doubles > 0 && isTurn));
 
@@ -481,6 +637,12 @@ function renderSide(state) {
     if (p.jail_turns != null) right.appendChild(el("span", "pl-jail", "🔒"));
     if (p.get_out_of_jail > 0) right.appendChild(el("span", "pl-jail", "🃏"));
     const moneyEl = el("span", "pl-money", money(p.money));
+    const prevM = lastMoney.get(p.id);
+    if (prevM !== undefined && prevM !== p.money) {
+      moneyEl.classList.add(p.money > prevM ? "flash-up" : "flash-down");
+      setTimeout(() => moneyEl.classList.remove("flash-up", "flash-down"), 900);
+    }
+    lastMoney.set(p.id, p.money);
     right.appendChild(moneyEl);
     li.appendChild(left);
     li.appendChild(right);
@@ -503,6 +665,10 @@ function renderSide(state) {
     const winner = state.players.find((p) => p.id === state.winner);
     $("#winner-text").textContent = winner ? `${winner.name} owns the town!` : "Town over";
     $("#winner-banner").classList.remove("hidden");
+    if (!winnerShown) {
+      winnerShown = true;
+      spawnConfetti();
+    }
   }
 }
 
@@ -589,6 +755,7 @@ $("#trade-target").addEventListener("change", () => buildTradeProps("want"));
 /* ---------- auction ---------- */
 let auctionDismissed = false;
 let lastAuctionKey = null;
+let lastBidKey = null;
 
 function renderAuction(state) {
   const a = state.auction;
@@ -598,6 +765,7 @@ function renderAuction(state) {
     clearInterval(auctionTimer);
     auctionDismissed = false;
     lastAuctionKey = null;
+    lastBidKey = null;
     return;
   }
   const key = `${a.tile_index}:${a.ends_at}`;
@@ -608,9 +776,17 @@ function renderAuction(state) {
   $("#auction-tile-name").textContent = a.tile_name;
   const me = state.players.find((p) => p.id === session.playerId);
   const hiPlayer = state.players.find((p) => p.id === a.highest_bidder);
-  $("#auction-status").textContent = hiPlayer
+  const statusEl = $("#auction-status");
+  statusEl.textContent = hiPlayer
     ? `Top bid: ${money(a.highest_bid)} by ${hiPlayer.name}`
     : `Opening bid: ${money(a.min_bid)}`;
+  const bidKey = `${a.highest_bidder || ""}:${a.highest_bid}`;
+  if (bidKey && bidKey !== lastBidKey && a.highest_bid > 0) {
+    statusEl.classList.remove("bid-flash");
+    void statusEl.offsetWidth;
+    statusEl.classList.add("bid-flash");
+  }
+  lastBidKey = bidKey;
   const tt = $("#auction-timer");
   const secs = Math.max(0, Math.ceil((a.ends_at - Date.now() / 1000)));
   tt.textContent = secs;
@@ -641,21 +817,20 @@ function sizeBoard() {
   const padR = parseFloat(cs.paddingRight) || 0;
   const padT = parseFloat(cs.paddingTop) || 0;
   const padB = parseFloat(cs.paddingBottom) || 0;
-  const stacked = rect.width < 900;
-  const gap = 16;
+  // detect the real layout: one grid column == stacked (board on top)
+  const stacked = cs.gridTemplateColumns.split(" ").length === 1;
+  const gap = 12;
   const sideEl = document.querySelector(".side-panel");
   const sideW = (!stacked && sideEl) ? sideEl.getBoundingClientRect().width : 0;
-  let size;
   const availW = rect.width - padL - padR;
   const availH = rect.height - padT - padB;
-  if (stacked) {
-    size = Math.min(availW - 8, availH * 0.44);
-  } else {
-    size = Math.min(availW - sideW - gap, availH);
-  }
-  const s = Math.max(220, Math.floor(size));
+  const size = stacked
+    ? Math.min(availW - 8, availH * 0.47)
+    : Math.min(availW - sideW - gap, availH);
+  const s = Math.max(200, Math.floor(size));
   board.style.width = s + "px";
   board.style.height = s + "px";
+  board.style.setProperty("--bp", s + "px");
 }
 
 function initBoardResizer() {
@@ -665,6 +840,11 @@ function initBoardResizer() {
   const ro = new ResizeObserver(() => sizeBoard());
   ro.observe(main);
   window.addEventListener("resize", () => sizeBoard());
+}
+
+/* lock the page while playing so nothing can ever scroll outside the game */
+function setBodyLock(lock) {
+  document.body.classList.toggle("game-locked", lock);
 }
 
 /* ---------- render ---------- */
@@ -703,8 +883,12 @@ async function poll() {
     if (!state) return;
     if (state.status === "lobby") {
       renderLobby(state);
+      setBodyLock(false);
     } else {
-      if (lastStatus === "lobby") showScreen("#screen-game");
+      if (lastStatus === "lobby") {
+        showScreen("#screen-game");
+        setBodyLock(true);
+      }
       renderGame(state);
     }
     lastStatus = state.status;
