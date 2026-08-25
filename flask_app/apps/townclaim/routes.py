@@ -73,7 +73,7 @@ def _to_int(value, fallback=0):
 
 
 CORNER_NAMES = {
-    "go": "GO",
+    "go": "START",
     "jail": "JAIL / Just Visiting",
     "free_parking": "FREE PARKING",
     "go_to_jail": "GO TO JAIL",
@@ -249,7 +249,7 @@ def find_corner(game, kind):
 def salary(game, player):
     amt = cfg()["pass_go"]
     player["money"] += amt
-    log(game, f"{player['name']} passes GO — collects {cur(game)}{amt}.")
+    log(game, f"{player['name']} passes START — collects {cur(game)}{amt}.")
 
 
 def cur(game):
@@ -279,7 +279,7 @@ def resolve_landing(game, player):
         if kind == "jail":
             log(game, f"{player['name']} is visiting the lock-up — just visiting.")
         elif kind == "go":
-            log(game, f"{player['name']} lands on GO.")
+            log(game, f"{player['name']} lands on START.")
         elif kind == "free_parking":
             if cfg().get("free_parking_jackpot", True) and game["jackpot"] > 0:
                 amt = game["jackpot"]

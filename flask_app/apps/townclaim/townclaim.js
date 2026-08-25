@@ -277,17 +277,21 @@ function renderDie(el, value) {
 }
 
 /* ---------- board geometry ---------- */
-/* GO sits in the bottom-left corner and travel goes clockwise:
-   bottom edge left→right, up the right edge, top edge right→left,
-   down the left edge. */
+/* START sits in the bottom-left corner and travel goes counter-clockwise:
+   up the left edge (green), along the top (blue), down the right edge
+   (red), along the bottom (orange) and back to START. */
 function gridPositions(n) {
   const side = n / 4 + 1;
   const pos = new Array(n);
   let k = 0;
-  for (let c = 1; c <= side; c++) pos[k++] = { r: side, c };          // bottom edge: GO (bottom-left) → JAIL
-  for (let r = side - 1; r >= 1; r--) pos[k++] = { r, c: side };      // right edge: bottom → top
-  for (let c = side - 1; c >= 1; c--) pos[k++] = { r: 1, c };         // top edge: right → left
-  for (let r = 2; r <= side - 1; r++) pos[k++] = { r, c: 1 };         // left edge: top → bottom
+  pos[k++] = { r: side, c: 1 };                                    // START (bottom-left)
+  for (let r = side - 1; r >= 2; r--) pos[k++] = { r, c: 1 };      // left edge, upward
+  pos[k++] = { r: 1, c: 1 };                                       // top-left corner
+  for (let c = 2; c <= side - 1; c++) pos[k++] = { r: 1, c };      // top edge, left → right
+  pos[k++] = { r: 1, c: side };                                    // top-right corner
+  for (let r = 2; r <= side - 1; r++) pos[k++] = { r, c: side };   // right edge, downward
+  pos[k++] = { r: side, c: side };                                 // bottom-right corner
+  for (let c = side - 1; c >= 2; c--) pos[k++] = { r: side, c };   // bottom edge, right → left
   return pos;
 }
 

@@ -3,7 +3,7 @@
     "chance": {
       "title": "Chance",
       "cards": [
-        { "text": "Advance to GO. Collect CHF 200.", "action": "go_to", "tile": "go", "collect": 200 },
+        { "text": "Advance to START. Collect CHF 200.", "action": "go_to", "tile": "go", "collect": 200 },
         { "text": "Go directly to JAIL. Do not pass GO.", "action": "jail" },
         { "text": "The Town pays you a dividend.", "action": "collect", "amount": 150 },
         { "text": "Hospital fees — pay the Town.", "action": "pay", "amount": 100 },
@@ -20,7 +20,7 @@
     "community": {
       "title": "Community Chest",
       "cards": [
-        { "text": "Advance to GO. Collect CHF 200.", "action": "go_to", "tile": "go", "collect": 200 },
+        { "text": "Advance to START. Collect CHF 200.", "action": "go_to", "tile": "go", "collect": 200 },
         { "text": "Your birthday! Collect CHF 100 from each rival.", "action": "collect_all", "amount": 100 },
         { "text": "You inherit CHF 100.", "action": "collect", "amount": 100 },
         { "text": "Pay the hospital bill.", "action": "pay", "amount": 120 },

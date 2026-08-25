@@ -13,7 +13,7 @@
     { "i": 8, "type": "street", "street": "south_5" },
     { "i": 9, "type": "street", "street": "south_6" },
 
-    { "i": 10, "type": "corner", "kind": "jail" },
+    { "i": 10, "type": "corner", "kind": "go_to_jail" },
 
     { "i": 11, "type": "street", "street": "east_1" },
     { "i": 12, "type": "street", "street": "east_2" },
@@ -37,7 +37,7 @@
     { "i": 28, "type": "street", "street": "north_5" },
     { "i": 29, "type": "street", "street": "north_6" },
 
-    { "i": 30, "type": "corner", "kind": "go_to_jail" },
+    { "i": 30, "type": "corner", "kind": "jail" },
 
     { "i": 31, "type": "street", "street": "west_1" },
     { "i": 32, "type": "street", "street": "west_2" },
