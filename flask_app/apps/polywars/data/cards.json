@@ -1,0 +1,21 @@
+{
+  "decks": {
+    "chance": {
+      "title": "Chance",
+      "cards": [
+        { "text": "Advance to GO. Collect cash.", "action": "go_to", "tile": "go", "collect": 200 },
+        { "text": "Go directly to JAIL. Do not pass GO. Do not collect cash.", "action": "jail" },
+        { "text": "The Bank pays you a dividend.", "action": "collect", "amount": 150 },
+        { "text": "Hospital fees — pay the Bank.", "action": "pay", "amount": 100 },
+        { "text": "School fees — pay the Bank.", "action": "pay", "amount": 50 },
+        { "text": "Advance to the nearest station. Buy it if unowned, else pay double rent.", "action": "nearest_rail" },
+        { "text": "Go back 3 spaces.", "action": "move", "steps": -3 },
+        { "text": "Street repairs — pay per house and per hotel.", "action": "repairs", "house": 30, "hotel": 120 },
+        { "text": "Beauty contest — collect from each rival.", "action": "collect_all", "amount": 50 },
+        { "text": "Give each rival a present.", "action": "pay_all", "amount": 50 },
+        { "text": "Tax refund — collect.", "action": "collect", "amount": 20 },
+        { "text": "Bank error in your favour — collect.", "action": "collect", "amount": 200 }
+      ]
+    }
+  }
+}

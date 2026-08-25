@@ -14,54 +14,49 @@
 
 <div class="crt-overlay"></div>
 
-<!-- ============ SCREEN: HOME (create / join) ============ -->
+<!-- HOME -->
 <section id="screen-home" class="screen active">
   <div class="home-wrap">
     <div class="brand">
       <span class="brand-mark">◆</span>
       <h1>POLYWARS</h1>
-      <p class="tagline">Claim streets. Hold the line. Push the front.</p>
+      <p class="tagline">Buy streets. Build houses. Break the market.</p>
     </div>
-
     <div class="home-cards">
       <div class="card">
-        <h2><span class="num">01</span> Found a campaign</h2>
-        <label for="create-name">Commander name</label>
+        <h2><span class="num">01</span> Found a market</h2>
+        <label for="create-name">Player name</label>
         <input id="create-name" type="text" maxlength="20" placeholder="e.g. Vega">
-        <button id="btn-create" class="btn btn-primary">Create campaign</button>
+        <button id="btn-create" class="btn btn-primary">Create market</button>
       </div>
-
       <div class="card">
         <h2><span class="num">02</span> Join with a code</h2>
-        <label for="join-name">Commander name</label>
+        <label for="join-name">Player name</label>
         <input id="join-name" type="text" maxlength="20" placeholder="e.g. Kestrel">
-        <label for="join-code">Campaign code</label>
+        <label for="join-code">Room code</label>
         <input id="join-code" type="text" maxlength="5" placeholder="A1B2C" style="text-transform:uppercase; letter-spacing:.2em; font-family:'JetBrains Mono',monospace;">
-        <button id="btn-join" class="btn btn-primary">Join campaign</button>
+        <button id="btn-join" class="btn btn-primary">Join market</button>
       </div>
     </div>
-
     <p id="home-error" class="error-msg"></p>
   </div>
 </section>
 
-<!-- ============ SCREEN: LOBBY ============ -->
+<!-- LOBBY -->
 <section id="screen-lobby" class="screen">
   <div class="lobby-wrap">
-    <p class="eyebrow">Campaign code — share this</p>
+    <p class="eyebrow">Room code — share this</p>
     <div class="code-display" id="lobby-code">-----</div>
-
     <div class="lobby-players">
-      <h2>Commanders</h2>
+      <h2>Players</h2>
       <ul id="lobby-player-list"></ul>
     </div>
-
-    <button id="btn-start" class="btn btn-primary">Start campaign</button>
+    <button id="btn-start" class="btn btn-primary">Start market</button>
     <p id="lobby-hint" class="hint">Waiting for the host to start…</p>
   </div>
 </section>
 
-<!-- ============ SCREEN: GAME ============ -->
+<!-- GAME -->
 <section id="screen-game" class="screen">
   <header class="game-header">
     <div class="ghdr-left">
@@ -70,15 +65,12 @@
       <span class="ghdr-code">CODE <b id="ghdr-code-val">-----</b></span>
     </div>
     <div class="ghdr-right">
-      <span id="ghdr-pot">War chest $0</span>
       <span id="ghdr-round">Round 1</span>
     </div>
   </header>
 
   <main class="game-main">
-    <div class="board-wrap">
-      <div id="board" class="board"></div>
-    </div>
+    <div class="board-wrap"><div id="board" class="board"></div></div>
 
     <aside class="side-panel">
       <div class="panel-block" id="turn-block">
@@ -89,30 +81,45 @@
           <div class="die" id="die2">–</div>
         </div>
         <button id="btn-roll" class="btn btn-primary btn-block">Roll dice</button>
+        <button id="btn-bail" class="btn btn-secondary btn-block hidden">Pay bail</button>
+
         <div id="buy-box" class="buy-box hidden">
           <p id="buy-text"></p>
-          <button id="btn-buy" class="btn btn-secondary btn-block">Claim territory</button>
+          <div id="station-name-row" class="hidden">
+            <label for="rail-name">Name your station</label>
+            <input id="rail-name" type="text" maxlength="18">
+          </div>
+          <button id="btn-buy" class="btn btn-secondary btn-block">Claim it</button>
         </div>
+
+        <div id="build-box" class="buy-box hidden">
+          <p id="build-text"></p>
+          <button id="btn-build" class="btn btn-secondary btn-block">Build</button>
+        </div>
+
         <button id="btn-end" class="btn btn-ghost btn-block">End turn</button>
       </div>
 
       <div class="panel-block">
-        <h3>Commanders</h3>
+        <h3>Players</h3>
         <ul id="player-list" class="player-list"></ul>
       </div>
 
       <div class="panel-block legend-block">
-        <h3>Special fields</h3>
+        <h3>The board</h3>
         <ul class="legend-list">
-          <li><span class="legend-swatch legend-supply"></span> Supply Drop — free bonus money</li>
-          <li><span class="legend-swatch legend-skirmish"></span> Skirmish — pay tax into the war chest</li>
-          <li><span class="legend-swatch legend-artillery"></span> Artillery Support — strike an enemy tile</li>
-          <li><span class="legend-swatch legend-stronghold"></span> Stronghold — collect the war chest</li>
+          <li><span class="legend-swatch" style="background:#4e7a3f"></span> Greenfield — streets</li>
+          <li><span class="legend-swatch" style="background:#2874a6"></span> Bluewater — streets</li>
+          <li><span class="legend-swatch" style="background:#c0392b"></span> Redmoor — streets</li>
+          <li><span class="legend-swatch" style="background:#b8860b"></span> Goldpeak — streets</li>
+          <li><span class="legend-sw-rail"></span> Railway — buy &amp; name a station</li>
+          <li><span class="legend-swatch legend-chance"></span> Chance — draw a card</li>
+          <li><span class="legend-swatch legend-jail"></span> Jail / Go To Jail / Free Parking</li>
         </ul>
       </div>
 
       <div class="panel-block log-block">
-        <h3>Field report</h3>
+        <h3>Board report</h3>
         <ul id="log-list" class="log-list"></ul>
       </div>
     </aside>
@@ -120,9 +127,18 @@
 
   <div id="winner-banner" class="winner-banner hidden">
     <div class="winner-inner">
-      <p class="eyebrow">Campaign complete</p>
+      <p class="eyebrow">Market closed</p>
       <h2 id="winner-text">—</h2>
-      <button id="btn-new-game" class="btn btn-primary">New campaign</button>
+      <button id="btn-new-game" class="btn btn-primary">New market</button>
+    </div>
+  </div>
+
+  <div id="card-modal" class="card-modal hidden">
+    <div class="card-inner">
+      <p class="eyebrow" id="card-title">Chance</p>
+      <p id="card-text"></p>
+      <p id="card-result" class="card-result"></p>
+      <button id="card-ok" class="btn btn-primary">OK</button>
     </div>
   </div>
 </section>

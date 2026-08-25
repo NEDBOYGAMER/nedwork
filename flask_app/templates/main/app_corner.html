@@ -8,19 +8,37 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/app_corner.css') }}">
 {% endblock %}
 
+{# Flat Steam-library backdrop: kills the dot-grid/glow ambient layer so the
+   capsule artwork pops. If base.html handles body classes differently,
+   apply "no-ambient" there instead — this block simply no-ops otherwise. #}
+{% block body_class %}no-ambient{% endblock %}
+
 {% block content %}
 
     <main class="app-corner">
 
         <header id="app-corner-header">
+            <p class="page-eyebrow">Library</p>
             <h1 id="app-corner-title">App Corner</h1>
+            <p id="app-corner-tagline">Everything on nedwork, in one place.</p>
         </header>
+
+        <!-- Featured banner, rendered by app_corner.js -->
+        <section id="hero-slot" aria-label="Featured app"></section>
 
         <div id="shelves-container">
             <!-- Shelves are rendered dynamically by app_corner.js -->
         </div>
 
     </main>
+
+    <!-- Floating hover-info panel (single instance, repositioned per card) -->
+    <div id="hover-panel" class="hover-panel" aria-hidden="true">
+        <span class="badge badge-accent hp-type"></span>
+        <h4 class="hp-name"></h4>
+        <p class="hp-desc"></p>
+        <span class="hp-hint"></span>
+    </div>
 
 {% endblock %}
 

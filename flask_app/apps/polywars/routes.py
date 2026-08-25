@@ -1,146 +1,127 @@
 """
-POLYWARS - backend
+POLYWARS — backend (Monopoly-style).
 
-Built as a Blueprint, the same way the Colors app does it: no `Flask`
-import and no app.run() here — this module just defines routes and gets
-mounted by the outer app, e.g.:
+All *content* lives in the JSON files under ./data and is re-read as soon
+as you edit any file (mtime cache). Change the starting money, a street
+rent, a rail price, a card, or the whole board layout and the game follows
+along next request — no code change, no restart.
 
+Each new campaign snapshots the current data files, so mid-game edits only
+affect games created after the change (as classic tabletop would).
+
+Mounted by the outer app:
     from apps.polywars.routes import polywars_bp
     app.register_blueprint(polywars_bp, url_prefix="/apps/polywars")
-
-Game state (rooms, board, players) is transient and lives in memory for
-the lifetime of the process — unlike Colors' palettes, there's nothing
-here that needs a user account or a database row, so there's no
-_require_user()/db usage to borrow from routes.py in that app.
 """
 
+import json
+import os
 import random
-import string
-import time
 import threading
+import time
+import string as _string
+
 from flask import Blueprint, request, jsonify
 
 polywars_bp = Blueprint("polywars", __name__)
 LOCK = threading.Lock()
 
-# ---------------------------------------------------------------------------
-# BOARD DEFINITION
-# ---------------------------------------------------------------------------
-# 28-tile loop (8x8 perimeter): 4 corners + 4 fronts of 6 tiles each
-# (4 buyable properties + 2 special fields per front).
-CORNERS = {
-    0: {"type": "corner", "name": "HQ (GO)", "kind": "go"},
-    7: {"type": "corner", "name": "Artillery Support", "kind": "artillery"},
-    14: {"type": "corner", "name": "Stronghold", "kind": "stronghold"},
-    21: {"type": "corner", "name": "Under Siege", "kind": "siege"},
+# --------------------------------------------------------------------------
+# data loader
+# --------------------------------------------------------------------------
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+_CACHE = {}
+
+
+def load(name):
+    """Read data/<name>.json, cached by file mtime so edits go live.
+    Uses utf-8-sig so a UTF-8 BOM (added by many Windows editors) is stripped
+    automatically. Fails with a *friendly* message if the JSON is bad."""
+    path = os.path.join(DATA_DIR, name + ".json")
+    mtime = os.path.getmtime(path)
+    hit = _CACHE.get(name)
+    if hit and hit[0] == mtime:
+        return hit[1]
+    try:
+        with open(path, "r", encoding="utf-8-sig") as fh:
+            data = json.load(fh)
+    except (json.JSONDecodeError, OSError) as e:
+        raise RuntimeError(
+            f"Couldn't read {name}.json — the file isn't valid JSON. "
+            f"Check that it contains ONLY the JSON (no markdown heading like "
+            f"'## 3)' and no blank line at the top), and no trailing text. "
+            f"Underlying error: {e}"
+        )
+    _CACHE[name] = (mtime, data)
+    return data
+
+
+def cfg():
+    return load("config")
+
+
+CORNER_NAMES = {
+    "go": "GO",
+    "jail": "JAIL / Just Visiting",
+    "free_parking": "FREE PARKING",
+    "go_to_jail": "GO TO JAIL",
 }
-
-# Each front is 6 tiles; relative position 2 is a Supply Drop, relative
-# position 4 is a Skirmish (tax), the other four are buyable properties.
-TERRITORIES = {
-    "north": {
-        "color": "#c0392b",
-        "label": "Redmoor Front",
-        "tiles": [1, 2, 3, 4, 5, 6],
-        "base_price": 100,
-        "next": "east",
-        "prev": "west",
-    },
-    "east": {
-        "color": "#2874a6",
-        "label": "Bluewater Front",
-        "tiles": [8, 9, 10, 11, 12, 13],
-        "base_price": 140,
-        "next": "south",
-        "prev": "north",
-    },
-    "south": {
-        "color": "#4e7a3f",
-        "label": "Greenfield Front",
-        "tiles": [15, 16, 17, 18, 19, 20],
-        "base_price": 180,
-        "next": "west",
-        "prev": "east",
-    },
-    "west": {
-        "color": "#b8860b",
-        "label": "Goldpeak Front",
-        "tiles": [22, 23, 24, 25, 26, 27],
-        "base_price": 220,
-        "next": "north",
-        "prev": "south",
-    },
-}
-
-PROPERTY_NAME_WORDS = {
-    "north": ["Pass", "Ridge", "Hollow", "Bastion"],
-    "east": ["Docks", "Strait", "Isle", "Keep"],
-    "south": ["Farm", "Mill", "Grove", "Fort"],
-    "west": ["Trail", "Mine", "Summit", "Citadel"],
-}
-
-PLAYER_COLORS = ["#e8b64c", "#7fd3c7", "#e26d5c", "#9b8ce6", "#8fd14f", "#f28fb2"]
-
-STARTING_MONEY = 2000
-PASS_GO_BASE = 250
-TERRITORY_INCOME_BONUS = 70   # extra income per fully-owned front, collected on passing GO
-MAX_ROUNDS = 40
-ARTILLERY_CHANCE = 0.3
-SUPPLY_MIN, SUPPLY_MAX = 60, 220
 
 
 def build_board():
-    """Returns dict: tile_index -> tile info (including property fields for property tiles)."""
+    """Assemble the board from board.json + streets.json + railways.json."""
     board = {}
-    for idx, info in CORNERS.items():
-        board[idx] = dict(info, index=idx, owner=None)
-
-    for terr_id, terr in TERRITORIES.items():
-        words = PROPERTY_NAME_WORDS[terr_id]
-        prop_i = 0
-        for rel, tile_idx in enumerate(terr["tiles"]):
-            if rel == 2:
-                board[tile_idx] = {
-                    "type": "supply", "index": tile_idx, "name": "Supply Drop",
-                    "territory": terr_id, "color": terr["color"], "owner": None,
-                }
-            elif rel == 4:
-                board[tile_idx] = {
-                    "type": "skirmish", "index": tile_idx, "name": "Skirmish",
-                    "territory": terr_id, "color": terr["color"], "owner": None,
-                }
-            else:
-                price = terr["base_price"] + prop_i * 20
-                board[tile_idx] = {
-                    "type": "property", "index": tile_idx,
-                    "name": f"{terr_id.capitalize()} {words[prop_i]}",
-                    "territory": terr_id, "color": terr["color"],
-                    "price": price, "rent": price // 5, "owner": None,
-                }
-                prop_i += 1
+    street_data = load("streets")
+    rail_data = load("railways")
+    for spec in sorted(load("board")["tiles"], key=lambda s: s["i"]):
+        i = spec["i"]
+        t = spec["type"]
+        if t == "corner":
+            kind = spec["kind"]
+            board[i] = {"index": i, "type": "corner", "kind": kind,
+                        "name": CORNER_NAMES.get(kind, kind), "owner": None}
+        elif t == "street":
+            sid = spec["street"]
+            s = street_data["streets"][sid]
+            terr = street_data["territories"][s["territory"]]
+            board[i] = {"index": i, "type": "street", "street_id": sid,
+                        "name": s["name"], "territory": s["territory"],
+                        "color": terr["color"], "price": s["price"],
+                        "rents": list(s["rents"]), "houses": 0, "owner": None,
+                        "build_price": terr["house_price"]}
+        elif t == "railway":
+            r = rail_data["stations"][spec["rail"]]
+            board[i] = {"index": i, "type": "railway", "rail_id": spec["rail"],
+                        "name": r["name"], "price": r["price"],
+                        "color": r.get("color", "#8d99ae"),
+                        "base_rent": r.get("base_rent", 25), "owner": None}
+        elif t == "chance":
+            board[i] = {"index": i, "type": "chance", "deck": spec.get("deck", "chance"),
+                        "name": "CHANCE", "owner": None}
+        else:
+            raise ValueError(f"unknown tile type {t!r} at position {i}")
     return board
 
 
-def territory_property_tiles(terr_id):
-    return [t for t in TERRITORIES[terr_id]["tiles"]]  # filtered per-board in territory_full_owner
-
-
 def new_code():
-    return "".join(random.choices(string.ascii_uppercase + string.digits, k=5))
+    return "".join(random.choices(_string.ascii_uppercase + _string.digits, k=5))
 
 
-GAMES = {}  # code -> game dict
+PLAYER_COLORS = ["#e8b64c", "#7fd3c7", "#e26d5c", "#9b8ce6", "#8fd14f", "#f28fb2"]
+GAMES = {}
 
 
 def new_game(code):
     return {
         "code": code,
-        "status": "lobby",  # lobby | active | finished
+        "status": "lobby",
         "board": build_board(),
-        "players": [],       # list of player dicts, order = turn order
+        "chance_decks": {},
+        "last_card": None,
+        "card_seq": 0,
+        "players": [],
         "turn": 0,
         "round": 0,
-        "pot": 0,             # war chest, filled by Skirmish tiles, collected at Stronghold
         "dice": None,
         "log": [],
         "winner": None,
@@ -148,17 +129,18 @@ def new_game(code):
     }
 
 
+def new_player(pid, name, color):
+    return {"id": pid, "name": name, "color": color,
+            "money": cfg()["starting_money"], "position": 0,
+            "jail_turns": None, "bankrupt": False, "is_host": False}
+
+
+# --------------------------------------------------------------------------
+# rules
+# --------------------------------------------------------------------------
 def log(game, text):
     game["log"].insert(0, text)
     game["log"] = game["log"][:60]
-
-
-def new_player(pid, name, color):
-    return {
-        "id": pid, "name": name, "color": color,
-        "money": STARTING_MONEY, "position": 0,
-        "bankrupt": False, "sieged": False, "is_host": False,
-    }
 
 
 def current_player(game):
@@ -167,34 +149,101 @@ def current_player(game):
     return game["players"][game["turn"] % len(game["players"])]
 
 
-def territory_full_owner(game, terr_id):
-    """Return player id if a single player owns every *buyable* tile in the
-    territory (specials aren't ownable so they're excluded), else None."""
-    prop_tiles = [t for t in TERRITORIES[terr_id]["tiles"] if game["board"][t]["type"] == "property"]
-    owners = {game["board"][t]["owner"] for t in prop_tiles}
-    if len(owners) == 1:
-        return next(iter(owners))
-    return None
+def player_by(game, pid):
+    return next((p for p in game["players"] if p["id"] == pid), None)
 
 
-def player_active_fronts(game, pid):
-    return [t for t in TERRITORIES if territory_full_owner(game, t) == pid]
+def territory_streets(game, tid):
+    return [t for t in game["board"].values()
+            if t.get("type") == "street" and t.get("territory") == tid]
 
 
-def player_property_count(game, pid):
-    return sum(1 for t in game["board"].values() if t.get("type") == "property" and t.get("owner") == pid)
+def has_full_territory(game, pid, tid):
+    streets = territory_streets(game, tid)
+    return bool(streets) and all(t.get("owner") == pid for t in streets)
 
 
-def advance_position(pos, steps):
-    return (pos + steps) % 28
+def street_rent(game, tile):
+    if tile["houses"] == 0 and has_full_territory(game, tile["owner"], tile["territory"]):
+        return tile["rents"][0] * 2
+    return tile["rents"][min(tile["houses"], len(tile["rents"]) - 1)]
+
+
+def rail_rent(game, tile):
+    owned = sum(1 for t in game["board"].values()
+                if t.get("type") == "railway" and t.get("owner") == tile["owner"])
+    return tile["base_rent"] * (2 ** (owned - 1))
+
+
+def find_corner(game, kind):
+    for t in game["board"].values():
+        if t.get("type") == "corner" and t.get("kind") == kind:
+            return t["index"]
+    return 0
+
+
+def salary(game, player):
+    amt = cfg()["pass_go"]
+    player["money"] += amt
+    log(game, f"{player['name']} passes GO — collects {amt}.")
+
+
+def send_to_jail(game, player):
+    player["position"] = find_corner(game, "jail")
+    player["jail_turns"] = 0
+    log(game, f"{player['name']} goes directly to JAIL — do not pass GO.")
+
+
+def resolve_landing(game, player):
+    tile = game["board"][player["position"]]
+    t = tile["type"]
+    if t == "corner":
+        kind = tile["kind"]
+        if kind == "jail":
+            log(game, f"{player['name']} is visiting the lock-up — just visiting.")
+        elif kind == "go":
+            log(game, f"{player['name']} lands on GO.")
+        elif kind == "free_parking":
+            log(game, f"{player['name']} rests at FREE PARKING — nothing happens.")
+        elif kind == "go_to_jail":
+            send_to_jail(game, player)
+    elif t == "chance":
+        draw_card(game, player, tile["deck"])
+    elif t == "street":
+        if tile["owner"] is None:
+            log(game, f"{tile['name']} is unclaimed — ${tile['price']} to claim.")
+        elif tile["owner"] != player["id"]:
+            owner = player_by(game, tile["owner"])
+            rent = street_rent(game, tile)
+            pay(game, player, rent, owner)
+            log(game, f"{player['name']} pays ${rent} rent to {owner['name']} at {tile['name']}.")
+    elif t == "railway":
+        if tile["owner"] is None:
+            log(game, f"{tile['name']} is unowned — ${tile['price']} to open a station.")
+        elif tile["owner"] != player["id"]:
+            owner = player_by(game, tile["owner"])
+            rent = rail_rent(game, tile)
+            pay(game, player, rent, owner)
+            log(game, f"{player['name']} pays ${rent} to {owner['name']} at {tile['name']}.")
 
 
 def pay(game, payer, amount, payee=None):
     payer["money"] -= amount
-    if payee is not None:
+    if payee:
         payee["money"] += amount
     if payer["money"] < 0:
         bankrupt(game, payer)
+
+
+def advance(game, player, steps, collect_go=True):
+    n = len(game["board"])
+    old = player["position"]
+    new = (old + steps) % n
+    if collect_go and steps > 0 and old + steps >= n:
+        salary(game, player)
+    player["position"] = new
+    log(game, f"{player['name']} moves {steps} to {game['board'][new]['name']}.")
+    resolve_landing(game, player)
 
 
 def bankrupt(game, player):
@@ -203,9 +252,10 @@ def bankrupt(game, player):
     player["bankrupt"] = True
     player["money"] = 0
     for tile in game["board"].values():
-        if tile.get("type") == "property" and tile.get("owner") == player["id"]:
+        if tile.get("owner") == player["id"]:
             tile["owner"] = None
-    log(game, f"{player['name']} went bankrupt and lost all territory.")
+            tile["houses"] = 0
+    log(game, f"{player['name']} goes bankrupt and loses all property.")
     check_win(game)
 
 
@@ -214,129 +264,139 @@ def check_win(game):
     if len(alive) == 1 and len(game["players"]) > 1:
         game["status"] = "finished"
         game["winner"] = alive[0]["id"]
-        log(game, f"{alive[0]['name']} wins - last front standing!")
-    elif game["round"] >= MAX_ROUNDS:
+        log(game, f"{alive[0]['name']} wins — last one standing.")
+    elif game["round"] >= cfg()["max_rounds"]:
         def net_worth(p):
             props = sum(t["price"] for t in game["board"].values()
-                        if t.get("type") == "property" and t.get("owner") == p["id"])
-            return p["money"] + props
+                        if t.get("owner") == p["id"] and t.get("type") in ("street", "railway"))
+            houses = sum(t.get("houses", 0) * t.get("build_price", 0)
+                         for t in game["board"].values()
+                         if t.get("owner") == p["id"] and t.get("type") == "street")
+            return p["money"] + props + houses
         best = max(game["players"], key=net_worth)
         game["status"] = "finished"
         game["winner"] = best["id"]
-        log(game, f"Campaign over - {best['name']} wins on net worth!")
+        log(game, f"Round cap reached — {best['name']} wins on net worth.")
 
 
-def resolve_landing(game, player):
-    tile = game["board"][player["position"]]
-    ttype = tile.get("type")
+# --------------------------------------------------------------------------
+# cards
+# --------------------------------------------------------------------------
+def deck_draw(game, deck_id):
+    deck = game["chance_decks"].get(deck_id)
+    if not deck:
+        deck = list(load("cards")["decks"][deck_id]["cards"])
+        random.shuffle(deck)
+        game["chance_decks"][deck_id] = deck
+    card = deck.pop(0)
+    deck.append(card)          # recycle forever
+    return card
 
-    if ttype == "corner":
-        kind = tile["kind"]
-        if kind == "go":
-            fronts = len(player_active_fronts(game, player["id"]))
-            income = PASS_GO_BASE + fronts * TERRITORY_INCOME_BONUS
-            player["money"] += income
-            log(game, f"{player['name']} reports to HQ and draws {income} supply.")
-        elif kind == "siege":
-            player["sieged"] = True
-            log(game, f"{player['name']} is pinned down under siege - skips next turn.")
-        elif kind == "stronghold":
-            if game["pot"] > 0:
-                player["money"] += game["pot"]
-                log(game, f"{player['name']} regroups at the stronghold and claims the {game['pot']} war chest.")
-                game["pot"] = 0
-            else:
-                log(game, f"{player['name']} regroups at the stronghold.")
-        elif kind == "artillery":
-            targets = [t for t in game["board"].values()
-                       if t.get("type") == "property" and t.get("owner") not in (None, player["id"])]
-            if not targets:
-                log(game, f"{player['name']} calls in artillery support but finds no targets.")
-            else:
-                target = random.choice(targets)
-                defender = next(p for p in game["players"] if p["id"] == target["owner"])
-                if random.random() < ARTILLERY_CHANCE:
-                    target["owner"] = player["id"]
-                    log(game, f"{player['name']} calls in an artillery strike and seizes {target['name']} from {defender['name']}!")
-                else:
-                    log(game, f"{player['name']} calls in an artillery strike on {target['name']}, but it misses.")
 
-    elif ttype == "supply":
-        bonus = random.randint(SUPPLY_MIN, SUPPLY_MAX)
-        player["money"] += bonus
-        log(game, f"{player['name']} finds a supply drop worth {bonus}.")
+def draw_card(game, player, deck_id):
+    card = deck_draw(game, deck_id)
+    game["card_seq"] += 1
+    result = play_card(game, player, card)
+    title = load("cards")["decks"][deck_id]["title"]
+    game["last_card"] = {"seq": game["card_seq"], "title": title,
+                         "text": card["text"], "result": result or "done"}
+    log(game, f"{player['name']} draws: {card['text']} — {result or 'done'}.")
 
-    elif ttype == "skirmish":
-        tax = min(150, 25 + game["round"] * 10)
-        player["money"] -= tax
-        game["pot"] += tax
-        log(game, f"{player['name']} is caught in a skirmish and loses {tax} to the war chest.")
+
+def play_card(game, player, card):
+    act = card["action"]
+    cur = cfg()["currency"]
+    if act == "collect":
+        player["money"] += card["amount"]
+        return f"+{cur}{card['amount']}"
+    if act == "pay":
+        pay(game, player, card["amount"])
+        return f"-{cur}{card['amount']}"
+    if act == "pay_all":
+        amt = card["amount"]
+        others = [p for p in game["players"] if p is not player]
+        for p in others:
+            p["money"] += amt
+        player["money"] -= amt * len(others)
         if player["money"] < 0:
             bankrupt(game, player)
+        return f"-{cur}{amt} to each rival"
+    if act == "collect_all":
+        amt = card["amount"]
+        others = [p for p in game["players"] if p is not player]
+        for p in others:
+            p["money"] -= amt
+            if p["money"] < 0:
+                bankrupt(game, p)
+        player["money"] += amt * len(others)
+        return f"+{cur}{amt} from each rival"
+    if act == "move":
+        advance(game, player, card["steps"], collect_go=False)
+        return "moved"
+    if act == "go_to":
+        target = find_corner(game, card["tile"])
+        player["position"] = target
+        if card.get("collect"):
+            player["money"] += card["collect"]
+            return f"arrived at {game['board'][target]['name']}, +{cur}{card['collect']}"
+        return f"arrived at {game['board'][target]['name']}"
+    if act == "jail":
+        send_to_jail(game, player)
+        return "straight to jail!"
+    if act == "nearest_rail":
+        n = len(game["board"])
+        pos = player["position"]
+        for step in range(1, n + 1):
+            idx = (pos + step) % n
+            if game["board"][idx]["type"] == "railway":
+                player["position"] = idx
+                resolve_landing(game, player)
+                return "made it to the platform"
+        return "no platforms open"
+    if act == "repairs":
+        houses = sum(min(t["houses"], 4) for t in game["board"].values()
+                     if t.get("type") == "street" and t.get("owner") == player["id"])
+        hotels = sum(1 for t in game["board"].values()
+                     if t.get("type") == "street" and t.get("owner") == player["id"] and t.get("houses", 0) >= 5)
+        cost = houses * card["house"] + hotels * card["hotel"]
+        pay(game, player, cost)
+        return f"-{cur}{cost} for repairs"
+    return ""
 
-    elif ttype == "property":
-        owner_id = tile.get("owner")
-        if owner_id is None:
-            pass  # frontend offers "buy"
-        elif owner_id != player["id"]:
-            owner = next(p for p in game["players"] if p["id"] == owner_id)
-            full_owner = territory_full_owner(game, tile["territory"])
-            rent = tile["rent"] * (2 if full_owner == owner_id else 1)
-            pay(game, player, rent, owner)
-            log(game, f"{player['name']} pays {rent} rent to {owner['name']} at {tile['name']}.")
 
-
-def expand_fronts(game, player):
-    """Frontwars-style automatic territory expansion for the player who just
-    finished their turn: each fully-owned front pushes its border outward."""
-    fronts = player_active_fronts(game, player["id"])
-    for terr_id in fronts:
-        terr = TERRITORIES[terr_id]
-        targets = [TERRITORIES[terr["next"]]["tiles"][0], TERRITORIES[terr["prev"]]["tiles"][-1]]
-        for t_idx in targets:
-            tile = game["board"][t_idx]
-            if tile.get("type") != "property":
-                continue
-            owner = tile.get("owner")
-            if owner == player["id"]:
-                continue
-            if owner is None:
-                if random.random() < 0.35:
-                    tile["owner"] = player["id"]
-                    log(game, f"{player['name']}'s {terr['label']} annexes unclaimed {tile['name']}.")
-            else:
-                defender = next(p for p in game["players"] if p["id"] == owner)
-                atk = player_property_count(game, player["id"])
-                dfn = player_property_count(game, owner)
-                chance = max(0.05, min(0.6, 0.15 + 0.05 * (atk - dfn)))
-                if random.random() < chance:
-                    tile["owner"] = player["id"]
-                    log(game, f"{player['name']}'s {terr['label']} storms {tile['name']}, seizing it from {defender['name']}!")
-                else:
-                    log(game, f"{player['name']}'s {terr['label']} probes {tile['name']} but {defender['name']} holds the line.")
-
-
+# --------------------------------------------------------------------------
+# public state
+# --------------------------------------------------------------------------
 def public_state(game, viewer_id=None):
+    c = cfg()
     cp = current_player(game)
     return {
         "code": game["code"],
         "status": game["status"],
         "round": game["round"],
-        "pot": game["pot"],
-        "board": game["board"],
-        "territories": {k: {"color": v["color"], "label": v["label"], "tiles": v["tiles"]} for k, v in TERRITORIES.items()},
         "players": game["players"],
+        "board": [game["board"][k] for k in sorted(game["board"])],
         "turn_player_id": cp["id"] if cp else None,
         "dice": game["dice"],
         "log": game["log"],
         "winner": game["winner"],
+        "last_card": game["last_card"],
+        "chance_decks": {k: len(v) for k, v in game["chance_decks"].items()},
         "you": viewer_id,
+        "config": {
+            "game_name": c.get("game_name", "POLYWARS"),
+            "currency": c.get("currency", "$"),
+            "pass_go": c["pass_go"],
+            "max_rounds": c["max_rounds"],
+            "starting_money": c["starting_money"],
+            "jail": c["jail"],
+        },
     }
 
 
-# ---------------------------------------------------------------------------
-# ROUTES  (mounted by the outer app, e.g. url_prefix="/apps/polywars")
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# routes
+# --------------------------------------------------------------------------
 @polywars_bp.route("/create", methods=["POST"])
 def create_game():
     data = request.get_json(force=True)
@@ -351,7 +411,7 @@ def create_game():
         player["is_host"] = True
         game["players"].append(player)
         GAMES[code] = game
-        log(game, f"{name} founded the campaign.")
+        log(game, f"{name} founded the market.")
     return jsonify({"code": code, "player_id": pid})
 
 
@@ -379,8 +439,7 @@ def join_game():
 @polywars_bp.route("/start", methods=["POST"])
 def start_game():
     data = request.get_json(force=True)
-    code = data.get("code")
-    pid = data.get("player_id")
+    code, pid = data.get("code"), data.get("player_id")
     with LOCK:
         game = GAMES.get(code)
         if not game:
@@ -389,10 +448,10 @@ def start_game():
         if not player or not player["is_host"]:
             return jsonify({"error": "Only the host can start the campaign."}), 403
         if len(game["players"]) < 2:
-            return jsonify({"error": "Need at least 2 commanders to start."}), 400
+            return jsonify({"error": "Need at least 2 players to start."}), 400
         game["status"] = "active"
         game["round"] = 1
-        log(game, "The campaign begins! Roll to advance your front.")
+        log(game, "The market opens! Roll to move.")
     return jsonify(public_state(game, pid))
 
 
@@ -408,8 +467,7 @@ def get_state(code):
 @polywars_bp.route("/roll", methods=["POST"])
 def roll_dice():
     data = request.get_json(force=True)
-    code = data.get("code")
-    pid = data.get("player_id")
+    code, pid = data.get("code"), data.get("player_id")
     with LOCK:
         game = GAMES.get(code)
         if not game or game["status"] != "active":
@@ -421,13 +479,27 @@ def roll_dice():
             return jsonify({"error": "You already rolled this turn."}), 400
         d1, d2 = random.randint(1, 6), random.randint(1, 6)
         game["dice"] = [d1, d2]
-        if cp["sieged"]:
-            cp["sieged"] = False
-            log(game, f"{cp['name']} breaks the siege but stays put this turn.")
+        jail = cfg()["jail"]
+        if cp["jail_turns"] is not None:
+            if d1 == d2 and jail.get("doubles_free", True):
+                cp["jail_turns"] = None
+                log(game, f"{cp['name']} rolls doubles and leaves jail.")
+                advance(game, cp, d1 + d2)
+            else:
+                cp["jail_turns"] += 1
+                if cp["jail_turns"] >= jail["max_turns"]:
+                    bail = jail["bail"]
+                    if cp["money"] >= bail:
+                        cp["money"] -= bail
+                        cp["jail_turns"] = None
+                        log(game, f"{cp['name']} pays {bail} and is released.")
+                        advance(game, cp, d1 + d2)
+                    else:
+                        log(game, f"{cp['name']} cannot afford {bail} bail — stays in jail.")
+                else:
+                    log(game, f"{cp['name']} rolls {d1}+{d2} — still jailed (attempt {cp['jail_turns']}/{jail['max_turns']}).")
         else:
-            cp["position"] = advance_position(cp["position"], d1 + d2)
-            log(game, f"{cp['name']} rolls {d1}+{d2} and advances to {game['board'][cp['position']]['name']}.")
-            resolve_landing(game, cp)
+            advance(game, cp, d1 + d2)
         check_win(game)
     return jsonify(public_state(game, pid))
 
@@ -435,8 +507,7 @@ def roll_dice():
 @polywars_bp.route("/buy", methods=["POST"])
 def buy_property():
     data = request.get_json(force=True)
-    code = data.get("code")
-    pid = data.get("player_id")
+    code, pid = data.get("code"), data.get("player_id")
     with LOCK:
         game = GAMES.get(code)
         if not game or game["status"] != "active":
@@ -445,21 +516,78 @@ def buy_property():
         if not cp or cp["id"] != pid:
             return jsonify({"error": "It is not your turn."}), 403
         tile = game["board"][cp["position"]]
-        if tile.get("type") != "property" or tile.get("owner") is not None:
-            return jsonify({"error": "This tile cannot be bought."}), 400
+        if tile["type"] not in ("street", "railway") or tile["owner"] is not None:
+            return jsonify({"error": "This tile cannot be bought right now."}), 400
         if cp["money"] < tile["price"]:
-            return jsonify({"error": "Not enough supply to purchase."}), 400
+            return jsonify({"error": "Not enough money."}), 400
         cp["money"] -= tile["price"]
         tile["owner"] = cp["id"]
-        log(game, f"{cp['name']} claims {tile['name']} for {tile['price']}.")
+        if tile["type"] == "railway":
+            custom = (data.get("name") or "").strip()[:18]
+            if custom:
+                tile["name"] = custom
+            log(game, f"{cp['name']} opens {tile['name']} as a station.")
+        else:
+            if has_full_territory(game, cp["id"], tile["territory"]):
+                label = load("streets")["territories"][tile["territory"]]["label"]
+                log(game, f"{cp['name']} now owns the whole {label} district!")
+            log(game, f"{cp['name']} claims {tile['name']} for ${tile['price']}.")
+    return jsonify(public_state(game, pid))
+
+
+@polywars_bp.route("/build", methods=["POST"])
+def build_house():
+    data = request.get_json(force=True)
+    code, pid = data.get("code"), data.get("player_id")
+    with LOCK:
+        game = GAMES.get(code)
+        if not game or game["status"] != "active":
+            return jsonify({"error": "Campaign not active."}), 400
+        cp = current_player(game)
+        if not cp or cp["id"] != pid:
+            return jsonify({"error": "It is not your turn."}), 403
+        tile = game["board"][cp["position"]]
+        if tile["type"] != "street" or tile["owner"] != cp["id"]:
+            return jsonify({"error": "Build only on a street you already own."}), 400
+        if not has_full_territory(game, cp["id"], tile["territory"]):
+            return jsonify({"error": "Own the whole district first."}), 400
+        if tile["houses"] >= 5:
+            return jsonify({"error": "This street is fully upgraded."}), 400
+        cost = tile["build_price"]
+        if cp["money"] < cost:
+            return jsonify({"error": "Not enough money to build."}), 400
+        cp["money"] -= cost
+        tile["houses"] += 1
+        log(game, f"{cp['name']} builds a house on {tile['name']} (now level {tile['houses']}).")
+    return jsonify(public_state(game, pid))
+
+
+@polywars_bp.route("/bail", methods=["POST"])
+def bail_player():
+    data = request.get_json(force=True)
+    code, pid = data.get("code"), data.get("player_id")
+    with LOCK:
+        game = GAMES.get(code)
+        if not game or game["status"] != "active":
+            return jsonify({"error": "Campaign not active."}), 400
+        cp = current_player(game)
+        if not cp or cp["id"] != pid:
+            return jsonify({"error": "It is not your turn."}), 403
+        if cp["jail_turns"] is None:
+            return jsonify({"error": "You're not in jail."}), 400
+        bail = cfg()["jail"]["bail"]
+        if cp["money"] < bail:
+            return jsonify({"error": "Not enough money for bail."}), 400
+        cp["money"] -= bail
+        cp["jail_turns"] = None
+        log(game, f"{cp['name']} posts bail and is released.")
     return jsonify(public_state(game, pid))
 
 
 @polywars_bp.route("/end_turn", methods=["POST"])
 def end_turn():
     data = request.get_json(force=True)
-    code = data.get("code")
-    pid = data.get("player_id")
+    code, pid = data.get("code"), data.get("player_id")
     with LOCK:
         game = GAMES.get(code)
         if not game or game["status"] != "active":
@@ -469,7 +597,6 @@ def end_turn():
             return jsonify({"error": "It is not your turn."}), 403
         if game["dice"] is None:
             return jsonify({"error": "Roll before ending your turn."}), 400
-        expand_fronts(game, cp)
         check_win(game)
         game["dice"] = None
         if game["status"] == "active":
