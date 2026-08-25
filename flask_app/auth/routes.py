@@ -89,6 +89,9 @@ def login():
 def who():
     valid, user = Session.check(request.cookies.get("session_id"))
 
+    if not valid:
+        return jsonify({"user": None}), 401
+
     return jsonify({"user": user.username})
 
 
@@ -96,6 +99,14 @@ def who():
 
 @auth_bp.route("/api/logout", methods=["POST"])
 def logout():
+    session = Session.query.filter_by(
+        session_id=request.cookies.get("session_id")
+    ).first()
+
+    if session is not None:
+        db.session.delete(session)
+        db.session.commit()
+
     response = make_response(redirect(url_for("auth.login_page")))
     response.set_cookie(
         "session_id",

@@ -1,215 +1,223 @@
-import { WIDGET_SETTINGS_SCHEMA } from "./widget_default.js";
+// ---------------------------------------------------------------------------
+// Widget.js
+// Base class for every dashboard widget. A widget is built into a card that
+// lives on the grid; it talks to the rest of the app only through a small
+// context object:
+//   ctx.grid       - the #card-grid element
+//   ctx.manager    - the active GridManager (for drag/resize + placement)
+//   ctx.onSave     - persist callback (called after any save()/delete)
+//   ctx.edit       - edit callback (opens the schema-driven settings modal)
+//   ctx.dashboard  - dashboard name string
+// Subclasses call build() then buildShell(); the shell is: grip, title,
+// content, resize handle + context menu.
+// ---------------------------------------------------------------------------
+
+import { WIDGET_SETTINGS_SCHEMA } from "./widget_default.js"
+
 export class Widget {
-    constructor(config) {
+    constructor(config, ctx) {
         this.type = config.type
         this.id = config.id
-        this.title = config.settings.title
+        this.config = config
+        this.ctx = ctx || {}
+        this.title = config.settings?.title || ""
+
+        // fullBleed: the widget takes over the whole card - no title, no
+        // padding, the content spans every pixel. Used by icon-only tiles
+        // like app widgets (set via config.fullBleed).
+        this.fullBleed = config.fullBleed === true
+
         this.card = null
-        this.widgets = null
-        this.dashboard_name = null
         this.content = null
     }
 
+    /* Called by subclasses at the end of their build() */
     buildShell() {
-        this.card = document.createElement("div")
-        this.card.classList.add("card")
-        this.card.draggable = true
-        this.card.dataset.widgetId = this.id
-        let grid = document.getElementById("card-grid");
-        grid.appendChild(this.card)
+        const grid = this.ctx.grid || document.getElementById("card-grid")
 
-        if (this.title !== ""){
-            let titleEl = document.createElement("span")
-            titleEl.classList.add("widget-title")
-            titleEl.innerText = this.title
-            this.card.appendChild(titleEl)
+        this.card = document.createElement("div")
+        this.card.className = "card widget"
+        if (this.fullBleed) this.card.classList.add("widget--full-bleed")
+        this.card.dataset.id = this.id
+        this.card.dataset.type = this.type
+
+        this.grip = document.createElement("span")
+        this.grip.className = "card-grip"
+        this.grip.title = "Drag to move"
+        this.grip.setAttribute("aria-hidden", "true")
+
+        this.resizeHandle = document.createElement("span")
+        this.resizeHandle.className = "card-resize"
+        this.resizeHandle.title = "Drag to resize"
+        this.resizeHandle.setAttribute("aria-hidden", "true")
+
+        this.card.appendChild(this.grip)
+
+        // regular widgets get a title bar; full-bleed widgets get the whole
+        // card for their own content
+        if (!this.fullBleed) {
+            this.titleEl = document.createElement("span")
+            this.titleEl.className = "widget-title"
+            this.titleEl.innerText = this.title
+            this.card.appendChild(this.titleEl)
         }
 
         this.content = document.createElement("div")
-        this.content.classList.add("widget-content")
+        this.content.className = "widget-content"
         this.card.appendChild(this.content)
 
-        this.getInfos()
-    
+        // locked widgets keep a fixed size - no resize handle at all
+        if (!this.config.locked) {
+            this.resizeHandle = document.createElement("span")
+            this.resizeHandle.className = "card-resize"
+            this.resizeHandle.title = "Drag to resize"
+            this.resizeHandle.setAttribute("aria-hidden", "true")
+            this.card.appendChild(this.resizeHandle)
+        }
+
+        grid.appendChild(this.card)
+
+        if (this.ctx.manager) {
+            this.ctx.manager.attach(this.config, this.card, this.grip, this.resizeHandle)
+        }
+
         this.setUpContext()
     }
 
-    async getInfos(){
-        const dashboard_info = await fetch('/dashboard/api/load/main');
-        const dashboard = await dashboard_info.json();
-        this.widgets = dashboard.widgets
-        this.dashboard_name = localStorage.getItem("dashboard_name");
+    /* Persist this widget's current state */
+    save(delta) {
+        if (delta) Object.assign(this.config, delta)
+        if (this.ctx.onSave) this.ctx.onSave()
     }
+
+    /* Cleanup hook - subclasses with timers/intervals override this */
+    dispose() {}
+
+    /* ------------------------------------------------------------------ */
+    /* context menu (edit / delete)                                       */
+    /* ------------------------------------------------------------------ */
 
     setUpContext() {
         this.card.addEventListener("contextmenu", (event) => {
             event.preventDefault()
 
+            document.getElementById("context-menu")?.remove()
 
-            let menu = document.getElementById("context-menu")
-            menu?.remove()
-
-            
-            menu = document.createElement("ul")
-            menu.classList.add("context-menu")
+            const menu = document.createElement("ul")
             menu.id = "context-menu"
+            menu.className = "context-menu"
             menu.style.left = `${event.pageX}px`
             menu.style.top = `${event.pageY}px`
 
-            const editbutton = document.createElement("li")
-            editbutton.classList.add("context-option")
-            editbutton.id = "edit-context-option"
-            editbutton.innerText = "Edit"
+            const edit = document.createElement("li")
+            edit.className = "context-option"
+            edit.innerText = "Edit"
+            edit.addEventListener("click", () => this.edit())
 
-            const deletebutton = document.createElement("li")
-            deletebutton.classList.add("context-option")
-            deletebutton.id = "delete-context-option"
-            deletebutton.innerText = "Delete"
+            const del = document.createElement("li")
+            del.className = "context-option"
+            del.innerText = "Delete"
+            del.addEventListener("click", () => this.delete())
 
+            menu.append(edit, del)
             document.body.appendChild(menu)
-            menu.appendChild(editbutton)
-            menu.appendChild(deletebutton)
-
-
-
-            deletebutton.addEventListener("click", () =>{
-                this.deleteWidget()
-
-            })
-
-
-            editbutton.addEventListener("click", () =>{
-                this.editWidget()
-
-            })
-            
-
         })
 
         document.addEventListener("click", () => {
-            let menu = document.getElementById("context-menu")
-            menu?.remove()
-            
-        })
-
+            document.getElementById("context-menu")?.remove()
+        }, { capture: true })
     }
 
-    async deleteWidget() {    
-        const response = await fetch('/dashboard/api/update/update_widget', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: this.dashboard_name,
-                widgets: this.widgets
-            })
-        });
-
-        this.card.dispatchEvent(new CustomEvent("widget:update", {bubbles: true,}))
-    
+    edit() {
+        if (this.ctx.editName) this.ctx.editName(this.config)
     }
 
-    editWidget(){
-        this.setUpSettings()
+    async delete() {
+        if (this.ctx.onDelete) await this.ctx.onDelete(this.id)
     }
 
+    /* ------------------------------------------------------------------ */
+    /* Schema-driven edit modal                                            */
+    /* ------------------------------------------------------------------ */
 
-    // Builds and opens the edit modal for this widget, generated entirely
-    // from WIDGET_SETTINGS_SCHEMA[this.type] - add/remove/retype a field in
-    // the schema and the form picks it up automatically, no widget-specific
-    // UI code needed here.
-    setUpSettings(){
+    setUpSettings() {
         document.getElementById("settings-modal")?.remove()
 
         const schema = WIDGET_SETTINGS_SCHEMA[this.type]
-        const target = this.widgets?.find(w => w.id === this.id)
-
-        if (!schema || !target) {
-            console.error("No schema or widget data found for", this.type, this.id)
+        if (!schema) {
+            console.warn(`No settings schema for type "${this.type}"`)
             return
         }
 
-        // Work on a deep clone so nothing is written back until Save is hit.
-        const draft = structuredClone(target)
+        const draft = structuredClone(this.config)
 
         const overlay = document.createElement("div")
-        overlay.classList.add("modal-backdrop")
+        overlay.className = "modal-backdrop"
         overlay.id = "settings-modal"
 
-        const content = document.createElement("div")
-        content.classList.add("modal")
-        overlay.appendChild(content)
+        const box = document.createElement("div")
+        box.className = "modal"
+        overlay.appendChild(box)
 
         const header = document.createElement("div")
-        header.classList.add("settings-header")
-        content.appendChild(header)
+        header.className = "settings-header"
 
         const heading = document.createElement("h3")
         heading.innerText = `Edit ${this.title || this.type}`
         header.appendChild(heading)
 
         const closeBtn = document.createElement("span")
-        closeBtn.classList.add("close-btn")
+        closeBtn.className = "close-btn"
         closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
         header.appendChild(closeBtn)
+        box.appendChild(header)
 
         const form = document.createElement("div")
-        form.classList.add("settings-form")
-        content.appendChild(form)
+        form.className = "settings-form"
+        box.appendChild(form)
 
         Object.entries(schema).forEach(([key, def]) => {
-            if (def.type === "na") return // internal bookkeeping, not user-editable
-            form.appendChild(this.buildSettingsRow(key, def, draft))
+            if (def.type === "na") return
+            form.appendChild(this._buildRow(key, def, draft))
         })
 
         const actions = document.createElement("div")
-        actions.classList.add("modal-actions")
-        content.appendChild(actions)
+        actions.className = "modal-actions"
+        box.appendChild(actions)
 
         const cancelBtn = document.createElement("button")
-        cancelBtn.classList.add("btn", "btn-secondary")
+        cancelBtn.className = "btn btn-secondary"
         cancelBtn.type = "button"
         cancelBtn.innerText = "Cancel"
 
         const saveBtn = document.createElement("button")
-        saveBtn.classList.add("btn", "btn-primary")
+        saveBtn.className = "btn btn-primary"
         saveBtn.type = "button"
         saveBtn.innerText = "Save"
 
-        actions.appendChild(cancelBtn)
-        actions.appendChild(saveBtn)
-
+        actions.append(cancelBtn, saveBtn)
         document.body.appendChild(overlay)
-        overlay.style.display = "flex"
+        overlay.classList.add("open")
 
-        const closeModal = () => overlay.remove()
-
-        closeBtn.addEventListener("click", closeModal)
-        cancelBtn.addEventListener("click", closeModal)
+        const close = () => overlay.remove()
+        closeBtn.addEventListener("click", close)
+        cancelBtn.addEventListener("click", close)
         overlay.addEventListener("click", (event) => {
-            if (event.target === overlay) closeModal()
+            if (event.target === overlay) close()
         })
-
-        saveBtn.addEventListener("click", async () => {
-            saveBtn.disabled = true
-            await this.saveWidget(draft)
-            closeModal()
+        saveBtn.addEventListener("click", () => {
+            Object.assign(this.config, draft)
+            this.save()
+            close()
         })
     }
 
-    // A widget's editable fields can live either inside .settings (title,
-    // font, ...) or at the top level of the widget object itself (style,
-    // and notes' "text"). Rather than hardcode which key lives where per
-    // widget type, we just check where it currently exists on the draft.
-    getFieldValue(draft, key){
-        if (Object.prototype.hasOwnProperty.call(draft.settings, key)) {
-            return draft.settings[key]
-        }
+    _field(draft, key) {
+        if (Object.prototype.hasOwnProperty.call(draft.settings, key)) return draft.settings[key]
         return draft[key]
     }
 
-    setFieldValue(draft, key, value){
+    _set(draft, key, value) {
         if (Object.prototype.hasOwnProperty.call(draft.settings, key)) {
             draft.settings[key] = value
         } else {
@@ -217,173 +225,129 @@ export class Widget {
         }
     }
 
-    buildSettingsRow(key, def, draft){
+    _buildRow(key, def, draft) {
         const row = document.createElement("div")
-        row.classList.add("settings-row")
+        row.className = "settings-row"
 
         const label = document.createElement("span")
-        label.classList.add("settings-label")
+        label.className = "settings-label"
         label.innerText = key.replace(/_/g, " ")
         row.appendChild(label)
 
-        const value = this.getFieldValue(draft, key)
-        const onChange = (v) => this.setFieldValue(draft, key, v)
+        const value = this._field(draft, key)
+        const onChange = (v) => this._set(draft, key, v)
 
         switch (def.type) {
             case "boolean":
-                row.appendChild(this.buildSwitchControl(value, onChange))
+                row.appendChild(this._switch(value, onChange))
                 break
-
             case "dropdown":
                 row.classList.add("stacked")
-                row.appendChild(this.buildDropdownControl(key, def.options, value, onChange))
+                row.appendChild(this._dropdown(key, def.options, value, onChange))
                 break
-
             case "text_area":
                 row.classList.add("stacked")
-                row.appendChild(this.buildTextAreaControl(value, onChange))
+                row.appendChild(this._textarea(value, onChange))
                 break
-
             case "color":
-                row.appendChild(this.buildColorControl(value, onChange))
+                row.appendChild(this._color(value, onChange))
                 break
-
-            // "location", "timezone" and "input_field" are all free text -
-            // they only differ in what the user is expected to type.
             case "location":
             case "timezone":
             case "input_field":
             default:
                 row.classList.add("stacked")
-                row.appendChild(this.buildInputControl(value, onChange))
+                row.appendChild(this._input(value, onChange))
                 break
         }
 
         return row
     }
 
-    buildSwitchControl(value, onChange){
+    _input(value, onChange) {
+        const input = document.createElement("input")
+        input.type = "text"
+        input.className = "ui-input"
+        input.value = value ?? ""
+        input.addEventListener("input", () => onChange(input.value))
+        return input
+    }
+
+    _textarea(value, onChange) {
+        const textarea = document.createElement("textarea")
+        textarea.className = "ui-input"
+        textarea.rows = 4
+        textarea.value = value ?? ""
+        textarea.addEventListener("input", () => onChange(textarea.value))
+        return textarea
+    }
+
+    _color(value, onChange) {
+        const input = document.createElement("input")
+        input.type = "color"
+        input.className = "color-input"
+        input.value = value || "#515ada"
+        input.addEventListener("input", () => onChange(input.value))
+        return input
+    }
+
+    _dropdown(key, options, value, onChange) {
+        const wrap = document.createElement("div")
+        wrap.className = "dropdown"
+
+        const uid = `drop-${key}-${this.id}`
+        const toggle = document.createElement("input")
+        toggle.type = "checkbox"
+        toggle.id = uid
+
+        const header = document.createElement("label")
+        header.className = "dropdown-header dropdown-box"
+        header.setAttribute("for", uid)
+
+        const selected = document.createElement("span")
+        selected.className = "dropdown-selected"
+        selected.innerText = value ?? ""
+
+        const arrow = document.createElement("span")
+        arrow.className = "dropdown-arrow"
+        arrow.innerText = "▾"
+
+        header.append(selected, arrow)
+
+        const menu = document.createElement("div")
+        menu.className = "dropdown-menu"
+        ;(options || []).forEach(option => {
+            const opt = document.createElement("div")
+            opt.className = "dropdown-option"
+            opt.innerText = option
+            opt.addEventListener("click", () => {
+                selected.innerText = option
+                toggle.checked = false
+                onChange(option)
+            })
+            menu.appendChild(opt)
+        })
+
+        wrap.append(toggle, header, menu)
+        return wrap
+    }
+
+    _switch(value, onChange) {
         const label = document.createElement("label")
-        label.classList.add("switch")
+        label.className = "switch"
 
         const input = document.createElement("input")
         input.type = "checkbox"
         input.checked = !!value
 
         const track = document.createElement("span")
-        track.classList.add("switch-track")
-
+        track.className = "switch-track"
         const knob = document.createElement("span")
-        knob.classList.add("switch-knob")
+        knob.className = "switch-knob"
         track.appendChild(knob)
 
-        label.appendChild(input)
-        label.appendChild(track)
-
+        label.append(input, track)
         input.addEventListener("change", () => onChange(input.checked))
-
         return label
-    }
-
-    buildInputControl(value, onChange){
-        const input = document.createElement("input")
-        input.type = "text"
-        input.classList.add("ui-input")
-        input.value = value ?? ""
-
-        input.addEventListener("input", () => onChange(input.value))
-
-        return input
-    }
-
-    buildTextAreaControl(value, onChange){
-        const textarea = document.createElement("textarea")
-        textarea.classList.add("ui-input")
-        textarea.rows = 4
-        textarea.value = value ?? ""
-
-        textarea.addEventListener("input", () => onChange(textarea.value))
-
-        return textarea
-    }
-
-    buildColorControl(value, onChange){
-        const input = document.createElement("input")
-        input.type = "color"
-        input.classList.add("color-input")
-        input.value = value || "#515ada"
-
-        input.addEventListener("input", () => onChange(input.value))
-
-        return input
-    }
-
-    buildDropdownControl(key, options, value, onChange){
-        const wrap = document.createElement("div")
-        wrap.classList.add("dropdown")
-
-        const uid = `drop-${key}-${this.id}`
-
-        const toggle = document.createElement("input")
-        toggle.type = "checkbox"
-        toggle.id = uid
-
-        const header = document.createElement("label")
-        header.classList.add("dropdown-header", "dropdown-box")
-        header.setAttribute("for", uid)
-
-        const selected = document.createElement("span")
-        selected.classList.add("dropdown-selected")
-        selected.innerText = value ?? ""
-
-        const arrow = document.createElement("span")
-        arrow.classList.add("dropdown-arrow")
-        arrow.innerText = "▾"
-
-        header.appendChild(selected)
-        header.appendChild(arrow)
-
-        const menu = document.createElement("div")
-        menu.classList.add("dropdown-menu")
-
-        ;(options || []).forEach((option) => {
-            const optionEl = document.createElement("div")
-            optionEl.classList.add("dropdown-option")
-            optionEl.innerText = option
-
-            optionEl.addEventListener("click", () => {
-                selected.innerText = option
-                toggle.checked = false
-                onChange(option)
-            })
-
-            menu.appendChild(optionEl)
-        })
-
-        wrap.appendChild(toggle)
-        wrap.appendChild(header)
-        wrap.appendChild(menu)
-
-        return wrap
-    }
-
-    async saveWidget(draft){
-        const index = this.widgets.findIndex(w => w.id === this.id)
-        if (index === -1) return
-
-        this.widgets[index] = draft
-
-        await fetch('/dashboard/api/update/update_widget', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: this.dashboard_name,
-                widgets: this.widgets
-            })
-        })
-
-        this.card.dispatchEvent(new CustomEvent("widget:update", { bubbles: true }))
     }
 }

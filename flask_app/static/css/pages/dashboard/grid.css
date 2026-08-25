@@ -1,0 +1,183 @@
+/* ==========================================================================
+   grid.css
+   The dashboard grid: a 12-column cell grid that is always visible and
+   fills the whole dashboard area. Cards sit on whole cells only - the cell
+   guides, the drag ghost and the resize steps all share this geometry:
+     12 columns, 84px rows, var(--space-4) gaps.
+   ========================================================================== */
+
+:root {
+    --grid-row-h: 84px;
+}
+
+#card-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: var(--grid-row-h);
+    grid-auto-flow: row dense;
+    gap: var(--space-4);
+    align-content: start;
+    padding: var(--space-5) var(--space-5) 140px;
+    min-height: calc(100vh - 130px);
+}
+
+/* ==========================================================================
+   Card (a widget's shell)
+   ========================================================================== */
+
+.card.widget {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    min-height: 0;
+    padding: var(--space-3) var(--space-4);
+    cursor: default;
+    overflow: hidden;
+    transition: border-color .15s ease, opacity .15s ease, transform .15s ease;
+}
+
+.card.widget:hover {
+    border-color: var(--accent);
+}
+
+.card.widget.dragging {
+    opacity: .55;
+    transform: scale(.98);
+    z-index: 20;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+}
+
+.card.widget.resizing {
+    opacity: .8;
+    z-index: 20;
+}
+
+body.is-dragging {
+    user-select: none;
+    cursor: grabbing;
+}
+
+.widget-title {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 14px;
+}
+
+/* ---- full-bleed widgets ----
+   The widget content takes over the entire card: no padding, no title
+   bar, just the widget's own rendering edge to edge. */
+.card.widget.widget--full-bleed {
+    padding: 0;
+    gap: 0;
+}
+
+.widget--full-bleed .widget-content {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+.widget--full-bleed .widget-content > * {
+    flex: 1;
+    min-height: 0;
+}
+
+.widget-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   Drag + resize handles
+   ========================================================================== */
+
+.card-grip {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 10px;
+    cursor: grab;
+    opacity: 0;
+    transition: opacity .15s ease;
+    touch-action: none;
+    z-index: 2;
+}
+
+.card-grip::before {
+    content: '';
+    position: absolute;
+    inset: 3px 5px;
+    border-top: 2px dotted var(--text-muted);
+    border-radius: 2px;
+}
+
+.card.widget:hover .card-grip,
+.card.widget.dragging .card-grip {
+    opacity: 1;
+}
+
+.card-grip:active {
+    cursor: grabbing;
+}
+
+.card-resize {
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    opacity: 0;
+    transition: opacity .15s ease;
+    touch-action: none;
+    z-index: 2;
+}
+
+.card-resize::before,
+.card-resize::after {
+    content: '';
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    background: var(--text-muted);
+    border-radius: 2px;
+}
+
+.card-resize::before { width: 9px; height: 2px; }
+.card-resize::after  { width: 2px; height: 9px; }
+
+.card.widget:hover .card-resize,
+.card.widget.resizing .card-resize {
+    opacity: 1;
+}
+
+/* ==========================================================================
+   Ghost preview - shows the exact cells the widget will occupy on drop
+   ========================================================================== */
+
+.grid-ghost {
+    background: var(--accent-soft);
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius-md);
+    z-index: 10;
+    pointer-events: none;
+}
+
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}

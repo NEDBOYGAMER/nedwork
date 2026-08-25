@@ -6,20 +6,18 @@ function formatTime(totalSeconds) {
     const mins = Math.floor((s % 3600) / 60)
     const secs = s % 60
 
-    if (hrs > 0) {
-        return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
-    }
+    if (hrs > 0) return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
 }
 
 export class TimerWidget extends Widget {
-    constructor(config) {
-        super(config)
+    constructor(config, ctx) {
+        super(config, ctx)
 
         const settings = config.settings
 
-        this.duration = config.duration ?? 300  // total length in seconds
-        this.started = config.started ?? 0      // wall-clock ms timestamp, 0 = not running
+        this.duration = config.duration ?? 300
+        this.started = config.started ?? 0
 
         this.offline = settings.offline
         this.sound = settings.sound
@@ -41,40 +39,40 @@ export class TimerWidget extends Widget {
         this.content.classList.add("timer-widget")
 
         this.ringEl = document.createElement("div")
-        this.ringEl.classList.add("timer-ring")
+        this.ringEl.className = "timer-ring"
 
         const ringInner = document.createElement("div")
-        ringInner.classList.add("timer-ring-inner")
+        ringInner.className = "timer-ring-inner"
 
         this.displayEl = document.createElement("h3")
-        this.displayEl.classList.add("timer-display")
+        this.displayEl.className = "timer-display"
 
         ringInner.appendChild(this.displayEl)
         this.ringEl.appendChild(ringInner)
         this.content.appendChild(this.ringEl)
 
         const controls = document.createElement("div")
-        controls.classList.add("timer-controls")
+        controls.className = "timer-controls"
 
         this.toggleBtn = document.createElement("button")
-        this.toggleBtn.classList.add("timer-btn")
+        this.toggleBtn.className = "timer-btn"
         this.toggleBtn.addEventListener("click", this.toggle)
 
         const resetBtn = document.createElement("button")
-        resetBtn.classList.add("timer-btn")
+        resetBtn.className = "timer-btn"
         resetBtn.innerText = "Reset"
         resetBtn.addEventListener("click", this.reset)
 
-        controls.appendChild(this.toggleBtn)
-        controls.appendChild(resetBtn)
+        controls.append(this.toggleBtn, resetBtn)
         this.content.appendChild(controls)
-
-        this.content.addEventListener("widget:update", () => {
-            clearInterval(this.tickTimer)
-        })
 
         this.tick()
         this.tickTimer = setInterval(this.tick, 1000)
+    }
+
+    dispose() {
+        clearInterval(this.tickTimer)
+        this.tickTimer = null
     }
 
     get isRunning() {
@@ -83,8 +81,7 @@ export class TimerWidget extends Widget {
 
     get remaining() {
         if (!this.isRunning) return this.duration
-        const elapsed = (Date.now() - this.started) / 1000
-        return this.duration - elapsed
+        return this.duration - (Date.now() - this.started) / 1000
     }
 
     tick() {
@@ -100,7 +97,7 @@ export class TimerWidget extends Widget {
                 this.started = 0
                 remaining = 0
             }
-            this.persist()
+            this.save()
         }
 
         const progress = this.duration > 0 ? 1 - (remaining / this.duration) : 0
@@ -113,21 +110,20 @@ export class TimerWidget extends Widget {
 
     toggle() {
         if (this.isRunning) {
-            // pause: bank the remaining time into duration, stop the clock
             this.duration = Math.max(0, this.remaining)
             this.started = 0
         } else {
             if (this.duration <= 0) this.duration = 300
             this.started = Date.now()
         }
-        this.persist()
+        this.save()
         this.tick()
     }
 
     reset() {
         this.started = 0
         this.duration = 300
-        this.persist()
+        this.save()
         this.tick()
     }
 
@@ -145,32 +141,6 @@ export class TimerWidget extends Widget {
             osc.stop(ctx.currentTime + 0.6)
         } catch (err) {
             console.error("TimerWidget: could not play sound", err)
-        }
-    }
-
-    async persist() {
-        try {
-            const dashboard_info = await fetch('/dashboard/api/load/main')
-            const dashboard = await dashboard_info.json()
-
-            const widgets = dashboard.widgets.map(widget =>
-                widget.id === this.id
-                    ? { ...widget, duration: this.duration, started: this.started }
-                    : widget
-            )
-
-            const dashboard_name = localStorage.getItem("dashboard_name")
-
-            await fetch('/dashboard/api/update/update_widget', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: dashboard_name,
-                    widgets: widgets
-                })
-            })
-        } catch (err) {
-            console.error("TimerWidget: failed to persist state", err)
         }
     }
 }

@@ -32,8 +32,8 @@ function describeCode(code) {
 const REFRESH_MS = 10 * 60 * 1000 // refresh every 10 minutes
 
 export class WeatherWidget extends Widget {
-    constructor(config) {
-        super(config)
+    constructor(config, ctx) {
+        super(config, ctx)
 
         const settings = config.settings
 
@@ -56,34 +56,34 @@ export class WeatherWidget extends Widget {
         this.content.classList.add("weather-widget")
 
         this.iconEl = document.createElement("div")
-        this.iconEl.classList.add("weather-icon")
+        this.iconEl.className = "weather-icon"
         this.content.appendChild(this.iconEl)
 
         this.tempEl = document.createElement("h3")
-        this.tempEl.classList.add("weather-temp")
+        this.tempEl.className = "weather-temp"
         this.content.appendChild(this.tempEl)
 
         this.conditionEl = document.createElement("span")
-        this.conditionEl.classList.add("weather-condition")
+        this.conditionEl.className = "weather-condition"
         this.content.appendChild(this.conditionEl)
 
         this.locationEl = document.createElement("span")
-        this.locationEl.classList.add("weather-location")
+        this.locationEl.className = "weather-location"
         this.content.appendChild(this.locationEl)
 
         if (this.show_humidity || this.show_wind) {
             this.detailsEl = document.createElement("div")
-            this.detailsEl.classList.add("weather-details")
+            this.detailsEl.className = "weather-details"
             this.content.appendChild(this.detailsEl)
         }
 
         this.refresh()
         this.refreshTimer = setInterval(() => this.refresh(), REFRESH_MS)
+    }
 
-        // Widget.deleteWidget() dispatches this on the card - use it to stop polling
-        this.content.addEventListener("widget:update", () => {
-            clearInterval(this.refreshTimer)
-        })
+    dispose() {
+        clearInterval(this.refreshTimer)
+        this.refreshTimer = null
     }
 
     async geocode(query) {
@@ -124,14 +124,14 @@ export class WeatherWidget extends Widget {
 
                 if (this.show_humidity) {
                     const hum = document.createElement("span")
-                    hum.classList.add("weather-detail")
+                    hum.className = "weather-detail"
                     hum.innerText = `💧 ${Math.round(current.relative_humidity_2m)}%`
                     this.detailsEl.appendChild(hum)
                 }
 
                 if (this.show_wind) {
                     const wind = document.createElement("span")
-                    wind.classList.add("weather-detail")
+                    wind.className = "weather-detail"
                     wind.innerText = `🌬️ ${Math.round(current.wind_speed_10m)} ${this.unit === "fahrenheit" ? "mph" : "km/h"}`
                     this.detailsEl.appendChild(wind)
                 }

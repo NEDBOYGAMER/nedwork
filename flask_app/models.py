@@ -6,6 +6,7 @@ from . import db
 import random
 import string
 import secrets
+from datetime import datetime, timezone
 
 
 class UserGroup(db.Model):
@@ -174,6 +175,13 @@ class Dashboard(db.Model):
 
     user = db.relationship("User", back_populates="dashboards")
 
+    # List of widget objects, one per widget on the dashboard. Each entry is:
+    #   {
+    #     "id": "uuid", "type": "time",
+    #     "settings": {...}, "style": "tech",
+    #     "x": 0, "y": 0, "w": 4, "h": 2     # grid layout, 12 columns
+    #   }
+    # Layout is stored per-widget here so drag/resize survives a refresh.
     widgets = db.Column(db.JSON, nullable=True)# no automatic fill
 
 
@@ -233,11 +241,36 @@ class Session(db.Model):
 
     @staticmethod
     def check(id):
-        session = Session.query.filter_by(session_id=id).first()
-        if session == None:
+        if id is None:
             return False, None
-        else:
-            return True, session.user
+
+        session = Session.query.filter_by(session_id=id).first()
+
+        if session is None:
+            return False, None
+
+        if session.is_expired():
+            db.session.delete(session)
+            db.session.commit()
+            return False, None
+
+        return True, session.user
+
+    def is_expired(self):
+        expires = self.expires
+
+        if expires is None:
+            return True
+
+        # SQLite stores naive UTC datetimes even though the column is
+        # declared with timezone=True - normalize both sides so the
+        # comparison never mixes aware and naive values.
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        if expires.tzinfo is not None and expires.utcoffset() is not None:
+            expires = expires.astimezone(timezone.utc).replace(tzinfo=None)
+
+        return expires < now
 
 class SettingsConfig(db.Model):
     __tablename__ = "settings_configs"

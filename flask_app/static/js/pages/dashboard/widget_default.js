@@ -54,17 +54,6 @@ export const WIDGET_DEFAULTS = {
         style: WIDGET_STYLES[0]
     },
 
-    notes: {
-        "type": "notes",
-        "id": "-",
-        "text": "default",
-        "settings": {
-            title: "Notes",
-            "font": NOTES_FONTS[0],
-        },
-        style: WIDGET_STYLES[0]
-    },
-
     timer: {
         type: "timer",
         "id": "-",
@@ -89,7 +78,112 @@ export const WIDGET_DEFAULTS = {
             "show_source": true,
         },
         style: WIDGET_STYLES[0]
-    }
+    },
+
+    welcome: {
+        "type": "welcome",
+        "id": "-",
+        "settings": {
+            title: "Welcome",
+        },
+        style: WIDGET_STYLES[0]
+    },
+
+    task: {
+        "type": "task",
+        "id": "-",
+        "settings": {
+            title: "Tasks",
+            show_progress: true,
+            allow_add: true,
+        },
+        style: WIDGET_STYLES[0]
+    },
+
+    calendar: {
+        "type": "calendar",
+        "id": "-",
+        "settings": {
+            title: "Calendar",
+            start_sunday: false,
+        },
+        style: WIDGET_STYLES[0]
+    },
+
+    event_manager: {
+        "type": "event_manager",
+        "id": "-",
+        "settings": {
+            title: "Events",
+            show_upcoming: true,
+            limit: 5,
+        },
+        style: WIDGET_STYLES[0]
+    },
+
+    finance: {
+        "type": "finance",
+        "id": "-",
+        "settings": {
+            title: "Finance",
+            currency: "CHF",
+            show_transactions: true,
+        },
+        style: WIDGET_STYLES[0]
+    },
+
+    notifications: {
+        "type": "notifications",
+        "id": "-",
+        "settings": {
+            title: "Notifications",
+            show_categories: true,
+        },
+        style: WIDGET_STYLES[0]
+    },
+
+    link: {
+        "type": "link",
+        "id": "-",
+        "settings": {
+            title: "",
+            url: "https://nedwork.ch",
+        },
+        style: WIDGET_STYLES[0]
+    },
+
+    speedtest: {
+        "type": "speedtest",
+        "id": "-",
+        "settings": {
+            title: "Speedtest",
+            auto_run: false,
+        },
+        style: WIDGET_STYLES[0]
+    },
+
+    news: {
+        "type": "news",
+        "id": "-",
+        "settings": {
+            title: "News",
+            limit: 8,
+            source: "hackernews",
+        },
+        style: WIDGET_STYLES[0]
+    },
+
+    notes: {
+        "type": "notes",
+        "id": "-",
+        "text": "",
+        "mode": "edit",
+        "settings": {
+            title: "Notes",
+            "font": NOTES_FONTS[0],
+        },
+        style: WIDGET_STYLES[0]
+    },
 };
 
 
@@ -158,5 +252,62 @@ export const WIDGET_SETTINGS_SCHEMA = {
         category:    { type: "dropdown", options: QUOTE_CATEGORIES },
         font:        { type: "dropdown", options: QUOTE_FONTS },
         show_source: { type: "boolean" },
+    },
+
+    welcome: {
+        title: { type: "input_field" },
+        style: { type: "dropdown", options: WIDGET_STYLES },
+    },
+
+    task: {
+        title:         { type: "input_field" },
+        style:         { type: "dropdown", options: WIDGET_STYLES },
+        show_progress: { type: "boolean" },
+        allow_add:     { type: "boolean" },
+    },
+
+    calendar: {
+        title:        { type: "input_field" },
+        style:        { type: "dropdown", options: WIDGET_STYLES },
+        start_sunday: { type: "boolean" },
+    },
+
+    event_manager: {
+        title:         { type: "input_field" },
+        style:         { type: "dropdown", options: WIDGET_STYLES },
+        show_upcoming: { type: "boolean" },
+        limit:         { type: "input_field" },
+    },
+
+    finance: {
+        title:              { type: "input_field" },
+        style:              { type: "dropdown", options: WIDGET_STYLES },
+        currency:           { type: "input_field" },
+        show_transactions:  { type: "boolean" },
+    },
+
+    notifications: {
+        title:           { type: "input_field" },
+        style:           { type: "dropdown", options: WIDGET_STYLES },
+        show_categories: { type: "boolean" },
+    },
+
+    link: {
+        title: { type: "input_field" },
+        style: { type: "dropdown", options: WIDGET_STYLES },
+        url:   { type: "input_field" },
+    },
+
+    speedtest: {
+        title:    { type: "input_field" },
+        style:    { type: "dropdown", options: WIDGET_STYLES },
+        auto_run: { type: "boolean" },
+    },
+
+    news: {
+        title:  { type: "input_field" },
+        style:  { type: "dropdown", options: WIDGET_STYLES },
+        limit:  { type: "input_field" },
+        source: { type: "dropdown", options: ["hackernews"] },
     },
 };

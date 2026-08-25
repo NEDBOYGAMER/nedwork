@@ -27,7 +27,7 @@
         "description": "A board with places to buy on each side. Friend must pay rent"
     },
     {
-        "id": 2,
+        "id": 3,
         "name": "LocoLogo",
         "permissions": [],
         "url": "/locologo",
@@ -35,7 +35,7 @@
         "description": "A logo generator using simple fonts and shapes"
     },
     {
-        "id": 3,
+        "id": 4,
         "name": "Controller Tester",
         "permissions": [],
         "url": "/controller_tester",
@@ -43,7 +43,7 @@
         "description": "Test the inputs of your controller"
     },
     {
-        "id": 4,
+        "id": 5,
         "name": "Links",
         "permissions": [],
         "url": "/links",
@@ -51,7 +51,7 @@
         "description": "Store all your weblinks here"
     },
     {
-        "id": 5,
+        "id": 6,
         "name": "Trivia",
         "permissions": [],
         "url": "/trivia",
@@ -59,7 +59,7 @@
         "description": "Play a Trivia quiz"
     },
     {
-        "id": 6,
+        "id": 7,
         "name": "WeatherNow",
         "permissions": [],
         "url": "/placeholder",
@@ -67,7 +67,7 @@
         "description": "View current weather conditions and forecasts in a clean interface."
     },
     {
-        "id": 7,
+        "id": 8,
         "name": "FitTrack",
         "permissions": [],
         "url": "/placeholder",
@@ -75,7 +75,7 @@
         "description": "Track workouts, habits, and personal fitness goals with ease."
     },
     {
-        "id": 8,
+        "id": 9,
         "name": "QuizMaster",
         "permissions": [],
         "url": "/placeholder",
@@ -83,7 +83,7 @@
         "description": "Create and play quizzes on any topic with friends or classmates."
     },
     {
-        "id": 9,
+        "id": 10,
         "name": "BudgetBuddy",
         "permissions": [],
         "url": "/placeholder",
@@ -91,7 +91,7 @@
         "description": "Track expenses, budgets, and savings with simple visual reports."
     },
     {
-        "id": 10,
+        "id": 11,
         "name": "MediaVault",
         "permissions": [],
         "url": "/placeholder",
@@ -99,7 +99,7 @@
         "description": "Organize your favorite photos, videos, and documents online."
     },
     {
-        "id": 11,
+        "id": 12,
         "name": "GameHub",
         "permissions": [],
         "url": "/placeholder",
@@ -107,7 +107,7 @@
         "description": "Discover game recommendations, stats, and community rankings."
     },
     {
-        "id": 12,
+        "id": 13,
         "name": "RecipeBox",
         "permissions": [],
         "url": "/placeholder",
@@ -115,7 +115,7 @@
         "description": "Save, organize, and share your favorite recipes with ease."
     },
     {
-        "id": 13,
+        "id": 14,
         "name": "TravelMap",
         "permissions": [],
         "url": "/placeholder",
@@ -123,7 +123,7 @@
         "description": "Plan trips, bookmark destinations, and build travel itineraries."
     },
     {
-        "id": 14,
+        "id": 15,
         "name": "LinkShelf",
         "permissions": [],
         "url": "/placeholder",
@@ -131,7 +131,7 @@
         "description": "Save, organize, and quickly access your favorite websites."
     },
     {
-        "id": 15,
+        "id": 16,
         "name": "ChatSpace",
         "permissions": [],
         "url": "/placeholder",

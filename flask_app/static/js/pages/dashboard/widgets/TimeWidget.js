@@ -3,8 +3,8 @@ import { Widget } from '../Widget.js'
 const TIME_FIELDS = ["time", "weekday", "date"]
 
 export class TimeWidget extends Widget {
-    constructor(config) {
-        super(config)
+    constructor(config, ctx) {
+        super(config, ctx)
 
         this.display = this.display.bind(this)
 
@@ -18,45 +18,33 @@ export class TimeWidget extends Widget {
         this.date_style = settings.date_style
         this.timezone = settings.timezone
 
-        // Which field gets the large/prominent treatment.
-        // Falls back to "time" if misconfigured or pointing at a hidden field.
         this.primary = TIME_FIELDS.includes(settings.primary) ? settings.primary : "time"
 
         this.timeEl = null
         this.weekdayEl = null
         this.dateEl = null
+        this._raf = null
     }
 
-    build(){
+    build() {
         this.buildShell()
         this.content.classList.add("time-widget")
 
-        if (this.show_time){
-            this.timeEl = this.buildField("clock", "time")
-        }
-
-        if (this.show_weekday){
-            this.weekdayEl = this.buildField("weekday", "weekday")
-        }
-
-        if (this.show_date){
-            this.dateEl = this.buildField("date", "date")
-        }
+        if (this.show_time) this.timeEl = this.field("clock", "time")
+        if (this.show_weekday) this.weekdayEl = this.field("weekday", "weekday")
+        if (this.show_date) this.dateEl = this.field("date", "date")
 
         this.display()
     }
 
-    buildField(cssClass, fieldName){
+    field(cssClass, name) {
         const el = document.createElement("h3")
-        el.classList.add(cssClass)
-        el.classList.add(fieldName === this.primary ? "field-primary" : "field-secondary")
+        el.classList.add(cssClass, name === this.primary ? "field-primary" : "field-secondary")
         this.content.appendChild(el)
         return el
     }
 
-    // Reads the current time once, split into timezone-correct parts,
-    // so both the built-in formatting and the custom date_style stay in sync.
-    getDateParts(now){
+    getDateParts(now) {
         const parts = new Intl.DateTimeFormat("en-CA", {
             timeZone: this.timezone,
             day: "2-digit",
@@ -69,24 +57,20 @@ export class TimeWidget extends Widget {
         return map
     }
 
-    formatDate(now){
+    formatDate(now) {
         const { day, month, year } = this.getDateParts(now)
 
         switch (this.date_style) {
-            case "mm/dd/yyyy":
-                return `${month}/${day}/${year}`
-            case "yyyy-mm-dd":
-                return `${year}-${month}-${day}`
-            case "dd.mm.yyyy":
-            default:
-                return `${day}.${month}.${year}`
+            case "mm/dd/yyyy": return `${month}/${day}/${year}`
+            case "yyyy-mm-dd": return `${year}-${month}-${day}`
+            default: return `${day}.${month}.${year}`
         }
     }
 
-    display(){
+    display() {
         const now = new Date()
 
-        if (this.timeEl){
+        if (this.timeEl) {
             this.timeEl.innerText = now.toLocaleTimeString([], {
                 timeZone: this.timezone,
                 hour: "2-digit",
@@ -96,17 +80,22 @@ export class TimeWidget extends Widget {
             })
         }
 
-        if (this.weekdayEl){
+        if (this.weekdayEl) {
             this.weekdayEl.innerText = now.toLocaleDateString([], {
                 timeZone: this.timezone,
                 weekday: "long"
             })
         }
 
-        if (this.dateEl){
+        if (this.dateEl) {
             this.dateEl.innerText = this.formatDate(now)
         }
 
-        requestAnimationFrame(this.display)
+        this._raf = requestAnimationFrame(this.display)
+    }
+
+    dispose() {
+        if (this._raf) cancelAnimationFrame(this._raf)
+        this._raf = null
     }
 }

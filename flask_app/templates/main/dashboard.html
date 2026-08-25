@@ -11,15 +11,11 @@
 {% block extra_head %}
     <!-- Page-specific styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/widget.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/grid.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/widgets.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/modal.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components/context_menu.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/settings.css') }}">
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/widgets/time.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/widgets/notes.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/widgets/weather.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/dashboard/widgets/timer.css') }}">
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 {% endblock %}
@@ -35,12 +31,12 @@
         <!-- Cards injected by dashboard.js -->
     </div>
 
-    <button id="add-widget-btn" class="btn btn-primary add-widget-btn">
-        <span class="btn-icon">+</span> Add widget
+    <button id="add-widget-btn" class="btn btn-primary add-widget-btn" title="Add widget" aria-label="Add widget">
+        <span class="btn-icon">+</span>
     </button>
 
     <div id="modal-menu" class="modal-backdrop">
-        <div class="modal">
+        <div class="modal widget-picker-modal">
             <span id="closeMenuBtn" class="close-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -48,13 +44,13 @@
                 </svg>
             </span>
             <h3>Add widget</h3>
+            <p>Pick a widget to place on your dashboard</p>
 
-            <div id="add_wiget_grid">
-                <div id="add_time_widget" class="add_widget_card"><h4>Time</h4></div>
-                <div id="add_timer_widget" class="add_widget_card"><h4>Timer</h4></div>
-                <div id="add_notes_widget" class="add_widget_card"><h4>Notes</h4></div>
-                <div id="add_weather_widget" class="add_widget_card"><h4>Weather</h4></div>
-                <div id="add_quote_widget" class="add_widget_card"><h4>Quote</h4></div>
+            <input type="search" id="picker-search" class="picker-search"
+                   placeholder="Search widgets and apps…" aria-label="Search widgets and apps">
+
+            <div id="add-widget-categories">
+                <!-- Categories (Apps / Standard / Other) built by dashboard.js -->
             </div>
         </div>
     </div>
@@ -62,5 +58,6 @@
 {% endblock %}
 
 {% block extra_scripts %}
+    <script>window.STATIC_URL = "{{ url_for('static', filename='') }}";</script>
     <script type="module" src="{{ url_for('static', filename='js/pages/dashboard/dashboard.js') }}"></script>
 {% endblock %}

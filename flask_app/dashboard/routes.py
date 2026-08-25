@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app
+import json, os
 from ..models import *
 
 dashboard_bp = Blueprint('dashboard', __name__, static_folder='../static')
@@ -27,13 +28,13 @@ def list_owned_dashboards():
     if len(dashboards) == 0:
         new_dashboard = Dashboard(
             name="Main",
-            user_id=user,
+            user_id=user.id,
             widgets=[]
         )
 
         db.session.add(new_dashboard)
         db.session.commit()
-        dashboards.append
+        dashboards.append(new_dashboard.name)
 
 
     return jsonify({
@@ -88,3 +89,14 @@ def widget_update():
             })
 
     return jsonify({"error": "Dashboard not found"}), 404
+
+
+@dashboard_bp.route('/api/apps')
+def apps_data():
+    """Serve data/apps.json so the dashboard can build one widget per app."""
+    json_path = os.path.join(current_app.root_path, 'data', 'apps.json')
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            return jsonify(json.load(f))
+    except Exception:
+        return jsonify({"error": "Apps data not found"}), 404
