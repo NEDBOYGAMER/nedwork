@@ -313,13 +313,19 @@ function buildBoard(state) {
     <div class="em-label">TOWN CLAIM</div>
     <div class="em-pot" id="em-pot">Jackpot · ${money(0)}</div>
     <div class="deck-stack deck-chance" id="deck-stack-chance" title="Chance">
-      <span class="deck-card back">?</span>
-      <span class="deck-card top">?</span>
+      <div class="deck-cards">
+        <span class="deck-card layer-3">?</span>
+        <span class="deck-card layer-2">?</span>
+        <span class="deck-card top">?</span>
+      </div>
       <span class="deck-count" id="deck-count-chance">0</span>
     </div>
     <div class="deck-stack deck-community" id="deck-stack-community" title="Community Chest">
-      <span class="deck-card back">+</span>
-      <span class="deck-card top">+</span>
+      <div class="deck-cards">
+        <span class="deck-card layer-3">+</span>
+        <span class="deck-card layer-2">+</span>
+        <span class="deck-card top">+</span>
+      </div>
       <span class="deck-count" id="deck-count-community">0</span>
     </div>
     <div id="dice-layer" class="dice-layer"></div>`;
@@ -424,6 +430,12 @@ function animateDeckDraw(title) {
 }
 
 /* ---------- dice fall over the board center (for everyone) ---------- */
+/* Two fixed, non-overlapping landing spots that still look casually
+   tossed: die A left-of-center/low, die B right-of-center/high. */
+const DICE_LANDING = [
+  { lx: 0.40, ly: 0.58, rot: -16, sx: -0.4, sy: -0.3 },   // enters from the left
+  { lx: 0.62, ly: 0.42, rot: 24,  sx: 1.4,  sy: -0.5 },   // enters from the right
+];
 function showDiceFall(v1, v2) {
   if (REDUCED) return;
   const layer = $("#dice-layer");
@@ -431,34 +443,30 @@ function showDiceFall(v1, v2) {
   layer.innerHTML = "";
   const r = layer.getBoundingClientRect();
   if (!r.width || !r.height) return;
-  const cx = r.width / 2, cy = r.height / 2;
-  const spread = Math.min(r.width, r.height) * 0.16;
   const size = Math.min(r.width, r.height) * 0.2;
 
-  const mk = (value, side) => {
+  const mk = (value, i) => {
     const die = document.createElement("div");
     die.className = "fall-die";
     die.style.width = `${size}px`;
     die.style.height = `${size}px`;
-    // random central landing spot (may cover the logo) + random rotation
-    const lx = cx + (Math.random() * 2 - 1) * spread;
-    const ly = cy + (Math.random() * 2 - 1) * spread;
-    die.style.setProperty("--lx", `${lx}px`);
-    die.style.setProperty("--ly", `${ly}px`);
-    die.style.setProperty("--rot", `${Math.round(Math.random() * 70 - 35)}deg`);
-    die.style.setProperty("--sx", `${side === "l" ? -r.width * 0.35 : r.width * 1.35}px`);
-    die.style.setProperty("--sy", `${-r.height * (0.25 + Math.random() * 0.2)}px`);
+    const L = DICE_LANDING[i];
+    die.style.setProperty("--lx", `${L.lx * r.width}px`);
+    die.style.setProperty("--ly", `${L.ly * r.height}px`);
+    die.style.setProperty("--rot", `${L.rot}deg`);
+    die.style.setProperty("--sx", `${L.sx * r.width}px`);
+    die.style.setProperty("--sy", `${L.sy * r.height}px`);
     const cells = DICE_LAYOUT[value] || [];
-    for (let i = 0; i < 9; i++) {
+    for (let k = 0; k < 9; k++) {
       const pip = document.createElement("div");
       pip.className = "fall-pip";
-      pip.style.visibility = cells.includes(i) ? "visible" : "hidden";
+      pip.style.visibility = cells.includes(k) ? "visible" : "hidden";
       die.appendChild(pip);
     }
     return die;
   };
 
-  layer.append(mk(v1, "l"), mk(v2, "r"));
+  layer.append(mk(v1, 0), mk(v2, 1));
   setTimeout(() => { layer.innerHTML = ""; }, 1750);
 }
 
