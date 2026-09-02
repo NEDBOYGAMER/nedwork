@@ -75,14 +75,14 @@
       <div id="board" class="board"></div>
     </div>
 
-    <aside class="side-panel">
+    <aside class="side-panel side-left">
       <div class="panel-block" id="turn-block">
         <h3>Turn</h3>
         <div class="turn-line">
           <span id="turn-token" class="turn-token"></span>
           <div>
             <div id="turn-indicator" class="turn-indicator">—</div>
-            <div id="your-badge" class="your-badge hidden">YOUR MOVE 🎲</div>
+            <div id="your-badge" class="your-badge hidden">YOUR MOVE</div>
             <div id="doubles-badge" class="doubles-badge hidden">DOUBLES — ROLL AGAIN!</div>
           </div>
         </div>
@@ -93,7 +93,7 @@
           <div class="die" id="die2"><div class="die-grid"></div></div>
         </div>
 
-        <button id="btn-roll" class="btn btn-primary btn-block">🎲 Roll dice</button>
+        <button id="btn-roll" class="btn btn-primary btn-block">Roll dice</button>
         <button id="btn-bail" class="btn btn-bail btn-block hidden">Pay bail</button>
         <button id="btn-jail-free" class="btn btn-jail-free btn-block hidden">Use Get Out of Jail Free</button>
 
@@ -117,7 +117,9 @@
         <button id="btn-trade" class="btn btn-tertiary btn-block">🤝 Propose trade</button>
         <button id="btn-end" class="btn btn-ghost btn-block">End turn</button>
       </div>
+    </aside>
 
+    <aside class="side-panel side-right">
       <div class="panel-block">
         <h3>Players</h3>
         <ul id="player-list" class="player-list"></ul>

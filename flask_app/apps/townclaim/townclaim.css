@@ -137,6 +137,20 @@ input:focus, select:focus { outline: none; border-color: var(--brass-dark); }
   overflow: hidden;
 }
 
+/* hide scrollbars everywhere in the game (no visible gutter, no page bar) */
+html, body, .game-main, .side-panel, .side-panel *, .log-block, .log-list,
+.trade-inner, .auction-inner, #add-widget-categories {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar,
+.game-main::-webkit-scrollbar, .side-panel::-webkit-scrollbar,
+.side-panel *::-webkit-scrollbar, .log-block::-webkit-scrollbar,
+.log-list::-webkit-scrollbar, .trade-inner::-webkit-scrollbar,
+.auction-inner::-webkit-scrollbar, #add-widget-categories::-webkit-scrollbar {
+  display: none;
+}
+
 /* --bp is set by townclaim.js to the board's pixel size, so every piece of
    tile art scales with the board and never overflows its cell */
 #board { --bp: 860px; aspect-ratio: 1/1; display: grid; gap: 3px;
@@ -268,6 +282,23 @@ input:focus, select:focus { outline: none; border-color: var(--brass-dark); }
 /* ---------- side ---------- */
 .side-panel { min-height: 0; display: flex; flex-direction: column; gap: 12px;
   overflow-y: auto; padding-right: 2px; }
+/* three-column split (short viewport): actions on the left, info on the right */
+@media (max-height: 760px) and (min-width: 900px) {
+  .game-main {
+    grid-template-columns: minmax(230px, 280px) minmax(0, 1fr) minmax(240px, 300px);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .board-frame { grid-column: 2; }
+  .side-left { grid-column: 1; }
+  .side-right { grid-column: 3; }
+  .side-panel { gap: 8px; }
+  .panel-block { padding: 10px 12px; }
+  .log-block { max-height: none; flex: 1 1 auto; }
+}
+/* default: single right panel (side-left hidden) */
+.board-frame { grid-column: 1; }
+.side-left { grid-column: 2; display: none; }
+.side-right { grid-column: 2; }
 .panel-block { background: var(--paper-2); border: 1px solid var(--line);
   border-radius: 16px; padding: 14px 16px; flex-shrink: 0; }
 .panel-block h3 { font-size: .75rem; font-weight: 800; text-transform: uppercase;
@@ -403,6 +434,9 @@ input:focus, select:focus { outline: none; border-color: var(--brass-dark); }
   .side-panel { gap: 8px; }
   .panel-block { padding: 10px 12px; }
   .log-block { max-height: 130px; }
+  .board-frame { grid-column: 1; }
+  .side-left { grid-column: 2; display: none; }
+  .side-right { grid-column: 2; }
 }
 
 /* small screens: board on top, panel below - both fit, page never scrolls */
@@ -421,6 +455,9 @@ input:focus, select:focus { outline: none; border-color: var(--brass-dark); }
   .log-block { max-height: 110px; }
   .die { width: 46px; height: 46px; }
   .die-grid { width: 30px; height: 30px; }
+  .board-frame { grid-column: 1; grid-row: 1; }
+  .side-left { grid-column: 1; grid-row: 2; display: none; }
+  .side-right { grid-column: 1; grid-row: 2; }
 }
 
 /* =========================================================================
@@ -439,6 +476,53 @@ input:focus, select:focus { outline: none; border-color: var(--brass-dark); }
 @keyframes tokenHop { 0% { transform: translateY(0) scale(1); } 40% { transform: translateY(-5px) scale(1.14); } 100% { transform: translateY(0) scale(1); } }
 .token-svg.token-hop { animation: tokenHop .3s ease; }
 .token-svg.token-walking { z-index: 6; }
+
+/* the tile "stomps" (pulse + gold tint) as the token passes over it */
+@keyframes tileStep {
+  0% { transform: scale(1); background: var(--paper); }
+  45% { transform: scale(1.12); background: rgba(201,151,47,.32); z-index: 4; }
+  100% { transform: scale(1); background: var(--paper); }
+}
+.tile.tile-step { animation: tileStep .3s ease; }
+
+/* your token bobs while it's your turn and you haven't rolled */
+@keyframes tokenBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.token-svg.token-bob { animation: tokenBob 1s ease-in-out infinite; }
+
+/* shockwave ring when the dice settle on the board center */
+@keyframes shockwave {
+  0% { transform: translate(-50%, -50%) scale(.3); opacity: .7; }
+  100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
+}
+.dice-shockwave { position: absolute; left: 50%; top: 50%; width: 90px; height: 90px;
+  border: 3px solid var(--brass); border-radius: 50%; pointer-events: none;
+  z-index: 4; animation: shockwave .5s ease-out forwards; }
+
+/* property gain: flash the color band + owner ring */
+@keyframes propFlash { 0% { filter: brightness(1); } 40% { filter: brightness(1.7); } 100% { filter: brightness(1); } }
+.tile.prop-gain .tile-band { animation: propFlash .7s ease; }
+@keyframes ownerRing {
+  0% { box-shadow: inset 0 0 0 0 transparent; }
+  40% { box-shadow: inset 0 0 0 4px var(--ring); }
+  100% { box-shadow: inset 0 0 0 0 transparent; }
+}
+.tile.prop-gain { animation: ownerRing .8s ease; }
+
+/* turn-start banner under the header */
+@keyframes turnBanner { 0% { opacity: 0; transform: translateY(-12px) scale(.96); } 18% { opacity: 1; transform: none; } 82% { opacity: 1; } 100% { opacity: 0; transform: translateY(-12px) scale(.96); } }
+.turn-banner { position: fixed; top: 56px; left: 50%; transform: translateX(-50%);
+  background: var(--brass); color: #3b2a0e; font-family: var(--font-display);
+  font-weight: 800; letter-spacing: .06em; padding: 8px 22px; border-radius: 999px;
+  box-shadow: var(--shadow); z-index: 90; animation: turnBanner 1.6s ease forwards;
+  pointer-events: none; white-space: nowrap; }
+
+/* auction gavel thump on the winning tile */
+@keyframes gavelThump { 0% { transform: scale(1) rotate(0); } 30% { transform: scale(1.2) rotate(-6deg); } 55% { transform: scale(.95) rotate(3deg); } 100% { transform: scale(1) rotate(0); } }
+.tile.gavel-thump { animation: gavelThump .45s ease; }
+
+/* roll button feedback while the dice fly */
+@keyframes rollPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+#btn-roll.rolling { animation: rollPulse .5s ease infinite; }
 
 /* landing thud on the tile */
 @keyframes landBurst { 0% { transform: scale(1); } 45% { transform: scale(1.09); } 100% { transform: scale(1); } }
@@ -531,6 +615,23 @@ input:focus, select:focus { outline: none; border-color: var(--brass-dark); }
 /* pending trade offers pop in */
 @keyframes offerIn { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
 .trade-offer { animation: offerIn .3s ease; }
+
+/* row-ghost during drag & drop */
+.row-ghost { opacity: .28; background: #e8d8b0; outline: 2px dashed var(--brass); }
+
+/* roll button: playful bounce after the dice land */
+@keyframes rollHappy { 0%,100% { transform: scale(1) rotate(0); } 35% { transform: scale(1.12) rotate(-3deg); } 70% { transform: scale(.96) rotate(2deg); } }
+#btn-roll.happy { animation: rollHappy .5s ease; }
+
+/* one-time funds popup for properties (still showing value) */
+@keyframes fundPop { from { opacity: 0; transform: translateY(-6px) scale(.92); } to { opacity: 1; transform: none; } }
+.trade-funds { animation: fundPop .2s ease; }
+
+/* tile size hint under the board on tiny screens */
+.board-size-hint { display: none; text-align: center; font-size: 12px; color: rgba(88,64,24,.5); margin-top: 6px; }
+@media (max-width: 480px) {
+  .board-size-hint { display: block; }
+}
 
 /* reduced motion: kill the fancy stuff, keep it calm */
 @media (prefers-reduced-motion: reduce) {
