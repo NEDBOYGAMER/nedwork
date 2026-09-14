@@ -27,16 +27,9 @@
         "description": "A playful monopoly-style board game. Buy streets, build houses, own the town"
     },
     {
-        "id": 3,
-        "name": "LocoLogo",
-        "permissions": [],
-        "url": "/locologo",
-        "type": "Tools",
-        "description": "A logo generator using simple fonts and shapes"
-    },
-    {
         "id": 4,
         "name": "Controller Tester",
+        "image": "/controller_tester.png",
         "permissions": [],
         "url": "/controller_tester",
         "type": "Tools",
@@ -45,6 +38,7 @@
     {
         "id": 5,
         "name": "Links",
+        "image": "/links.svg",
         "permissions": [],
         "url": "/links",
         "type": "Tools",
@@ -132,10 +126,10 @@
     },
     {
         "id": 16,
-        "name": "ChatSpace",
+        "name": "Timetable",
         "permissions": [],
-        "url": "/placeholder",
-        "type": "Communication",
-        "description": "A modern messaging platform for teams and communities."
+        "url": "/timetable",
+        "type": "Organizing",
+        "description": "Timetablemaker"
     }
 ]

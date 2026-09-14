@@ -49,6 +49,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('resize', () => {
         if (hoverPanel.classList.contains('show')) positionPanel();
     });
+
+    // Page restored from the back/forward cache (bfcache) — i.e. you hit
+    // "Back" onto this page. No render() ever runs on that path, so "Recent"
+    // stays stale until a refresh. config.recent_apps was already mutated
+    // before we navigated away, so just rebuild the shelves now.
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) render();
+    });
 });
 
 
@@ -80,14 +88,15 @@ async function loadUserPreferences() {
 
 async function saveConfig() {
     try {
-        const response = await fetch('/app_corner/api/update_user_preferences', {
+        const response = await fetch('/corner/prefs.json', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(config),
+            keepalive: true,          // survives the navigation away
         });
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-    } catch (error) {
-        console.error('Failed to save preferences:', error);
+        if (!response.ok) throw new Error('Save failed');
+    } catch (err) {
+        console.error('Failed to save config:', err);
     }
 }
 
@@ -229,7 +238,7 @@ function render() {
                 title: 'Recent',
                 apps: recentApps,
                 shelfKey: '__recent__',
-                small: true,
+                small: false,
                 canDisableShelf: true,
             }));
             renderedAny = true;
@@ -246,7 +255,7 @@ function render() {
             title: 'Favorites',
             apps: favoritedApps,
             shelfKey: '__favorites__',
-            small: true,
+            small: false,
         }));
         renderedAny = true;
     }
@@ -262,6 +271,7 @@ function render() {
             title: type,
             apps: shelfApps,
             shelfKey: type,
+            small: true,
             canDisableShelf: true,
         }));
         renderedAny = true;
@@ -382,7 +392,7 @@ function buildDisabledSection(disabledApps) {
                 title: 'Recent',
                 apps: recentApps,
                 shelfKey: '__recent__',
-                small: true,
+                small: false,
                 disabled: true,
                 headerRestore: true,
             }));
@@ -407,6 +417,7 @@ function buildDisabledSection(disabledApps) {
             title: type,
             apps: shelfApps,
             shelfKey: type,
+            small: false,
             disabled: true,
             headerRestore: true,
         }));
@@ -570,6 +581,13 @@ function buildCard(app, { disabled = false, cardRestore = false, small = false }
     const actions = document.createElement('div');
     actions.className = 'app-card-actions';
 
+
+    /* Glossy Steam-style shine that sweeps across the artwork on hover */
+    const shine = document.createElement('div');
+    shine.className = 'app-card-shine';
+    shine.setAttribute('aria-hidden', 'true');
+    card.appendChild(shine);
+
     if (cardRestore) {
         const restoreBtn = document.createElement('button');
         restoreBtn.className = 'app-action-btn restore-btn';
@@ -644,7 +662,8 @@ function bindTilt(card) {
     card.addEventListener('pointerenter', (e) => {
         if (e.pointerType !== 'mouse') return;
         hovering = true;
-        // springy approach
+        card.classList.add('tilted');   // triggers shine + pop-to-top
+        card.style.zIndex = '20';       // float above neighbouring cards
         card.style.transition = 'transform .25s cubic-bezier(.22,1,.36,1), border-color .2s ease, box-shadow .35s ease';
     });
 
@@ -671,13 +690,14 @@ function bindTilt(card) {
         if (e.pointerType !== 'mouse') return;
         hovering = false;
         if (raf) { cancelAnimationFrame(raf); raf = null; }
+        card.classList.remove('tilted');
+        card.style.zIndex = '';
         card.style.transition = 'transform .45s cubic-bezier(.22,1,.36,1), border-color .2s ease, box-shadow .35s ease';
         card.style.transform = '';
     });
 }
 
 /* ── Floating info panel — appears next to the hovered card ─────── */
-
 const hoverPanel = document.getElementById('hover-panel');
 let panelTimer = null;
 let panelCard = null;
@@ -752,7 +772,18 @@ function positionPanel() {
 
 async function openApp(app) {
     config.recent_apps = [app.id, ...config.recent_apps.filter(id => id !== app.id)].slice(0, 10);
-    await saveConfig();
+
+    // Persist in a way that survives the navigation below.
+    const body = JSON.stringify(config);
+    if (navigator.sendBeacon) {
+        navigator.sendBeacon(
+            '/app_corner/api/update_user_preferences',
+            new Blob([body], { type: 'application/json' })
+        );
+    } else {
+        saveConfig(); // keepalive (below) makes this survive too
+    }
+
     window.location.href = "/apps" + app.url;
 }
 
@@ -765,7 +796,10 @@ function toggleFavorite(id) {
 }
 
 function disableApp(id) {
-    if (!config.disabled_apps.includes(id)) {
+    if (config.recent_apps.includes(id)) {
+        config.recent_apps.splice(config.recent_apps.indexOf(id), 1);
+    }
+    else if (!config.disabled_apps.includes(id)) {
         config.disabled_apps = [...config.disabled_apps, id];
     }
     config.favorited_apps = config.favorited_apps.filter(x => x !== id);

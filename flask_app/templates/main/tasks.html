@@ -14,33 +14,72 @@
 
         <header id="tasks-header">
             <h1 id="tasks-title">Tasks</h1>
-                <nav>
-                    <a>Overwiev</a> <!--Todo: Add a bar that slider under the active tab-->
-                    <a>About</a>
-                    <a>Contact</a>
-                </nav>
         </header>
 
-        <div id="container">
-            <section id="overview-section">
-                <h3 class="section-title">Urgent</h3>
-                <div class="section, section-collapsed">Great, you've worked all your urgent Tasks</div>
-                <h3 class="section-title">High Importance</h3>
-                <div class="section">
-                    <div class="task-card">
-                        <h3 class="card-title">Bachelor Arbeit</h3>
-                        <span>Schule</span><span>langzeit</span>
-                        
-                    </div>
-                </div>
-            </section>
-        </div>
+        <nav>
+            <div id="navrow">
+                <div><span>Overwiev</span></div>
+                <div><span>Soon</span></div>
+                <div><span>All</span></div>
+            </div>
+        </nav>
+
+        <div id="container"></div>
 
     </main>
+
+    <template id="shelf-template">
+        <article>
+            <h3 data-field="title">Title</h3><span>extra info</span><span>long streak</span><a>expand</a>
+            <div class="shelf"></div>
+        </article>
+    </template>
+
+    <template id="task-template">
+        <article class="task-card" data-task-id="">
+            <h2 class="task-card-title" data-field="name">Placeholder</h2>
+
+            <div class="task-card-meta">
+                <span class="task-card-meta-tags task-urgency" data-field="urgency">
+                    <svg class="urgency-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9"></circle>
+                        <path d="M12 7v5l3 2"></path>
+                    </svg>
+                    <span data-field-text>Urgency</span>
+                </span>
+                <span class="task-card-meta-tags task-importance" data-field="importance">
+                    <svg class="importance-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9"></circle>
+                        <path d="M12 7v6"></path>
+                        <circle cx="12" cy="16.5" r="0.5" fill="currentColor"></circle>
+                    </svg>
+                    <span data-field-text>Importance</span>
+                </span>
+                <span class="task-private" data-field="private" hidden>private</span>
+            </div>
+
+            <div class="task-card-text">
+                <p data-field="text">This is test text</p>
+            </div>
+
+            <p class="task-subtasks-label">Subtasks</p>
+            <ul class="task-card-subtasks" data-field="subtasks"></ul>
+
+            <div class="task-card-tags" data-field="tags"></div>
+
+            <p class="task-deadline">Due at: <span data-field="deadline">—</span></p>
+
+            <div class="task-card-actions">
+                <span><button data-action="delete">delete</button></span>
+                <span><button data-action="toggle-done">finished</button></span>
+            </div>
+        </article>
+    </template>
 
 {% endblock %}
 
 {% block extra_scripts %}
     <script>window.STATIC_URL = "{{ url_for('static', filename='') }}";</script>
+    <script>window.TASKS_API_URL = "{{ url_for('tasks.list_owned_dashboards') }}";</script>
     <script type="module" src="{{ url_for('static', filename='js/pages/tasks.js') }}"></script>
 {% endblock %}

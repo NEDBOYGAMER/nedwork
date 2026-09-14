@@ -1,0 +1,1438 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Timetable</title>
+<style>
+  :root{ /* dark — the default */
+    --bg:#0b1220; --panel:#121b30; --panel-2:#0f1930; --line:#26355a; --line-soft:#1e2b49;
+    --text:#e5eaf3; --text-dim:#c3cede; --muted:#8aa0c0;
+    --accent:#3b82f6; --accent-soft:#1d3264; --danger:#f87171;
+    --grid:#0f1930; --grid-hover:#142040; --grid-we:#0d1528; --grid-we-hover:#111c38;
+    --head:#0f1930; --ev-meta:#c7d2e4; --shadow:0 10px 30px rgba(0,0,0,.35);
+    --radius:14px;
+  }
+  html[data-theme="light"]{
+    --bg:#eef2f7; --panel:#ffffff; --panel-2:#f8fafc; --line:#e3e8f0; --line-soft:#edf1f7;
+    --text:#0f172a; --text-dim:#334155; --muted:#64748b;
+    --accent:#2563eb; --accent-soft:#dbeafe; --danger:#dc2626;
+    --grid:#ffffff; --grid-hover:#fafcff; --grid-we:#f5f7fb; --grid-we-hover:#eef2f9;
+    --head:#f8fafc; --ev-meta:#334155; --shadow:0 10px 30px rgba(15,23,42,.08);
+  }
+  html{color-scheme:dark}
+  html[data-theme="light"]{color-scheme:light}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;display:flex;flex-direction:column;font-family:ui-sans-serif,system-ui,-apple-system,
+    "Segoe UI",Roboto,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji",sans-serif;
+    background:var(--bg);color:var(--text)}
+  body,.topbar,.stats,.board,.day-head,.day-body,.modal,.menu,.btn,.tab,.ctx{
+    transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+  body.dragging-active{user-select:none;-webkit-user-select:none}
+
+  /* ---------- topbar ---------- */
+  .topbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px;
+    background:var(--panel);border-bottom:1px solid var(--line);z-index:30}
+  .brand{font-weight:800;font-size:18px;margin-right:6px;white-space:nowrap}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .tab{border:1px solid var(--line);background:var(--panel-2);border-radius:999px;padding:6px 14px;
+    font-size:13px;cursor:pointer;color:var(--text)}
+  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .tab:hover:not(.active){background:var(--grid-hover)}
+  .actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:auto}
+  .btn{border:1px solid var(--line);background:var(--panel-2);border-radius:9px;padding:7px 12px;
+    font-size:13px;cursor:pointer;color:var(--text)}
+  .btn:hover{background:var(--grid-hover)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .btn.primary:hover{filter:brightness(1.1)}
+  .btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,transparent)}
+  .btn.danger:hover{background:color-mix(in srgb,var(--danger) 12%,transparent)}
+  select.btn{padding:6px 8px}
+  .sep{width:1px;height:24px;background:var(--line);margin:0 2px}
+  .zoom-group{display:flex}
+  .zoom-group .btn{border-radius:0;margin-left:-1px}
+  .zoom-group .btn:first-child{border-radius:9px 0 0 9px;margin-left:0}
+  .zoom-group .btn:last-child{border-radius:0 9px 9px 0}
+  .now-chip{background:var(--accent);color:#fff;border:none;border-radius:999px;padding:7px 14px;
+    font-size:13px;max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    cursor:pointer;flex:0 1 auto;font-weight:600}
+  .now-chip:hover{filter:brightness(1.12)}
+
+  /* ---------- dropdown (file menu) ---------- */
+  .dd{position:relative}
+  .dd .menu{display:none}
+  .dd.open .menu{display:flex}
+  .msep{border:none;border-top:1px solid var(--line);margin:4px 6px}
+
+  /* ---------- stats ---------- */
+  .stats{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);
+    border-bottom:1px solid var(--line);min-height:41px}
+  .chip{--tc:#8aa0c0;display:inline-flex;align-items:center;gap:6px;border-radius:8px;
+    padding:4px 10px;font-size:12.5px;color:var(--text-dim);
+    border:1px solid color-mix(in srgb,var(--tc) 40%,var(--panel));
+    background:color-mix(in srgb,var(--tc) 13%,var(--panel));
+    border-left:4px solid var(--tc)}
+  .chip b{color:var(--text);font-size:12.5px}
+  .chip.total{--tc:#64748b}
+  .muted{color:var(--muted);font-size:13px}
+
+  /* ---------- board (fills the width) ---------- */
+  .board-wrap{flex:1;min-height:0;overflow:auto;padding:12px 14px}
+  .board{display:flex;width:100%;min-width:880px;background:var(--panel);
+    border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .gutter{flex:0 0 56px;border-right:1px solid var(--line);background:var(--panel)}
+  .g-head{height:44px;border-bottom:1px solid var(--line)}
+  .g-label{font-size:11px;color:var(--muted);border-top:1px solid var(--line);
+    padding:2px 6px 0 0;text-align:right}
+  .days{display:flex;flex:1}
+  .day{flex:1;min-width:116px;border-left:1px solid var(--line);display:flex;flex-direction:column}
+  .day:first-child{border-left:none}
+  .day-head{height:44px;display:flex;align-items:center;gap:8px;padding:0 8px 0 10px;
+    border-bottom:1px solid var(--line);background:var(--head)}
+  .is-today .day-head{background:var(--accent-soft)}
+  .d-name{font-weight:700;font-size:13px}
+  .is-today .d-name{color:var(--accent)}
+  .d-total{font-size:11px;color:var(--muted)}
+  .day-menu{margin-left:auto;position:relative}
+  .day-menu summary{list-style:none;cursor:pointer;padding:2px 8px;border-radius:6px;
+    color:var(--muted);font-weight:700}
+  .day-menu summary::-webkit-details-marker{display:none}
+  .day-menu summary:hover{background:var(--grid-hover)}
+  .menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--panel);
+    border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;
+    min-width:190px;z-index:40;display:flex;flex-direction:column;gap:2px}
+  .m-title{font-size:11px;color:var(--muted);padding:2px 6px}
+  .mi{border:none;background:transparent;text-align:left;padding:6px 8px;border-radius:6px;
+    font-size:13px;cursor:pointer;color:var(--text);white-space:nowrap}
+  .mi:hover{background:var(--grid-hover)}
+  .mi.danger{color:var(--danger)}
+  .day-body{position:relative;flex:1;cursor:copy;background-color:var(--grid);
+    background-image:linear-gradient(var(--line-soft) 1px,transparent 1px),
+      linear-gradient(color-mix(in srgb,var(--text) 6%,transparent) 1px,transparent 1px);
+    background-size:100% var(--hour),100% calc(var(--hour)/2)}
+  .day-body:hover{background-color:var(--grid-hover)}
+  .day.we .day-head{background:color-mix(in srgb,var(--head) 82%,var(--bg))}
+  .day.we .day-body{background-color:var(--grid-we)}
+  .day.we .day-body:hover{background-color:var(--grid-we-hover)}
+  .day-body.drop-hint{outline:2px dashed var(--accent);outline-offset:-2px}
+
+  /* ---------- events ---------- */
+  .ev{position:absolute;border-radius:8px;padding:3px 7px;font-size:12px;line-height:1.25;
+    overflow:hidden;cursor:grab;
+    background:color-mix(in srgb,var(--tc) 17%,var(--panel));
+    border:1px solid color-mix(in srgb,var(--tc) 45%,var(--panel));
+    border-left:4px solid var(--tc);color:var(--text);
+    transition:box-shadow .12s ease,background-color .15s ease,border-color .15s ease}
+  .ev:hover{box-shadow:0 4px 14px rgba(0,0,0,.28);z-index:8;cursor:pointer}
+  .ev.current{box-shadow:0 0 0 2px var(--accent),0 4px 14px color-mix(in srgb,var(--accent) 40%,transparent);z-index:9}
+  .ev.dragging{opacity:.88;z-index:20;box-shadow:0 14px 30px rgba(0,0,0,.4);
+    cursor:grabbing;pointer-events:none}
+  .ev.resizing{cursor:ns-resize;z-index:20;pointer-events:none}
+  .ev-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ev-meta{color:var(--ev-meta);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .ptag{font-size:9.5px;font-weight:700;text-transform:uppercase;
+    background:color-mix(in srgb,var(--text) 12%,transparent);
+    border-radius:4px;padding:1px 4px;vertical-align:1px}
+  .ev-par{background-image:repeating-linear-gradient(-45deg,rgba(128,128,128,.09) 0 5px,transparent 5px 10px)}
+  .ev-resize{position:absolute;left:0;right:0;bottom:0;height:8px;cursor:ns-resize;opacity:0;
+    transition:opacity .12s;border-radius:0 0 8px 8px;touch-action:none}
+  .ev:hover .ev-resize{opacity:1;
+    background:linear-gradient(transparent,color-mix(in srgb,var(--tc) 50%,transparent))}
+  .now-line{position:absolute;left:0;right:0;height:0;border-top:2px solid #ef4444;z-index:10;
+    pointer-events:none}
+  .now-line::before{content:"";position:absolute;left:-4px;top:-5px;width:8px;height:8px;
+    border-radius:50%;background:#ef4444}
+  #dragTip{position:fixed;display:none;z-index:300;pointer-events:none;background:var(--panel);
+    color:var(--text);border:1px solid var(--line);padding:5px 10px;border-radius:8px;
+    font-size:12px;box-shadow:var(--shadow);white-space:nowrap}
+
+  /* ---------- context menu ---------- */
+  .ctx{position:fixed;z-index:250;display:none;min-width:210px;background:var(--panel);
+    border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;
+    flex-direction:column;gap:2px}
+  .ctx.open{display:flex}
+  .ctx-head{font-size:11px;color:var(--muted);padding:4px 8px 2px;max-width:260px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .empty-note{margin:14px auto 0;max-width:560px;text-align:center;background:var(--panel);
+    border:1px dashed var(--line);border-radius:12px;padding:16px;color:var(--muted)}
+  .hintbar{padding:8px 14px;background:var(--panel);border-top:1px solid var(--line);
+    color:var(--muted);font-size:12.5px;text-align:center}
+
+  /* ---------- modals ---------- */
+  .mb{position:fixed;inset:0;background:rgba(2,6,18,.6);backdrop-filter:blur(2px);
+    display:none;align-items:flex-start;justify-content:center;padding:7vh 16px 16px;z-index:100}
+  .mb.open{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:20px;width:100%;max-width:520px;max-height:84vh;overflow:auto}
+  .modal.wide{max-width:780px}
+  .modal h3{margin:0 0 12px;font-size:17px}
+  .modal label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);
+    font-weight:600;margin-bottom:10px;flex:1}
+  .modal input,.modal select,.modal textarea{border:1px solid var(--line);border-radius:8px;
+    padding:8px 10px;font-size:14px;font-family:inherit;color:var(--text);width:100%;
+    background:var(--panel-2)}
+  .modal textarea{resize:vertical}
+  .row2{display:flex;gap:10px}
+  .chk{flex-direction:row;align-items:center;gap:8px;font-size:13.5px;color:var(--text)}
+  .chk input{width:auto}
+  .modal-actions{display:flex;gap:8px;margin-top:14px;align-items:center}
+  .spacer{flex:1}
+  .full{width:100%;margin-bottom:10px}
+
+  /* settings tabs + segmented controls */
+  .set-tabs{display:flex;gap:6px;margin-bottom:16px}
+  .set-tab{border:1px solid var(--line);background:var(--panel-2);border-radius:9px;
+    padding:7px 16px;cursor:pointer;color:var(--text);font-size:13px}
+  .set-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .set-page{display:none}
+  .set-page.active{display:block}
+  .set-page h4{margin:14px 0 10px;font-size:13px;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.04em}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{border:none;background:var(--panel-2);color:var(--text);padding:8px 16px;
+    cursor:pointer;font-size:13px}
+  .seg button.on{background:var(--accent);color:#fff;font-weight:600}
+
+  /* time steppers */
+  .time-wrap{display:flex;gap:5px;align-items:center}
+  .time-wrap input{flex:1;min-width:0}
+  .steppers{display:flex;gap:4px}
+  .mini{width:28px;height:34px;border:1px solid var(--line);background:var(--panel-2);
+    color:var(--text);border-radius:7px;cursor:pointer;font-size:14px;line-height:1}
+  .mini:hover{background:var(--grid-hover)}
+
+  /* multi-day chips */
+  .day-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+  .dchip{border:1px solid var(--line);background:var(--panel-2);color:var(--text);
+    border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;user-select:none}
+  .dchip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .chip-presets{display:flex;gap:6px;align-items:center;margin-bottom:10px}
+  .mini2{border:1px solid var(--line);background:var(--panel-2);color:var(--text);
+    border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer}
+  .mini2:hover{background:var(--grid-hover)}
+
+  /* type rows */
+  .type-head,.type-row{display:grid;grid-template-columns:42px 52px minmax(120px,1fr) 78px 92px minmax(52px,auto) 30px;
+    gap:8px;align-items:center}
+  .type-head{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .type-head span:nth-child(6){text-align:right}
+  .type-row{margin-bottom:8px}
+  .type-row input[type=number]{padding:6px 8px}
+  .tr-count{font-size:11.5px;color:var(--muted);white-space:nowrap;text-align:right}
+  .icon-btn{border:1px solid var(--line);background:var(--panel-2);border-radius:8px;
+    width:30px;height:30px;cursor:pointer;color:var(--muted)}
+  .icon-btn:hover{background:color-mix(in srgb,var(--danger) 14%,transparent);
+    color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,transparent)}
+
+  /* help */
+  .tips{margin:6px 0 4px;padding-left:18px;font-size:13.5px;line-height:1.6}
+  .kbd-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+  .kbd-table td{padding:5px 8px;border-bottom:1px solid var(--line)}
+  kbd{background:var(--panel-2);border:1px solid var(--line);border-bottom-width:2px;
+    border-radius:6px;padding:1px 7px;font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px}
+
+  /* toasts */
+  #toasts{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;
+    flex-direction:column;gap:8px;z-index:400;align-items:center}
+  .toast{background:#334155;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;
+    box-shadow:var(--shadow);animation:pop .18s ease}
+  .toast.err{background:#b91c1c}
+  .toast.out{opacity:0;transition:opacity .3s}
+  @keyframes pop{from{transform:translateY(8px);opacity:0}}
+
+  @media (max-width:760px){ .actions{margin-left:0} .now-chip{max-width:200px} }
+  @media print{
+    :root,html[data-theme="dark"]{
+      --bg:#fff;--panel:#fff;--panel-2:#fff;--line:#bbb;--line-soft:#ddd;
+      --text:#000;--text-dim:#222;--muted:#555;--grid:#fff;--grid-we:#fafafa;
+      --head:#f4f4f4;--ev-meta:#333;--accent-soft:#e8f0fe;--shadow:none}
+    body{display:block;background:#fff}
+    .topbar,.stats,.hintbar,.mb,#toasts,.empty-note,#dragTip,.ctx,.dd{display:none !important}
+    .board-wrap{overflow:visible;padding:0}
+    .board{min-width:0;width:100%;box-shadow:none;border:1px solid #94a3b8}
+    .ev,.day-head{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .ev-resize,.now-line{display:none !important}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">🗓 Timetable</div>
+  <div class="tabs" id="scheduleTabs"></div>
+  <button class="btn" id="btnAddSchedule" title="Create a new timetable">＋ New</button>
+  <div class="actions">
+    <select class="btn" id="paritySel" title="Which weeks to show">
+      <option value="all">All weeks</option>
+      <option value="odd">Odd ISO weeks</option>
+      <option value="even">Even ISO weeks</option>
+    </select>
+    <button class="btn primary" id="btnAddBlock">＋ Add block</button>
+    <button class="btn" id="btnSettings">⚙ Settings</button>
+    <span class="zoom-group">
+      <button class="btn" id="zoomOut" title="Smaller grid">−</button>
+      <button class="btn" id="zoomIn" title="Bigger grid">＋</button>
+    </span>
+    <button class="now-chip" id="nowChip" title="Jump to current time">…</button>
+    <div class="dd" id="fileMenuWrap">
+      <button class="btn" id="btnFileMenu" title="Export, import & print">⬇ Export ▾</button>
+      <div class="menu" id="fileMenu">
+        <button class="mi" data-act="ics">📅 Export .ics (calendar)</button>
+        <button class="mi" data-act="json">💾 Download JSON backup</button>
+        <button class="mi" data-act="import">⭳ Import JSON backup</button>
+        <hr class="msep">
+        <button class="mi" data-act="print">🖨 Print</button>
+      </div>
+    </div>
+    <button class="btn" id="btnTheme" title="Toggle dark / light mode (D)">☀️</button>
+    <button class="btn" id="btnHelp" title="Tips & shortcuts (?)">?</button>
+  </div>
+</header>
+
+<div class="stats" id="statsBar"></div>
+
+<main class="board-wrap">
+  <div class="board" id="board" style="--hour:48px">
+    <div class="gutter" id="gutter"><div class="g-head"></div></div>
+    <div class="days" id="days"></div>
+  </div>
+  <div class="empty-note" id="loading">Loading your timetable…</div>
+  <div class="empty-note" id="emptyHint" style="display:none">
+    <b>This schedule is empty.</b><br>
+    Click anywhere on a day to add your first block — or use “＋ Add block”.
+  </div>
+</main>
+
+<footer class="hintbar">
+  Click an empty spot to add a block · drag blocks to move them (start &amp; day only — duration
+  stays), drag the bottom edge to resize · <b>right-click</b> a block to copy it to another day ·
+  <b>right-click</b> a timetable tab to rename / duplicate / copy from / delete · everything saves
+  to the server automatically.
+</footer>
+
+<!-- event modal -->
+<div class="mb" id="eventModal">
+  <div class="modal">
+    <h3 id="evModalTitle">Add block</h3>
+    <form id="evForm">
+      <label>Title<input id="fTitle" maxlength="160" placeholder="e.g. Analysis I"></label>
+      <div class="row2">
+        <label>Type<select id="fType"></select></label>
+        <label>Repeats<select id="fParity">
+          <option value="all">Every week</option>
+          <option value="odd">Odd ISO weeks only</option>
+          <option value="even">Even ISO weeks only</option>
+        </select></label>
+      </div>
+      <label style="margin-bottom:4px">Days <span style="font-weight:400">(a block can be on several days)</span></label>
+      <div class="day-chips" id="fDays"></div>
+      <div class="chip-presets">
+        <button type="button" class="mini2" data-preset="week">Mon–Fri</button>
+        <button type="button" class="mini2" data-preset="all">Every day</button>
+        <span class="muted" style="font-size:11.5px">the block appears on every selected day</span>
+      </div>
+      <div class="row2">
+        <label>Start
+          <div class="time-wrap">
+            <input type="time" id="fStart" step="60">
+            <span class="steppers">
+              <button type="button" class="mini" data-time="start" data-d="-15" title="−15 min">−</button>
+              <button type="button" class="mini" data-time="start" data-d="15" title="+15 min">＋</button>
+            </span>
+          </div>
+        </label>
+        <label>End
+          <div class="time-wrap">
+            <input type="time" id="fEnd" step="60">
+            <span class="steppers">
+              <button type="button" class="mini" data-time="end" data-d="-15" title="−15 min">−</button>
+              <button type="button" class="mini" data-time="end" data-d="15" title="+15 min">＋</button>
+            </span>
+          </div>
+        </label>
+      </div>
+      <div class="modal-actions" style="margin:0 0 10px">
+        <button type="button" class="btn" id="fFit"
+          title="Snap this block to the selected type's usual start minute and length">↺ Fit to type</button>
+      </div>
+      <div class="row2">
+        <label><span id="fRoomLabelTxt">Room / place</span><input id="fRoom" maxlength="120" placeholder="e.g. HG F 5"></label>
+        <label>Teacher<input id="fTeacher" maxlength="120" placeholder="optional"></label>
+      </div>
+      <label>Notes<textarea id="fNote" rows="2" maxlength="2000" placeholder="optional"></textarea></label>
+      <div class="modal-actions">
+        <button type="button" class="btn danger" id="btnEvDelete">Delete</button>
+        <button type="button" class="btn" id="btnEvDuplicate">Duplicate</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- settings modal: General + Types -->
+<div class="mb" id="settingsModal">
+  <div class="modal wide">
+    <div class="set-tabs">
+      <button type="button" class="set-tab active" data-stab="general">General</button>
+      <button type="button" class="set-tab" data-stab="types">Types</button>
+    </div>
+
+    <div class="set-page active" id="stab-general">
+      <h4>Appearance</h4>
+      <label>Theme
+        <div class="seg" id="thSeg">
+          <button type="button" data-th="dark">🌙 Dark</button>
+          <button type="button" data-th="light">☀️ Light</button>
+        </div>
+      </label>
+      <label>Grid size (hour height)
+        <select id="sZoom">
+          <option value="32">Compact (32 px)</option>
+          <option value="40">Cozy (40 px)</option>
+          <option value="48">Normal (48 px)</option>
+          <option value="60">Roomy (60 px)</option>
+          <option value="76">Huge (76 px)</option>
+        </select>
+      </label>
+      <h4>Week</h4>
+      <div class="row2">
+        <label>Day starts at<input type="time" id="sStart" step="60"></label>
+        <label>Day ends at<input type="time" id="sEnd" step="60"></label>
+      </div>
+      <label class="chk"><input type="checkbox" id="sSat"> Show Saturday</label>
+      <label class="chk"><input type="checkbox" id="sSun"> Show Sunday</label>
+    </div>
+
+    <div class="set-page" id="stab-types">
+      <h4>Lecture types, colors &amp; scheduling rules</h4>
+      <p class="muted" style="margin-top:-6px">Each type has its own color and emoji, plus
+        <b>Start :MM</b> (blocks of this type snap to that minute past the hour — 15 means
+        8:15, 9:15 …) and a default <b>Length</b> used when you click the grid. Removing a type
+        keeps its blocks (they show as “Unsorted”).</p>
+      <div class="type-head">
+        <span>Color</span><span>Icon</span><span>Name</span>
+        <span title="Blocks of this type start at :MM past the hour">Start :MM</span>
+        <span title="Pre-filled length for new blocks">Length (min)</span>
+        <span>Blocks</span><span></span>
+      </div>
+      <div id="typeRows"></div>
+      <button type="button" class="btn" id="btnAddType">＋ Add type</button>
+    </div>
+
+    <div class="modal-actions">
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="button" class="btn primary" id="btnSettingsSave">Save settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- prompt modal -->
+<div class="mb" id="promptModal">
+  <div class="modal">
+    <h3 id="promptTitle">Name</h3>
+    <form id="promptForm">
+      <input id="promptInput" maxlength="120" autocomplete="off">
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">OK</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- confirm modal -->
+<div class="mb" id="confirmModal">
+  <div class="modal">
+    <h3>Are you sure?</h3>
+    <p id="confirmMsg" style="font-size:14px"></p>
+    <div class="modal-actions">
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="btnConfirmCancel">Cancel</button>
+      <button type="button" class="btn danger" id="btnConfirmOk">Yes, do it</button>
+    </div>
+  </div>
+</div>
+
+<!-- help modal -->
+<div class="mb" id="helpModal">
+  <div class="modal">
+    <h3>Tips &amp; shortcuts</h3>
+    <ul class="tips">
+      <li><b>Click</b> an empty slot → new block. It uses the <b>last type you picked</b>,
+        snapped to that type's usual start minute and default length.</li>
+      <li><b>Drag</b> a block to move it (day + start — the duration stays), drag its
+        <b>bottom edge</b> to resize. Multi-day blocks are time-shifted; change their days
+        in the editor.</li>
+      <li><b>Multi-day blocks:</b> in the block editor, click the day chips to put one block
+        on any combination of days (e.g. a commute Mon/Wed/Fri).</li>
+      <li><b>Right-click a block</b> → Edit · Duplicate · <b>Copy to day…</b> · Delete.</li>
+      <li><b>Right-click a timetable tab</b> → Rename · Duplicate · <b>Copy from another
+        timetable…</b> · Delete.</li>
+      <li><b>⋯</b> in a day header: copy that whole day to another day, or clear it.</li>
+      <li>“Repeats” makes a block appear only on <b>odd/even ISO weeks</b> — the week selector
+        on top filters the view.</li>
+      <li>⚙ <b>Settings</b> holds the theme, grid size, week range and the
+        <b>Types</b> editor (color, emoji, start :MM, default length).</li>
+      <li><b>⬇ Export</b>: .ics for Google/Apple/Outlook, JSON backup, import, print.</li>
+    </ul>
+    <table class="kbd-table">
+      <tr><td><kbd>N</kbd></td><td>New block</td></tr>
+      <tr><td><kbd>T</kbd></td><td>Settings → Types</td></tr>
+      <tr><td><kbd>S</kbd></td><td>Settings → General</td></tr>
+      <tr><td><kbd>D</kbd></td><td>Dark / light mode</td></tr>
+      <tr><td><kbd>P</kbd></td><td>Print</td></tr>
+      <tr><td><kbd>?</kbd></td><td>This help</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Close dialogs & menus</td></tr>
+    </table>
+    <div class="modal-actions">
+      <span class="spacer"></span>
+      <button type="button" class="btn primary" data-close>Got it</button>
+    </div>
+  </div>
+</div>
+
+<div id="dragTip"></div>
+<div class="ctx" id="ctxMenu"></div>
+<div id="toasts"></div>
+<input type="file" id="importFile" accept=".json,application/json" style="display:none">
+
+<script>
+'use strict';
+
+/* ================= constants & state ================= */
+const API = '/apps/timetable';
+const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const DAY_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const PASTELS = ['#2563EB','#0D9488','#7C3AED','#DB2777','#F59E0B','#65A30D',
+                 '#0EA5E9','#EA580C','#DC2626','#4F46E5','#059669','#A16207'];
+const ZOOMS = [32, 40, 48, 60, 76];
+
+let state = null;          // {settings, schedules, eventTypes, events}
+let parityFilter = 'all';  // display filter: all | odd | even
+let editingEventId = null;
+let editDays = new Set();  // days of the block being edited
+let editingTypes = [];
+let confirmCb = null;
+let promptSubmit = null;
+let suppressClick = false; // set after a drag so the following click is ignored
+let drag = null;           // active drag & drop session
+let ctx = null;            // active context menu {kind, page, eventId?, tabId?}
+
+/* ================= tiny helpers ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = m => String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+const parseHM = s => { if(!s) return null; const p = s.split(':').map(Number);
+  if (p.length < 2 || Number.isNaN(p[0]) || Number.isNaN(p[1])) return null;
+  return p[0]*60 + p[1]; };
+const hoursTxt = mins => (Math.round(mins/6)/10).toFixed(1).replace(/\.0$/,'');
+const nowMinutes = () => { const d = new Date(); return d.getHours()*60 + d.getMinutes(); };
+const hourPx = () => (state && state.settings.hourPx) || 48;
+
+function isoWeek(d){
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+  return Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
+}
+const currentParity = () => isoWeek(new Date()) % 2 ? 'odd' : 'even';
+
+/* Snap to the nearest "hour + offset" start, e.g. offset 15 → :15 marks. */
+function nearestOffset(m, o){
+  const h = Math.floor(m/60)*60;
+  let best = h + o - 60;
+  for (const c of [h + o, h + o + 60])
+    if (c >= 0 && Math.abs(c - m) < Math.abs(best - m)) best = c;
+  return Math.max(0, Math.min(1439, best));
+}
+
+/* last-used type (client-side preference only — the data itself is all server-side) */
+const lastTypeId = () => {
+  try { const v = parseInt(localStorage.getItem('tt_last_type') || '', 10);
+    return Number.isFinite(v) && state.eventTypes.some(t => t.id === v) ? v : null;
+  } catch(_){ return null; }
+};
+const setLastType = id => {
+  try { if (id != null) localStorage.setItem('tt_last_type', String(id));
+        else localStorage.removeItem('tt_last_type'); } catch(_){}
+};
+
+/* ================= state accessors ================= */
+const activeId = () => {
+  const a = state.settings.activeScheduleId;
+  return state.schedules.some(s => s.id === a) ? a : (state.schedules[0] ? state.schedules[0].id : null);
+};
+const activeSchedule = () => state.schedules.find(s => s.id === activeId()) || null;
+const typeById = id => (id != null ? state.eventTypes.find(t => t.id === id) : null) || null;
+const activeEvents = () => { const s = activeSchedule();
+  return s ? state.events.filter(e => e.scheduleId === s.id) : []; };
+const gridEvents = () => parityFilter === 'all' ? activeEvents()
+  : activeEvents().filter(e => e.parity === 'all' || e.parity === parityFilter);
+const liveEvents = () => { const p = currentParity();
+  return activeEvents().filter(e => e.parity === 'all' || e.parity === p); };
+function shownDays(){ const s = state.settings; const d = [0,1,2,3,4];
+  if (s.showSaturday) d.push(5); if (s.showSunday) d.push(6); return d; }
+const defaultDay = () => { const t = (new Date().getDay()+6)%7;
+  return shownDays().includes(t) ? t : 0; };
+
+/* make sure every event has a valid days array, no matter what the server sent */
+function normState(st){
+  st.events = (st.events || []).map(e => ({
+    ...e,
+    days: Array.isArray(e.days) && e.days.length
+      ? [...new Set(e.days)].sort((a,b) => a-b)
+      : [e.day != null ? e.day : 0],
+  }));
+  return st;
+}
+
+/* ================= server calls ================= */
+async function call(path, body){
+  let res;
+  try {
+    res = await fetch(API + '/' + path, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Accept':'application/json'},
+      body: JSON.stringify(body || {})
+    });
+  } catch (e) { throw new Error('Network error'); }
+  if (res.redirected || (res.url && res.url.includes('login'))){
+    window.location.href = res.url;
+    throw new Error('Please log in again');
+  }
+  let data = {};
+  try { data = await res.json(); } catch (e) { throw new Error('Unexpected server response'); }
+  if (!res.ok || data.error) throw new Error(data.error || ('HTTP ' + res.status));
+  if (data.state){ state = normState(data.state); renderAll(); }
+  return data;
+}
+
+/* ================= theme ================= */
+function applyTheme(){
+  const th = state.settings.theme === 'light' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = th;
+  const b = $('#btnTheme');
+  b.textContent = th === 'dark' ? '☀️' : '🌙';
+  b.title = th === 'dark' ? 'Switch to light mode (D)' : 'Switch to dark mode (D)';
+}
+function toggleTheme(){
+  const next = state.settings.theme === 'light' ? 'dark' : 'light';
+  call('settings/save', {theme: next})
+    .then(() => toast(next === 'dark' ? 'Dark mode 🌙' : 'Light mode ☀️'))
+    .catch(err => toast(err.message, 'err'));
+}
+
+/* ================= rendering ================= */
+function renderAll(){ if (!state) return; applyTheme(); renderTabs(); renderBoard(); renderStats(); }
+
+function renderTabs(){
+  $('#scheduleTabs').innerHTML = state.schedules.map(s =>
+    `<button class="tab ${s.id===activeId()?'active':''}" data-sid="${s.id}"
+       title="Right-click: rename · duplicate · copy from · delete">${esc(s.name)}</button>`
+  ).join('');
+}
+
+function layoutDay(list){
+  const evs = [...list].sort((a,b)=>a.start-b.start || b.end-a.end || a.id-b.id);
+  const colEnd = []; const colOf = new Map();
+  for (const e of evs){
+    let c = colEnd.findIndex(end => end <= e.start);
+    if (c === -1){ c = colEnd.length; colEnd.push(e.end); } else colEnd[c] = e.end;
+    colOf.set(e, c);
+  }
+  const groups = []; let cur = [], curEnd = -1;
+  for (const e of evs){
+    if (cur.length && e.start >= curEnd){ groups.push(cur); cur = []; curEnd = -1; }
+    cur.push(e); curEnd = Math.max(curEnd, e.end);
+  }
+  if (cur.length) groups.push(cur);
+  for (const g of groups){
+    const cols = Math.max(...g.map(e => colOf.get(e) + 1));
+    for (const e of g){ e._left = colOf.get(e)/cols; e._width = 1/cols; }
+  }
+  return evs;
+}
+
+function renderBoard(){
+  if (!state) return;
+  const s = state.settings;
+  const hp = hourPx();
+  const start = s.dayStart ?? 420, end = s.dayEnd ?? 1320;
+  const bodyH = Math.max(60, (end - start)/60*hp);
+  const nowMin = nowMinutes();
+  const todayIdx = (new Date().getDay()+6)%7;
+
+  $('#board').style.setProperty('--hour', hp + 'px');
+
+  let g = '<div class="g-head"></div>';
+  for (let m = start; m < end; m += 60)
+    g += `<div class="g-label" style="height:${hp}px">${fmt(m)}</div>`;
+  $('#gutter').innerHTML = g;
+
+  const evs = gridEvents();
+  let html = '';
+  for (const d of shownDays()){
+    const dayEvs = evs.filter(e => e.days.includes(d));
+    const laid = layoutDay(dayEvs);
+    const total = dayEvs.reduce((a,e)=>a+(e.end-e.start),0);
+    let evh = '';
+    for (const e of laid){
+      const topM = Math.max(e.start, start), botM = Math.min(e.end, end);
+      if (botM <= topM) continue;
+      const t = typeById(e.typeId);
+      const top = (topM-start)/60*hp;
+      const h = Math.max(16, (botM-topM)/60*hp - 2);
+      const xs = h < 34;
+      const multi = e.days.length > 1;
+      evh += `<div class="ev ${e.parity!=='all'?'ev-par':''}" data-id="${e.id}"
+        style="--tc:${t?t.color:'#8aa0c0'};top:${top}px;height:${h}px;
+        left:calc(${(e._left*100).toFixed(3)}% + 3px);width:calc(${(e._width*100).toFixed(3)}% - 6px)"
+        title="${esc(e.title)} · ${fmt(e.start)}–${fmt(e.end)}${e.room?' · '+e.room:''}${multi?' · '+DAY_SHORT.map(x=>x).filter((_,i)=>e.days.includes(i)).join(' '):''}">
+        <div class="ev-title">${t && t.icon ? esc(t.icon)+' ' : ''}${esc(e.title)}${e.parity!=='all'?` <span class="ptag">${e.parity}</span>`:''}</div>
+        ${xs ? '' : `<div class="ev-meta">${fmt(e.start)}–${fmt(e.end)}${multi?' · '+e.days.map(i=>DAY_SHORT[i]).join(' '):''}${e.room?' · '+esc(e.room):''}</div>`}
+        <div class="ev-resize" title="Drag to change the end time"></div>
+      </div>`;
+    }
+    const nowLine = (d === todayIdx && nowMin >= start && nowMin <= end)
+      ? '<div class="now-line" id="nowLine"></div>' : '';
+    const menuItems = shownDays().filter(x => x !== d).map(x =>
+      `<button class="mi" data-copyfrom="${d}" data-copyto="${x}">${DAY_NAMES[x]}</button>`).join('');
+    html += `<div class="day ${d===todayIdx?'is-today':''} ${d>=5?'we':''}">
+      <div class="day-head">
+        <span class="d-name">${DAY_NAMES[d]}</span>
+        <span class="d-total">${total ? hoursTxt(total)+'h' : ''}</span>
+        <details class="day-menu"><summary title="Day actions">⋯</summary>
+          <div class="menu">
+            <div class="m-title">Copy this day to…</div>
+            ${menuItems || '<div class="m-title">No other days shown</div>'}
+            <button class="mi danger" data-clearday="${d}">Clear this day</button>
+          </div>
+        </details>
+      </div>
+      <div class="day-body" data-day="${d}" style="height:${bodyH}px">${evh}${nowLine}</div>
+    </div>`;
+  }
+  $('#days').innerHTML = html;
+  $('#emptyHint').style.display = evs.length ? 'none' : 'block';
+  updateNow();
+}
+
+function renderStats(){
+  const evs = gridEvents();
+  const map = new Map(); let total = 0;
+  const perDay = [0,0,0,0,0,0,0];
+  for (const e of evs){
+    const dur = e.end - e.start;
+    const k = e.typeId ?? 0;
+    map.set(k, (map.get(k)||0) + dur*e.days.length);
+    total += dur*e.days.length;
+    for (const d of e.days) perDay[d] += dur;
+  }
+  if (!evs.length){
+    $('#statsBar').innerHTML = '<span class="muted">No blocks in this view — click the grid or “＋ Add block” to start.</span>';
+    return;
+  }
+  const parts = [...map.entries()].sort((a,b)=>b[1]-a[1]).map(([tid, mins]) => {
+    const t = tid ? typeById(tid) : null;
+    const label = t ? `${t.icon ? esc(t.icon)+' ' : ''}${esc(t.name)}` : 'Unsorted';
+    return `<span class="chip" style="--tc:${t?t.color:'#8aa0c0'}">${label} <b>${hoursTxt(mins)}h</b></span>`;
+  });
+  let busiest = -1, bm = 0;
+  perDay.forEach((v,i)=>{ if (v > bm){ bm = v; busiest = i; } });
+  parts.push(`<span class="chip total">Scheduled <b>${hoursTxt(total)}h</b> / week</span>`);
+  parts.push(`<span class="chip total">${evs.length} block${evs.length===1?'':'s'}</span>`);
+  if (busiest >= 0)
+    parts.push(`<span class="chip total">Busiest ${DAY_NAMES[busiest]} <b>${hoursTxt(bm)}h</b></span>`);
+  $('#statsBar').innerHTML = parts.join('');
+}
+
+function updateNow(){
+  if (!state) return;
+  const todayIdx = (new Date().getDay()+6)%7;
+  const nowMin = nowMinutes();
+  // chip + highlight use real ISO-week parity so hidden alternating blocks don't lie
+  const todays = liveEvents().filter(e => e.days.includes(todayIdx)).sort((a,b)=>a.start-b.start);
+  let txt;
+  const cur = todays.find(e => e.start <= nowMin && nowMin < e.end);
+  if (cur) txt = `Now: ${cur.title} · until ${fmt(cur.end)}`;
+  else {
+    const nxt = todays.find(e => e.start > nowMin);
+    if (nxt){ const dmin = nxt.start - nowMin;
+      txt = `Next: ${nxt.title} in ${dmin >= 60 ? Math.floor(dmin/60)+'h ' : ''}${dmin%60}m`; }
+    else txt = todays.length ? 'Done for today 🎉' : 'Nothing scheduled today 🎉';
+  }
+  $('#nowChip').textContent = txt;
+  const line = document.getElementById('nowLine');
+  if (line){
+    const s = state.settings;
+    if (nowMin >= s.dayStart && nowMin <= s.dayEnd){
+      line.style.display = 'block';
+      line.style.top = ((nowMin - s.dayStart)/60*hourPx()) + 'px';
+    } else line.style.display = 'none';
+  }
+  document.querySelectorAll('.ev.current').forEach(el => el.classList.remove('current'));
+  if (cur){
+    const el = document.querySelector(`.day.is-today .ev[data-id="${cur.id}"]`);
+    if (el) el.classList.add('current');
+  }
+}
+
+/* ================= modals / toasts ================= */
+function openModal(sel){ $(sel).classList.add('open'); }
+function closeModal(sel){ $(sel).classList.remove('open'); }
+function toast(msg, kind){
+  const t = document.createElement('div');
+  t.className = 'toast ' + (kind || '');
+  t.textContent = msg;
+  $('#toasts').appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, 2600);
+}
+function confirmAction(msg, cb){
+  $('#confirmMsg').textContent = msg;
+  confirmCb = cb;
+  openModal('#confirmModal');
+}
+function openPrompt(title, value, cb){
+  $('#promptTitle').textContent = title;
+  $('#promptInput').value = value || '';
+  promptSubmit = cb;
+  openModal('#promptModal');
+  setTimeout(() => { $('#promptInput').focus(); $('#promptInput').select(); }, 60);
+}
+
+/* ================= event modal ================= */
+function renderDayChips(){
+  $('#fDays').innerHTML = DAY_SHORT.map((n,i) =>
+    `<button type="button" class="dchip ${editDays.has(i)?'on':''}" data-day="${i}">${n}</button>`
+  ).join('');
+}
+$('#fDays').addEventListener('click', e => {
+  const b = e.target.closest('.dchip'); if (!b) return;
+  const d = +b.dataset.day;
+  if (editDays.has(d)){
+    if (editDays.size > 1) editDays.delete(d);
+    else { toast('Keep at least one day', 'err'); return; }
+  } else editDays.add(d);
+  renderDayChips();
+});
+document.querySelectorAll('#eventModal [data-preset]').forEach(b =>
+  b.addEventListener('click', () => {
+    editDays = new Set(b.dataset.preset === 'week' ? [0,1,2,3,4] : [0,1,2,3,4,5,6]);
+    renderDayChips();
+  }));
+
+function updateRoomLabel(){
+  const opt = $('#fType').selectedOptions[0];
+  const commute = opt && opt.textContent.toLowerCase().includes('commute');
+  $('#fRoomLabelTxt').textContent = commute ? 'Route (from → to)' : 'Room / place';
+  $('#fRoom').placeholder = commute ? 'e.g. Home → Campus (S8)' : 'e.g. HG F 5';
+}
+function applyTypeDefaults(){
+  const t = typeById(+$('#fType').value || null);
+  if (!t) return;
+  let start = parseHM($('#fStart').value);
+  if (start == null) return;
+  if (t.startOffset > 0) start = nearestOffset(start, t.startOffset);
+  $('#fStart').value = fmt(start);
+  $('#fEnd').value = fmt(Math.min(1439, start + (t.duration || 60)));
+}
+
+function openEventModal(ev, prefill){
+  editingEventId = ev ? ev.id : null;
+  $('#fType').innerHTML = '<option value="">— no type —</option>' + state.eventTypes.map(t =>
+    `<option value="${t.id}">${t.icon ? esc(t.icon)+'  ' : ''}${esc(t.name)}</option>`).join('');
+
+  editDays = new Set(ev ? ev.days
+    : [(prefill && prefill.day != null) ? prefill.day : defaultDay()]);
+  renderDayChips();
+
+  let start;
+  if (ev) start = ev.start;
+  else if (prefill && prefill.start != null) start = prefill.start;
+  else {
+    const t = typeById(lastTypeId());
+    const raw = nowMinutes();
+    start = (t && t.startOffset > 0) ? nearestOffset(raw, t.startOffset) : Math.round(raw/15)*15;
+  }
+  const selId = ev ? ev.typeId
+    : (prefill && prefill.typeId != null ? prefill.typeId : lastTypeId());
+  const t = typeById(selId);
+  let end = ev ? ev.end : start + (t ? (t.duration || 60) : 60);
+  end = Math.max(start + 15, Math.min(1440, end));
+
+  $('#fTitle').value = ev ? ev.title : '';
+  $('#fType').value = t ? String(t.id) : '';
+  $('#fStart').value = fmt(Math.min(start, 1439));
+  $('#fEnd').value = fmt(Math.min(end, 1439));
+  $('#fParity').value = ev ? (ev.parity || 'all') : 'all';
+  $('#fRoom').value = ev ? (ev.room || '') : '';
+  $('#fTeacher').value = ev ? (ev.teacher || '') : '';
+  $('#fNote').value = ev ? (ev.note || '') : '';
+  $('#evModalTitle').textContent = ev ? 'Edit block' : 'Add block';
+  $('#btnEvDelete').hidden = !ev;
+  $('#btnEvDuplicate').hidden = !ev;
+  setLastType(t ? t.id : null);
+  updateRoomLabel();
+  openModal('#eventModal');
+  setTimeout(() => $('#fTitle').focus(), 60);
+}
+
+function eventPayload(includeId){
+  const p = {
+    scheduleId: activeId(),
+    typeId: $('#fType').value ? +$('#fType').value : null,
+    title: $('#fTitle').value.trim() || 'Untitled',
+    days: [...editDays].sort((a,b) => a-b),
+    start: parseHM($('#fStart').value),
+    end: parseHM($('#fEnd').value),
+    parity: $('#fParity').value,
+    room: $('#fRoom').value.trim(),
+    teacher: $('#fTeacher').value.trim(),
+    note: $('#fNote').value.trim(),
+  };
+  if (includeId && editingEventId) p.id = editingEventId;
+  return p;
+}
+function validTimes(p){
+  if (p.start == null || p.end == null){ toast('Please set start and end time', 'err'); return false; }
+  if (p.end <= p.start){ toast('End must be after start', 'err'); return false; }
+  return true;
+}
+
+$('#evForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const p = eventPayload(true);
+  if (!validTimes(p)) return;
+  try {
+    await call('events/save', p);
+    closeModal('#eventModal');
+    toast(editingEventId ? 'Block updated ✓' : 'Block added ✓');
+  } catch (err){ toast(err.message, 'err'); }
+});
+$('#btnEvDuplicate').addEventListener('click', async () => {
+  const p = eventPayload(false);
+  if (!validTimes(p)) return;
+  try {
+    await call('events/save', p);
+    closeModal('#eventModal');
+    toast('Duplicated ✓');
+  } catch (err){ toast(err.message, 'err'); }
+});
+$('#btnEvDelete').addEventListener('click', () => {
+  const ev = state.events.find(x => x.id === editingEventId);
+  confirmAction(`Delete “${ev ? ev.title : 'this block'}”?`, async () => {
+    try { await call('events/delete', {id: editingEventId}); closeModal('#eventModal'); toast('Deleted'); }
+    catch (err){ toast(err.message, 'err'); }
+  });
+});
+$('#fType').addEventListener('change', () => {
+  setLastType($('#fType').value ? +$('#fType').value : null);
+  updateRoomLabel();
+  if (!editingEventId) applyTypeDefaults(); // pre-fill start/length for new blocks
+});
+$('#fFit').addEventListener('click', applyTypeDefaults);
+
+/* ±15 min steppers */
+document.querySelectorAll('.mini[data-time]').forEach(b => b.addEventListener('click', () => {
+  const inp = b.dataset.time === 'start' ? $('#fStart') : $('#fEnd');
+  let m = parseHM(inp.value);
+  if (m == null) return;
+  m = Math.max(0, Math.min(1439, m + (+b.dataset.d)));
+  inp.value = fmt(m);
+  if (b.dataset.time === 'start'){
+    const end = parseHM($('#fEnd').value);
+    if (end != null && end <= m) $('#fEnd').value = fmt(Math.min(1439, m + 15));
+  } else {
+    const st = parseHM($('#fStart').value);
+    if (st != null && m <= st) $('#fStart').value = fmt(Math.max(0, m - 15));
+  }
+}));
+
+/* ================= settings modal (General + Types) ================= */
+function openSettingsTab(name){
+  document.querySelectorAll('.set-tab').forEach(b => b.classList.toggle('active', b.dataset.stab === name));
+  $('#stab-general').classList.toggle('active', name === 'general');
+  $('#stab-types').classList.toggle('active', name === 'types');
+}
+function openSettings(tab){
+  const s = state.settings;
+  $('#sStart').value = fmt(s.dayStart);
+  $('#sEnd').value = fmt(s.dayEnd);
+  $('#sSat').checked = !!s.showSaturday;
+  $('#sSun').checked = !!s.showSunday;
+  $('#sZoom').value = String(hourPx());
+  const th = s.theme === 'light' ? 'light' : 'dark';
+  document.querySelectorAll('#thSeg button').forEach(b => b.classList.toggle('on', b.dataset.th === th));
+  editingTypes = state.eventTypes.map(t => ({...t}));
+  renderTypeRows();
+  openSettingsTab(tab || 'general');
+  openModal('#settingsModal');
+}
+$('#btnSettings').addEventListener('click', () => openSettings('general'));
+document.querySelectorAll('.set-tab').forEach(b =>
+  b.addEventListener('click', () => openSettingsTab(b.dataset.stab)));
+$('#thSeg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-th]'); if (!b) return;
+  document.querySelectorAll('#thSeg button').forEach(x => x.classList.toggle('on', x === b));
+});
+$('#btnSettingsSave').addEventListener('click', async () => {
+  const ds = parseHM($('#sStart').value) ?? 420;
+  const de = parseHM($('#sEnd').value) ?? 1320;
+  if (de - ds < 60){ toast('The day must be at least 1 hour long', 'err'); return; }
+  const thBtn = document.querySelector('#thSeg button.on');
+  const items = editingTypes.filter(t => t.name.trim()).map(t => ({
+    id: t.id, name: t.name.trim(), color: t.color, icon: (t.icon||'').trim(),
+    startOffset: Math.max(0, Math.min(59, t.startOffset|0)),
+    duration: Math.max(15, Math.min(720, t.duration|0)),
+  }));
+  try {
+    await call('settings/save', {
+      dayStart: ds, dayEnd: de,
+      showSaturday: $('#sSat').checked, showSunday: $('#sSun').checked,
+      theme: thBtn ? thBtn.dataset.th : 'dark',
+      hourPx: parseInt($('#sZoom').value, 10) || 48,
+    });
+    await call('types/save', {types: items});
+    closeModal('#settingsModal');
+    toast('Settings saved ✓');
+  } catch (err){ toast(err.message, 'err'); }
+});
+
+/* type rows editor */
+function renderTypeRows(){
+  const counts = {};
+  for (const e of state.events){ if (e.typeId != null) counts[e.typeId] = (counts[e.typeId]||0)+1; }
+  $('#typeRows').innerHTML = editingTypes.map((t, i) => `
+    <div class="type-row" data-idx="${i}">
+      <input type="color" class="tr-color" value="${esc(t.color)}">
+      <input class="tr-icon" maxlength="8" value="${esc(t.icon)}" placeholder="🙂">
+      <input class="tr-name" maxlength="60" value="${esc(t.name)}" placeholder="Type name">
+      <input type="number" class="tr-num" min="0" max="59" step="5" value="${t.startOffset||0}"
+        title="Blocks of this type snap to :MM past the hour (15 → 8:15)">
+      <input type="number" class="tr-num" min="15" max="720" step="15" value="${t.duration||60}"
+        title="Default length in minutes">
+      <span class="tr-count">${counts[t.id] || 0}</span>
+      <button type="button" class="icon-btn tr-del" title="Remove type">✕</button>
+    </div>`).join('') || '<p class="muted">No types yet — add one below.</p>';
+}
+$('#typeRows').addEventListener('input', e => {
+  const row = e.target.closest('.type-row'); if (!row) return;
+  const i = +row.dataset.idx;
+  if (e.target.classList.contains('tr-color')) editingTypes[i].color = e.target.value;
+  if (e.target.classList.contains('tr-icon'))  editingTypes[i].icon = e.target.value;
+  if (e.target.classList.contains('tr-name'))  editingTypes[i].name = e.target.value;
+  if (e.target.classList.contains('tr-num')){
+    const v = parseInt(e.target.value, 10);
+    if (Number.isFinite(v)){
+      if (e.target.min === '0') editingTypes[i].startOffset = Math.max(0, Math.min(59, v));
+      else editingTypes[i].duration = Math.max(15, Math.min(720, v));
+    }
+  }
+});
+$('#typeRows').addEventListener('click', e => {
+  const del = e.target.closest('.tr-del'); if (!del) return;
+  editingTypes.splice(+del.closest('.type-row').dataset.idx, 1);
+  renderTypeRows();
+});
+$('#btnAddType').addEventListener('click', () => {
+  editingTypes.push({id:null, name:'', color:PASTELS[editingTypes.length % PASTELS.length],
+                     icon:'', startOffset:0, duration:60});
+  renderTypeRows();
+  const rows = document.querySelectorAll('.type-row');
+  if (rows.length) rows[rows.length-1].querySelector('.tr-name').focus();
+});
+
+/* ================= schedule actions ================= */
+$('#btnAddSchedule').addEventListener('click', () =>
+  openPrompt('Name your new timetable', '', async v => {
+    if (!v.trim()) return;
+    try { await call('schedules/create', {name: v.trim()}); toast('Schedule created ✓'); }
+    catch (err){ toast(err.message, 'err'); }
+  }));
+$('#scheduleTabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (tab && tab.dataset.sid) call('schedules/activate', {id: +tab.dataset.sid}).catch(err => toast(err.message,'err'));
+});
+
+/* ================= file menu (export / import / print) ================= */
+$('#btnFileMenu').addEventListener('click', () => $('#fileMenuWrap').classList.toggle('open'));
+$('#fileMenu').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open'));
+  const act = b.dataset.act;
+  if (act === 'ics') window.location.assign(API + '/export/ics');
+  else if (act === 'json') window.location.assign(API + '/export/json');
+  else if (act === 'import') $('#importFile').click();
+  else if (act === 'print') window.print();
+});
+$('#importFile').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    const r = await call('schedules/import-json', data);
+    toast(`Imported ${r.blocks} blocks ✓`);
+  } catch (err){ toast('Import failed: ' + err.message, 'err'); }
+});
+
+/* ================= context menus (right-click) ================= */
+function renderCtx(){
+  const m = $('#ctxMenu');
+  if (!ctx){ m.classList.remove('open'); return; }
+  let h = '';
+  if (ctx.kind === 'tab'){
+    const s = state.schedules.find(x => x.id === ctx.tabId);
+    if (!s){ closeCtx(); return; }
+    if (ctx.page === 'copyfrom'){
+      const others = state.schedules.filter(x => x.id !== ctx.tabId);
+      h = `<button class="mi" data-act="back">‹ Back</button>
+           <div class="ctx-head">Copy all blocks from…</div>` +
+        (others.length ? others.map(o =>
+          `<button class="mi" data-act="tab-copyfrom-go" data-src="${o.id}">“${esc(o.name)}”</button>`).join('')
+         : '<div class="ctx-head">No other timetable yet</div>');
+    } else {
+      h = `<div class="ctx-head">${esc(s.name)}</div>
+        <button class="mi" data-act="tab-rename">✏️ Rename…</button>
+        <button class="mi" data-act="tab-dup">⧉ Duplicate</button>
+        <button class="mi" data-act="tab-copyfrom">⬅ Copy from another timetable…</button>
+        <button class="mi danger" data-act="tab-del">🗑 Delete…</button>`;
+    }
+  } else {
+    const ev = state.events.find(x => x.id === ctx.eventId);
+    if (!ev){ closeCtx(); return; }
+    if (ctx.page === 'copyto'){
+      h = `<button class="mi" data-act="back">‹ Back</button>
+           <div class="ctx-head">Copy “${esc(ev.title)}” to…</div>` +
+        shownDays().map(d =>
+          `<button class="mi" data-act="ev-copyto-day" data-day="${d}">${DAY_NAMES[d]}</button>`).join('');
+    } else {
+      h = `<div class="ctx-head">${esc(ev.title)} · ${ev.days.map(i=>DAY_SHORT[i]).join(' ')}</div>
+        <button class="mi" data-act="ev-edit">✏️ Edit</button>
+        <button class="mi" data-act="ev-dup">⧉ Duplicate</button>
+        <button class="mi" data-act="ev-copyto">📄 Copy to day…</button>
+        <button class="mi danger" data-act="ev-del">🗑 Delete…</button>`;
+    }
+  }
+  m.innerHTML = h;
+}
+function openCtx(kind, x, y, opts){
+  ctx = {kind, page: 'root', ...opts};
+  renderCtx();
+  const m = $('#ctxMenu');
+  m.classList.add('open');
+  const r = m.getBoundingClientRect();
+  m.style.left = Math.max(6, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
+  m.style.top = Math.max(6, Math.min(y, window.innerHeight - r.height - 8)) + 'px';
+}
+function closeCtx(){ ctx = null; $('#ctxMenu').classList.remove('open'); }
+
+document.addEventListener('contextmenu', e => {
+  const tab = e.target.closest('#scheduleTabs .tab');
+  if (tab){ e.preventDefault(); openCtx('tab', e.clientX, e.clientY, {tabId: +tab.dataset.sid}); return; }
+  const evEl = e.target.closest('#board .ev');
+  if (evEl){ e.preventDefault(); openCtx('event', e.clientX, e.clientY, {eventId: +evEl.dataset.id}); }
+});
+$('#ctxMenu').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act;
+  if (act === 'back'){ ctx.page = 'root'; renderCtx(); return; }
+  if (ctx.kind === 'tab'){
+    const s = state.schedules.find(x => x.id === ctx.tabId);
+    if (!s){ closeCtx(); return; }
+    if (act === 'tab-rename'){ closeCtx();
+      openPrompt('Rename timetable', s.name, async v => {
+        if (!v.trim()) return;
+        try { await call('schedules/rename', {id: s.id, name: v.trim()}); toast('Renamed ✓'); }
+        catch (err){ toast(err.message, 'err'); }
+      });
+    } else if (act === 'tab-dup'){ closeCtx();
+      call('schedules/duplicate', {id: s.id})
+        .then(() => toast('Duplicated ✓')).catch(err => toast(err.message, 'err'));
+    } else if (act === 'tab-copyfrom'){ ctx.page = 'copyfrom'; renderCtx();
+    } else if (act === 'tab-copyfrom-go'){ const src = +b.dataset.src; closeCtx();
+      call('schedules/copy-from', {sourceId: src, targetId: s.id})
+        .then(r => toast(`Copied ${r.copied} block${r.copied===1?'':'s'} ✓`))
+        .catch(err => toast(err.message, 'err'));
+    } else if (act === 'tab-del'){ closeCtx();
+      confirmAction(`Delete “${s.name}” and all of its blocks? This cannot be undone.`, async () => {
+        try { await call('schedules/delete', {id: s.id}); toast('Schedule deleted'); }
+        catch (err){ toast(err.message, 'err'); }
+      });
+    }
+  } else {
+    const ev = state.events.find(x => x.id === ctx.eventId);
+    if (!ev){ closeCtx(); return; }
+    const copyPayload = days => ({scheduleId: ev.scheduleId, typeId: ev.typeId,
+      title: ev.title, days, start: ev.start, end: ev.end, parity: ev.parity,
+      room: ev.room, teacher: ev.teacher, note: ev.note});
+    if (act === 'ev-edit'){ closeCtx(); openEventModal(ev);
+    } else if (act === 'ev-dup'){ closeCtx();
+      call('events/save', copyPayload(ev.days))
+        .then(() => toast('Duplicated ✓')).catch(err => toast(err.message, 'err'));
+    } else if (act === 'ev-copyto'){ ctx.page = 'copyto'; renderCtx();
+    } else if (act === 'ev-copyto-day'){ const day = +b.dataset.day; closeCtx();
+      call('events/save', copyPayload([day]))
+        .then(() => toast(`Copied to ${DAY_NAMES[day]} ✓`))
+        .catch(err => toast(err.message, 'err'));
+    } else if (act === 'ev-del'){ closeCtx();
+      confirmAction(`Delete “${ev.title}” (on ${ev.days.length} day${ev.days.length===1?'':'s'})?`, async () => {
+        try { await call('events/delete', {id: ev.id}); toast('Deleted'); }
+        catch (err){ toast(err.message, 'err'); }
+      });
+    }
+  }
+});
+
+/* close ctx menu / dropdowns when clicking elsewhere */
+document.addEventListener('pointerdown', e => {
+  if (!e.target.closest('#ctxMenu')) closeCtx();
+  const dd = e.target.closest('.dd');
+  document.querySelectorAll('.dd.open').forEach(d => { if (d !== dd) d.classList.remove('open'); });
+});
+window.addEventListener('blur', closeCtx);
+
+/* ================= board interactions ================= */
+$('#board').addEventListener('click', ev => {
+  if (suppressClick){ suppressClick = false; return; }
+  const evEl = ev.target.closest('.ev');
+  if (evEl){
+    const e = state.events.find(x => x.id == evEl.dataset.id);
+    if (e) openEventModal(e);
+    return;
+  }
+  const clearBtn = ev.target.closest('[data-clearday]');
+  if (clearBtn){
+    const d = +clearBtn.dataset.clearday;
+    document.querySelectorAll('details[open]').forEach(x => x.removeAttribute('open'));
+    confirmAction(`Remove ${DAY_NAMES[d]}? Single-day blocks are deleted, multi-day blocks keep their other days.`, async () => {
+      try { await call('events/clear-day', {scheduleId: activeId(), day: d}); toast('Day cleared'); }
+      catch (err){ toast(err.message, 'err'); }
+    });
+    return;
+  }
+  const copyBtn = ev.target.closest('[data-copyfrom]');
+  if (copyBtn){
+    document.querySelectorAll('details[open]').forEach(x => x.removeAttribute('open'));
+    call('events/copy-day', {scheduleId: activeId(),
+      fromDay: +copyBtn.dataset.copyfrom, toDay: +copyBtn.dataset.copyto})
+      .then(() => toast('Day copied ✓')).catch(err => toast(err.message, 'err'));
+    return;
+  }
+  const body = ev.target.closest('.day-body');
+  if (body){
+    const st = state.settings, hp = hourPx();
+    const y = ev.clientY - body.getBoundingClientRect().top;
+    const raw = st.dayStart + y/hp*60;
+    const t = typeById(lastTypeId());
+    let m, dur = 60;
+    if (t){
+      dur = t.duration || 60;
+      m = t.startOffset > 0 ? nearestOffset(raw, t.startOffset) : Math.round(raw/15)*15;
+    } else m = Math.round(raw/15)*15;
+    m = Math.max(st.dayStart, Math.min(Math.max(st.dayStart, st.dayEnd - dur), m));
+    openEventModal(null, {day: +body.dataset.day, start: m, typeId: t ? t.id : null});
+  }
+});
+document.addEventListener('click', e => {
+  document.querySelectorAll('details.day-menu[open]').forEach(d => {
+    if (!d.contains(e.target)) d.removeAttribute('open');
+  });
+});
+
+/* ================= drag & drop (move + resize) =================
+   Listeners live on `window`, NOT on the block element: re-parenting the
+   element into another day column used to drop its pointer capture, which
+   froze the drag mid-air ("stuck on hover"). Moving changes ONLY the start
+   time and day — the duration is preserved exactly. */
+function clearDragUI(){
+  document.body.classList.remove('dragging-active');
+  document.querySelectorAll('.day-body.drop-hint').forEach(b => b.classList.remove('drop-hint'));
+  document.querySelectorAll('.ev.dragging,.ev.resizing').forEach(x => x.classList.remove('dragging','resizing'));
+  $('#dragTip').style.display = 'none';
+}
+function dragTip(text, e){
+  const t = $('#dragTip');
+  t.textContent = text;
+  t.style.display = 'block';
+  const w = t.offsetWidth || 120;
+  t.style.left = Math.max(6, Math.min(window.innerWidth - w - 10, e.clientX + 14)) + 'px';
+  t.style.top = (e.clientY - 34) + 'px';
+}
+$('#days').addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const handle = e.target.closest('.ev-resize');
+  const evEl = handle ? handle.closest('.ev') : e.target.closest('.ev');
+  if (!evEl) return;
+  const ev = state.events.find(x => x.id == evEl.dataset.id);
+  if (!ev) return;
+  if (e.pointerType === 'mouse') e.preventDefault();
+  const multi = ev.days.length > 1;
+  drag = {mode: handle ? 'resize' : 'move', ev, el: evEl,
+          sx: e.clientX, sy: e.clientY, moved: false, suppress: !!handle,
+          dur: ev.end - ev.start, multi, newDay: null, newStart: null, newEnd: null};
+
+  const onMove = pe => {
+    if (!drag) return;
+    if (!drag.moved && Math.hypot(pe.clientX - drag.sx, pe.clientY - drag.sy) < 4) return;
+    if (!drag.moved){
+      drag.moved = true;
+      document.body.classList.add('dragging-active');
+      drag.el.classList.add(drag.mode === 'move' ? 'dragging' : 'resizing');
+    }
+    pe.preventDefault();
+    const st = state.settings, hp = hourPx();
+    if (drag.mode === 'move'){
+      const hit = document.elementFromPoint(pe.clientX, pe.clientY);
+      const body = hit ? hit.closest('.day-body') : null;
+      if (!body) return;                       // keep last valid position
+      const r = body.getBoundingClientRect();
+      let start = Math.round((st.dayStart + (pe.clientY - r.top)/hp*60) / 15) * 15;
+      start = Math.max(st.dayStart, Math.min(Math.max(st.dayStart, st.dayEnd - drag.dur), start));
+      drag.newDay = +body.dataset.day;
+      drag.newStart = start;
+      document.querySelectorAll('.day-body.drop-hint').forEach(b => b.classList.toggle('drop-hint', b === body));
+      if (drag.el.parentElement !== body) body.appendChild(drag.el);
+      drag.el.style.left = '3px';
+      drag.el.style.width = 'calc(100% - 6px)';
+      drag.el.style.top = ((start - st.dayStart)/60*hp) + 'px';
+      dragTip(`${fmt(start)}–${fmt(start + drag.dur)} · ${DAY_NAMES[drag.newDay]}` +
+              (drag.multi ? ' · time only (multi-day)' : ''), pe);
+    } else {
+      const r = drag.el.parentElement.getBoundingClientRect();
+      let end = Math.round((st.dayStart + (pe.clientY - r.top)/hp*60) / 15) * 15;
+      end = Math.max(drag.ev.start + 15, Math.min(1440, end));
+      drag.newEnd = end;
+      drag.el.style.height = Math.max(16, (end - drag.ev.start)/60*hp - 2) + 'px';
+      dragTip(`${fmt(drag.ev.start)}–${fmt(end)}`, pe);
+    }
+  };
+  const cleanup = () => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onCancel);
+  };
+  const onCancel = () => { cleanup(); clearDragUI(); drag = null; renderAll(); };
+  const onUp = () => {
+    cleanup();
+    const d = drag; drag = null;
+    clearDragUI();
+    if (!d) return;
+    suppressClick = d.moved || d.suppress;
+    if (!d.moved) return;                      // plain click → open the editor
+    const e2 = d.ev;
+    if (d.mode === 'move'){
+      if (d.newStart == null){ renderAll(); return; }
+      e2.start = d.newStart;
+      e2.end = d.newStart + d.dur;             // duration is preserved exactly
+      if (!d.multi && d.newDay != null) e2.days = [d.newDay];
+      // multi-day blocks keep their days — dragging only shifts the time
+    } else {
+      if (d.newEnd == null){ renderAll(); return; }
+      e2.end = d.newEnd;
+    }
+    renderAll();                               // optimistic update
+    call('events/save', {id: e2.id, scheduleId: e2.scheduleId, typeId: e2.typeId,
+      title: e2.title, days: e2.days, start: e2.start, end: e2.end, parity: e2.parity,
+      room: e2.room, teacher: e2.teacher, note: e2.note})
+      .catch(err => toast(err.message, 'err'));
+  };
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onCancel);
+});
+
+/* ================= topbar buttons ================= */
+$('#btnAddBlock').addEventListener('click', () => openEventModal(null, null));
+$('#btnTheme').addEventListener('click', toggleTheme);
+$('#btnHelp').addEventListener('click', () => openModal('#helpModal'));
+$('#paritySel').addEventListener('change', e => { parityFilter = e.target.value; renderAll(); });
+$('#nowChip').addEventListener('click', () => {
+  const line = document.getElementById('nowLine');
+  if (line) line.scrollIntoView({block:'center', behavior:'smooth'});
+  else toast('Today is not visible on the board');
+});
+
+/* grid zoom */
+function zoomStep(dir){
+  const cur = hourPx();
+  let i = ZOOMS.indexOf(cur);
+  if (i < 0) i = ZOOMS.findIndex(z => z >= cur);
+  if (i < 0) i = ZOOMS.length - 1;
+  const next = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, i + dir))];
+  if (next === cur) return;
+  call('settings/save', {hourPx: next}).catch(err => toast(err.message, 'err'));
+}
+$('#zoomOut').addEventListener('click', () => zoomStep(-1));
+$('#zoomIn').addEventListener('click', () => zoomStep(1));
+
+/* modal plumbing */
+document.querySelectorAll('[data-close]').forEach(b =>
+  b.addEventListener('click', () => b.closest('.mb').classList.remove('open')));
+document.querySelectorAll('.mb').forEach(m =>
+  m.addEventListener('mousedown', e => { if (e.target === m) m.classList.remove('open'); }));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){
+    document.querySelectorAll('.mb.open').forEach(m => m.classList.remove('open'));
+    document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open'));
+    closeCtx();
+    return;
+  }
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT'
+            || t.isContentEditable)) return;
+  if (document.querySelector('.mb.open')) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  switch (e.key.toLowerCase()){
+    case 'n': openEventModal(null, null); break;
+    case 't': openSettings('types'); break;
+    case 's': openSettings('general'); break;
+    case 'd': toggleTheme(); break;
+    case 'p': e.preventDefault(); window.print(); break;
+    case '?': openModal('#helpModal'); break;
+  }
+});
+$('#promptForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = $('#promptInput').value;
+  closeModal('#promptModal');
+  if (promptSubmit) promptSubmit(v);
+  promptSubmit = null;
+});
+$('#btnConfirmOk').addEventListener('click', () => {
+  closeModal('#confirmModal');
+  if (confirmCb) confirmCb();
+  confirmCb = null;
+});
+$('#btnConfirmCancel').addEventListener('click', () => {
+  closeModal('#confirmModal'); confirmCb = null;
+});
+
+/* ================= init ================= */
+(async function init(){
+  try {
+    const res = await fetch(API + '/api/state', {headers: {'Accept':'application/json'}});
+    if (res.redirected){ window.location.href = res.url; return; }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    state = normState(await res.json());
+    if (state.error) throw new Error(state.error);
+    $('#loading').style.display = 'none';
+    renderAll();
+  } catch (e){
+    $('#loading').textContent = 'Could not load your timetable: ' + e.message;
+  }
+})();
+setInterval(() => { if (state && !(drag && drag.moved)) updateNow(); }, 30000);   // now/next chip
+setInterval(() => { if (state && !(drag && drag.moved)) renderBoard(); }, 60000); // move the now-line
+</script>
+</body>
+</html>

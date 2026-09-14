@@ -5,7 +5,16 @@
     --accent-border: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
-.tasks-title {
+#tasks-header {
+    position: relative;
+    z-index: 1;
+    padding: var(--space-6) var(--space-5) var(--space-4);
+    max-width: 1400px;
+    margin: 0 auto var(--space-4);
+    border-bottom: 1px solid var(--line);
+}
+
+#tasks-title {
     margin: 0;
     font-family: var(--font-display);
     font-size: 32px;
@@ -15,39 +24,211 @@
     width: fit-content;
 }
 
-/* ── section ───────────────────────────────────────────── */
-.section {
-    position: relative;
-    z-index: 1;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 var(--space-5) var(--space-8);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
+/* ── nav ───────────────────────────────────────────── */
+#navrow {
+    display: grid;
+    grid-template-rows: 1fr;
+    grid-template-columns: 10% 10% 10%;
+    margin: 0 auto var(--space-4);
+    padding: var(--space-6) var(--space-5) var(--space-4);
 }
 
 
-
-/* ── card   ───────────────────────────────────────────── */ 
+/* ── card   ────────────────────────────────────────────────────────────────────────────────────────── */ 
 
 .task-card {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: 400px;
+    padding: var(--space-4);
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
-    overflow: hidden;
-    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow);
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    max-width: 400px;
+    transition: border-color .2s ease, transform .2s ease,
+                box-shadow .2s ease, opacity .2s ease;
 }
 
 .task-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 24px var(--shadow);
-    border-color: var(--accent-border);
+    border-color: var(--accent-border,
+                         color-mix(in srgb, var(--accent) 40%, var(--line)));
 }
+
+
+/* Dark theme is border-only elevation — keep shadows off there */
+[data-theme="light"] .task-card:hover {
+    box-shadow: 0 12px 32px rgba(20, 20, 24, 0.08);
+}
+
+/* Title */
+.task-card-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 0;
+    color: var(--text);
+}
+
+/* Urgency / importance tags — drop real .badge classes in */
+.task-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.task-card-tags span{
+    background-color: rgb(184, 184, 184);
+    border-radius: 5px;
+    padding: 5px;
+}
+[data-theme="light"] .task-card-tags span {
+    background-color: rgb(54, 54, 54);
+}
+
+.task-card-meta-tags{
+    padding: 5px;
+    border-radius: 5px;
+}
+/* TAG COLORS ============================*/
+.tag-color-very-low {
+    background-color: rgb(190, 190, 190);
+        color: black;
+}
+
+.tag-color-low {
+    background-color: rgb(130, 180, 220);
+}
+
+.tag-color-medium {
+    background-color: rgb(240, 200, 80);
+    color: black;
+}
+
+.tag-color-high {
+    background-color: rgb(240, 130, 60);
+}
+
+.tag-color-very-high {
+    background-color: rgb(54, 54, 54);
+}
+
+
+
+/* Body copy */
+.task-card-text {
+    margin: 0;
+}
+
+.task-card-text p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+}
+
+/* Subtasks */
+.task-card-subtasks {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.task-card-subtasks li {
+    position: relative;
+    padding-left: 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.task-card-subtasks li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    width: 6px;
+    height: 6px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background: var(--surface-2);
+}
+
+/* Small section label ("Subtasks", "Due") */
+.task-card-label {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+
+/* Due value — mono keeps times readable */
+.task-card-due {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-left: var(--space-1);
+}
+
+/* Footer actions */
+.task-card-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line);
+}
+
+/* Ghost delete button that turns destructive on hover */
+.btn-ghost.btn-ghost-danger {
+    color: var(--text-muted);
+}
+
+.btn-ghost.btn-ghost-danger:hover {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+/* Completed state — toggle .is-finished on the card */
+.task-card.is-finished {
+    opacity: 0.65;
+}
+
+.task-card.is-finished .task-card-title {
+    text-decoration: line-through;
+    text-decoration-color: var(--text-muted);
+}
+
+
+.urgency-icon,
+.importance-icon {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vertical-align: -3px;
+}
+
+.importance-icon circle:last-of-type {
+    fill: currentColor;
+}
+
+
+span {
+    font-size: 15px;
+    margin-right: 5px;
+}
+
 
 
 

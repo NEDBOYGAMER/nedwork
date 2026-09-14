@@ -24,16 +24,6 @@
     margin: 0 auto;
 }
 
-.page-eyebrow {
-    margin: 0 0 6px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--accent);
-}
-
 #app-corner-title {
     margin: 0;
     font-family: var(--font-display);
@@ -197,6 +187,7 @@
     flex-direction: column;
     gap: var(--space-3);
     min-width: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.123);
 }
 
 .shelf-header {
@@ -377,6 +368,7 @@
    ========================================================================== */
 
 .app-card {
+    z-index: 0;
     position: relative;
     flex: 0 0 auto;
     width: var(--card-w);

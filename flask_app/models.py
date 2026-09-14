@@ -368,13 +368,17 @@ class Task(db.Model):
     )
     text = db.Column(db.Text)
 
+    subtasks = db.Column(db.JSON) # task name, done/notdone
+
     tags = db.Column(db.JSON, nullable = False)
 
 
     deadline = db.Column(db.DateTime)
-    urgency = db.Column(db.String, nullable = False)
 
     private = db.Column(db.Boolean, nullable=False)
+    # private then consist of:
+        #name, text, subtasks, tags
+        #the rest(user, deadline, done, importance, and the metadata) remains unencrypted
 
     done = db.Column(db.Boolean, nullable = False)
 
