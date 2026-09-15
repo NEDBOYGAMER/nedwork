@@ -16,6 +16,11 @@ class TimetableConfig(db.Model):
     day_start = db.Column(db.Integer, nullable=False, default=420)   # 07:00
     day_end = db.Column(db.Integer, nullable=False, default=1320)    # 22:00
 
+    # Per-day wake/sleep, minutes since midnight:
+    # {"0": {"wake": 420, "sleep": 1320}, "1": {...}, ... }  (JSON keys are strings)
+    # Missing days fall back to day_start/day_end.
+    day_ranges = db.Column(db.JSON)
+
     show_saturday = db.Column(db.Boolean, nullable=False, default=True)
     show_sunday = db.Column(db.Boolean, nullable=False, default=True)
 
@@ -59,6 +64,8 @@ class TimetableEventType(db.Model):
     start_offset_min     — blocks of this type snap to :MM past the hour
                            (15 -> starts at 8:15, 9:15, ...). 0 = free snapping.
     default_duration_min — length pre-filled for new blocks of this type.
+    opacity              — 10-100: how strongly the type color fills the
+                           block background. 100 = solid color block.
     """
     __tablename__ = "timetable_event_types"
 
@@ -72,6 +79,7 @@ class TimetableEventType(db.Model):
 
     start_offset_min = db.Column(db.Integer, nullable=False, default=0)      # 0-59
     default_duration_min = db.Column(db.Integer, nullable=False, default=60)  # 15-720
+    opacity = db.Column(db.Integer, nullable=False, default=100)             # 10-100
 
 
 class TimetableEvent(db.Model):

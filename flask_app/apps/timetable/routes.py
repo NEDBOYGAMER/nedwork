@@ -55,17 +55,19 @@ def _require_user():
 def _migrate_schema():
     """db.create_all() only creates MISSING tables — it never adds columns to
     existing ones. This adds the newer columns for installs created before
-    themes / per-type scheduling / multi-day blocks existed. Idempotent,
-    works on SQLite and Postgres, runs once per process."""
+    themes / per-type scheduling / multi-day blocks / wake-sleep / opacity
+    existed. Idempotent, works on SQLite and Postgres, runs once per process."""
     insp = sa_inspect(db.engine)
     additions = {
         "timetable_configs": {
             "theme": "VARCHAR(8) DEFAULT 'dark'",
             "hour_px": "INTEGER DEFAULT 48",
+            "day_ranges": "JSON",
         },
         "timetable_event_types": {
             "start_offset_min": "INTEGER DEFAULT 0",
             "default_duration_min": "INTEGER DEFAULT 60",
+            "opacity": "INTEGER DEFAULT 100",
         },
         "timetable_events": {
             "days": "TEXT",
@@ -153,6 +155,40 @@ def _days_of(ev):
     return sorted(out)
 
 
+def _normalize_day_ranges(raw, fallback_wake, fallback_sleep):
+    """Coerce the client's dayRanges list into a validated {day: (wake, sleep)}
+    covering all 7 days. Missing days fall back to the grid range."""
+    out = {}
+    for item in (raw if isinstance(raw, list) else []):
+        if not isinstance(item, dict):
+            continue
+        d = _clean_int(item.get("day"), 0, 6, None)
+        if d is None or d in out:
+            continue
+        wake = _clean_int(item.get("wake"), 0, 1440, fallback_wake)
+        sleep = _clean_int(item.get("sleep"), 0, 1440, fallback_sleep)
+        if sleep <= wake:
+            sleep = min(1440, wake + 60)
+        out[d] = (wake, sleep)
+    for d in range(7):
+        out.setdefault(d, (fallback_wake, fallback_sleep))
+    return out
+
+
+def _day_ranges_of(config):
+    """Stored per-day wake/sleep as a 7-entry list, defaults filled in."""
+    stored = config.day_ranges if isinstance(config.day_ranges, dict) else {}
+    out = []
+    for d in range(7):
+        entry = stored.get(str(d)) or stored.get(d) or {}
+        wake = _clean_int(entry.get("wake"), 0, 1440, config.day_start)
+        sleep = _clean_int(entry.get("sleep"), 0, 1440, config.day_end)
+        if sleep <= wake:
+            sleep = min(1440, wake + 60)
+        out.append({"day": d, "wake": wake, "sleep": sleep})
+    return out
+
+
 def _get_or_create_config(user):
     """Every user gets exactly one AppsConfig + TimetableConfig row, plus
     default event types and one starting schedule — created lazily."""
@@ -186,6 +222,7 @@ def _get_or_create_config(user):
             etype = TimetableEventType(
                 config_id=config.id, name=name, color=color, icon=icon,
                 position=pos, start_offset_min=offset, default_duration_min=dur,
+                opacity=100,
             )
             config.event_types.append(etype)
             db.session.add(etype)
@@ -264,6 +301,7 @@ def _state(config):
         "settings": {
             "dayStart": config.day_start,
             "dayEnd": config.day_end,
+            "dayRanges": _day_ranges_of(config),
             "showSaturday": bool(config.show_saturday),
             "showSunday": bool(config.show_sunday),
             "activeScheduleId": config.active_schedule_id,
@@ -277,7 +315,8 @@ def _state(config):
             {"id": t.id, "name": t.name, "color": t.color, "icon": t.icon or "",
              "position": t.position or 0,
              "startOffset": t.start_offset_min or 0,
-             "duration": t.default_duration_min or 60}
+             "duration": t.default_duration_min or 60,
+             "opacity": t.opacity if t.opacity is not None else 100}
             for t in types
         ],
         "events": [_event_to_dict(e) for e in events],
@@ -319,6 +358,14 @@ def settings_save():
     if de - ds < 60:
         ds = max(0, de - 60)
     config.day_start, config.day_end = ds, de
+
+    if "dayRanges" in data:
+        ranges = _normalize_day_ranges(data.get("dayRanges"), ds, de)
+        # reassigning a fresh dict is always detected by SQLAlchemy —
+        # no flag_modified needed for the JSON column.
+        config.day_ranges = {
+            str(d): {"wake": w, "sleep": s} for d, (w, s) in ranges.items()
+        }
 
     config.show_saturday = bool(data.get("showSaturday", config.show_saturday))
     config.show_sunday = bool(data.get("showSunday", config.show_sunday))
@@ -519,6 +566,7 @@ def schedules_import_json():
                 icon=_clean_str(t.get("icon"), 8),
                 start_offset_min=_clean_int(t.get("startOffset"), 0, 59, 0),
                 default_duration_min=_clean_int(t.get("duration"), 15, 720, 60),
+                opacity=_clean_int(t.get("opacity"), 10, 100, 100),
                 position=len(by_name),
             )
             db.session.add(target)
@@ -605,6 +653,7 @@ def types_save():
         icon = icon.strip()[:8]
         offset = _clean_int(item.get("startOffset"), 0, 59, 0)
         duration = _clean_int(item.get("duration"), 15, 720, 60)
+        opacity = _clean_int(item.get("opacity"), 10, 100, 100)
 
         tid = item.get("id")
         t = existing.get(tid) if isinstance(tid, int) else None
@@ -617,6 +666,7 @@ def types_save():
         t.position = position
         t.start_offset_min = offset
         t.default_duration_min = duration
+        t.opacity = opacity
         kept_ids.add(t.id)
         position += 1
 
