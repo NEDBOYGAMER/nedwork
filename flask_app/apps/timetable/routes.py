@@ -12,6 +12,7 @@ from .models import (
     TimetableConfig,
     TimetableEvent,
     TimetableEventType,
+    TimetablePeriod,
     TimetableSchedule,
 )
 
@@ -25,27 +26,25 @@ timetable_bp = Blueprint("timetable", __name__)
 _tables_ready = False
 
 PARITIES = ("all", "odd", "even")
-ZOOM_LEVELS = (32, 40, 48, 60, 76)
 
-# name, color, icon, start offset past the hour, default duration (min)
+# name, color, icon, start offset past the hour, default duration, split 45/15?
 DEFAULT_TYPES = [
-    ("V (Lecture)",    "#2563EB", "📘", 15, 90),
-    ("U (Exercise)",   "#0D9488", "✏️", 15, 45),
-    ("L (Self-study)", "#F59E0B", "🧠",  0, 60),
-    ("Commute",        "#64748B", "🚆",  0, 45),
-    ("Break",          "#65A30D", "☕",  0, 15),
+    ("V (Lecture)",    "#2563EB", "📘", 15, 90, True),
+    ("U (Exercise)",   "#0D9488", "✏️", 15, 45, True),
+    ("L (Self-study)", "#F59E0B", "🧠",  0, 60, False),
+    ("Commute",        "#64748B", "🚆",  0, 45, False),
+    ("Break",          "#65A30D", "☕",  0, 15, False),
 ]
 
 # one-time rename for users who started on the old default set
 _DEFAULT_RENAMES = {
-    "Lecture":  ("V (Lecture)",    15, 90),
-    "Exercise": ("U (Exercise)",   15, 45),
-    "Learning": ("L (Self-study)",  0, 60),
+    "Lecture":  ("V (Lecture)",    15, 90, True),
+    "Exercise": ("U (Exercise)",   15, 45, True),
+    "Learning": ("L (Self-study)",  0, 60, False),
 }
 
 
 def _require_user():
-    """Returns the logged-in User, or None if the session is invalid."""
     valid, user = Session.check(request.cookies.get("session_id"))
     if not valid:
         return None
@@ -53,43 +52,81 @@ def _require_user():
 
 
 def _migrate_schema():
-    """db.create_all() only creates MISSING tables — it never adds columns to
-    existing ones. This adds the newer columns for installs created before
-    themes / per-type scheduling / multi-day blocks / wake-sleep / opacity
-    existed. Idempotent, works on SQLite and Postgres, runs once per process."""
+    """db.create_all() only creates MISSING tables — never new columns. This
+    adds every column introduced after the first release. Idempotent."""
     insp = sa_inspect(db.engine)
     additions = {
         "timetable_configs": {
             "theme": "VARCHAR(8) DEFAULT 'dark'",
             "hour_px": "INTEGER DEFAULT 48",
             "day_ranges": "JSON",
+            "split_on": "BOOLEAN DEFAULT 1",
+            "split_min": "INTEGER DEFAULT 45",
+            "split_break_min": "INTEGER DEFAULT 15",
+            "stat_config": "JSON",
+        },
+        "timetable_schedules": {
+            "day_ranges": "JSON",
         },
         "timetable_event_types": {
             "start_offset_min": "INTEGER DEFAULT 0",
             "default_duration_min": "INTEGER DEFAULT 60",
             "opacity": "INTEGER DEFAULT 100",
+            "split_on": "BOOLEAN DEFAULT 0",
+            "split_min": "INTEGER DEFAULT 45",
+            "split_break_min": "INTEGER DEFAULT 15",
         },
         "timetable_events": {
             "days": "TEXT",
+            "color": "VARCHAR(7)",
+        },
+        "timetable_periods": {
+            "schedule_id": "INTEGER",
         },
     }
     backfill_days = False
+    added_type_split = False
+    added_period_schedule = False
     changed = False
     for table, cols in additions.items():
         if not insp.has_table(table):
             continue
         existing = {c["name"] for c in insp.get_columns(table)}
         for name, ddl in cols.items():
-            if name not in existing:
-                db.session.execute(sa_text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
-                changed = True
-                if table == "timetable_events" and name == "days":
-                    backfill_days = True
+            if name in existing:
+                continue
+            db.session.execute(sa_text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+            changed = True
+            if table == "timetable_events" and name == "days":
+                backfill_days = True
+            if table == "timetable_event_types" and name == "split_on":
+                added_type_split = True
+            if table == "timetable_periods" and name == "schedule_id":
+                added_period_schedule = True
     if backfill_days:
-        # single-day rows from before multi-day existed → days = its day
         db.session.execute(sa_text(
             "UPDATE timetable_events SET days = CAST(day AS VARCHAR) "
             "WHERE days IS NULL OR days = ''"
+        ))
+    if added_type_split:
+        # carry the old global 45/15 rhythm over to the school-ish types,
+        # but only for users who actually had the global split enabled
+        db.session.execute(sa_text(
+            "UPDATE timetable_event_types SET split_on = 1 "
+            "WHERE (name LIKE 'V (%' OR name LIKE 'U (%') "
+            "AND EXISTS (SELECT 1 FROM timetable_configs c "
+            "WHERE c.id = timetable_event_types.config_id AND c.split_on = 1)"
+        ))
+    if added_period_schedule:
+        # periods belonged to the config — attach them to that config's
+        # active schedule (fallback: its first schedule)
+        db.session.execute(sa_text(
+            "UPDATE timetable_periods SET schedule_id = COALESCE("
+            "(SELECT active_schedule_id FROM timetable_configs "
+            " WHERE timetable_configs.id = timetable_periods.config_id),"
+            "(SELECT MIN(id) FROM timetable_schedules "
+            " WHERE timetable_schedules.config_id = timetable_periods.config_id)"
+            ") WHERE schedule_id IS NULL"
         ))
     if changed:
         db.session.commit()
@@ -128,8 +165,6 @@ def _normalize_hex(value):
 
 
 def _parse_days_input(value):
-    """Client sends `days` as a list of ints (or a single int). Returns a
-    sorted list of unique weekdays 0-6, or None if nothing usable was sent."""
     if value is None:
         return None
     items = value if isinstance(value, (list, tuple)) else [value]
@@ -142,7 +177,6 @@ def _parse_days_input(value):
 
 
 def _days_of(ev):
-    """Stored days of an event as a sorted list, falling back to its `day`."""
     out = []
     for part in str(ev.days or "").split(","):
         part = part.strip()
@@ -156,8 +190,6 @@ def _days_of(ev):
 
 
 def _normalize_day_ranges(raw, fallback_wake, fallback_sleep):
-    """Coerce the client's dayRanges list into a validated {day: (wake, sleep)}
-    covering all 7 days. Missing days fall back to the grid range."""
     out = {}
     for item in (raw if isinstance(raw, list) else []):
         if not isinstance(item, dict):
@@ -175,12 +207,17 @@ def _normalize_day_ranges(raw, fallback_wake, fallback_sleep):
     return out
 
 
-def _day_ranges_of(config):
-    """Stored per-day wake/sleep as a 7-entry list, defaults filled in."""
-    stored = config.day_ranges if isinstance(config.day_ranges, dict) else {}
+def _day_ranges_of(config, schedule=None):
+    """Effective wake/sleep for a schedule, with legacy fallbacks:
+    schedule.day_ranges → config.day_ranges (old install) → grid bounds."""
+    raw = {}
+    if schedule is not None and isinstance(schedule.day_ranges, dict):
+        raw = schedule.day_ranges
+    elif isinstance(config.day_ranges, dict):
+        raw = config.day_ranges
     out = []
     for d in range(7):
-        entry = stored.get(str(d)) or stored.get(d) or {}
+        entry = raw.get(str(d)) or raw.get(d) or {}
         wake = _clean_int(entry.get("wake"), 0, 1440, config.day_start)
         sleep = _clean_int(entry.get("sleep"), 0, 1440, config.day_end)
         if sleep <= wake:
@@ -189,9 +226,83 @@ def _day_ranges_of(config):
     return out
 
 
+def _normalize_period_days(raw, def_start, def_end):
+    items = {}
+    if isinstance(raw, dict):
+        items = raw
+    elif isinstance(raw, list):
+        for it in raw:
+            if isinstance(it, dict) and it.get("day") is not None:
+                items[it["day"]] = it
+    out = {}
+    for d in range(7):
+        it = items.get(str(d)) or items.get(d) or {}
+        on = bool(it.get("on", True))
+        start = _clean_int(it.get("start"), 0, 1440, def_start)
+        end = _clean_int(it.get("end"), 0, 1440, def_end)
+        if end <= start:
+            end = min(1440, start + 60)
+        out[str(d)] = {"on": on, "start": start, "end": end}
+    return out
+
+
+def _period_days_of(p):
+    raw = p.days if isinstance(p.days, dict) else {}
+    out = []
+    for d in range(7):
+        it = raw.get(str(d)) or raw.get(d) or {}
+        on = bool(it.get("on", True))
+        start = _clean_int(it.get("start"), 0, 1440, p.start_min)
+        end = _clean_int(it.get("end"), 0, 1440, p.end_min)
+        if end <= start:
+            end = min(1440, start + 60)
+        out.append({"day": d, "on": on, "start": start, "end": end})
+    return out
+
+
+def _sanitize_stat_config(raw):
+    d = raw if isinstance(raw, dict) else {}
+    out = {k: bool(d.get(k, True)) for k in
+           ("showTypes", "showTotal", "showCount", "showBusiest", "showSleep", "showPeriods")}
+    groups = []
+    for g in (d.get("groups") if isinstance(d.get("groups"), list) else []):
+        if not isinstance(g, dict):
+            continue
+        name = _clean_str(g.get("name"), 60)
+        if not name:
+            continue
+        types = []
+        for t in (g.get("types") if isinstance(g.get("types"), list) else []):
+            ti = _clean_int(t, 0, 2**31, None)
+            if ti is not None and ti not in types:
+                types.append(ti)
+        groups.append({"name": name, "on": bool(g.get("on", True)), "types": types})
+    out["groups"] = groups
+    return out
+
+
+def _seed_stat_config(config):
+    names = {t.name: t.id for t in config.event_types}
+
+    def tid(prefix):
+        for n, i in names.items():
+            if n.startswith(prefix):
+                return i
+        return None
+
+    school = [i for i in (tid("V"), tid("U")) if i is not None]
+    learning = [i for i in (tid("C"), tid("U"), tid("L")) if i is not None]
+    config.stat_config = _sanitize_stat_config({
+        "showTypes": True, "showTotal": True, "showCount": True,
+        "showBusiest": True, "showSleep": True, "showPeriods": True,
+        "groups": [
+            {"name": "School time", "on": True, "types": school},
+            {"name": "Learning time", "on": True, "types": learning},
+        ],
+    })
+
+
 def _get_or_create_config(user):
-    """Every user gets exactly one AppsConfig + TimetableConfig row, plus
-    default event types and one starting schedule — created lazily."""
     _ensure_tables()
 
     apps_config = user.apps_config
@@ -206,10 +317,8 @@ def _get_or_create_config(user):
         db.session.add(config)
         db.session.flush()
 
-    # Append through the relationships (like colors does with
-    # apps_config.colors_config = ...). Plain db.session.add() with only the
-    # FK set leaves config.schedules / config.event_types empty until the
-    # next request, which crashed on a user's very first visit.
+    # Append through the relationships — plain add() with only the FK set
+    # leaves the collections empty until the next request.
     if not config.schedules:
         sched = TimetableSchedule(config_id=config.id, name="My Timetable", position=0)
         config.schedules.append(sched)
@@ -218,23 +327,24 @@ def _get_or_create_config(user):
         config.active_schedule_id = sched.id
 
     if not config.event_types:
-        for pos, (name, color, icon, offset, dur) in enumerate(DEFAULT_TYPES):
+        for pos, (name, color, icon, offset, dur, split) in enumerate(DEFAULT_TYPES):
             etype = TimetableEventType(
                 config_id=config.id, name=name, color=color, icon=icon,
                 position=pos, start_offset_min=offset, default_duration_min=dur,
-                opacity=100,
+                opacity=100, split_on=split, split_min=45, split_break_min=15,
             )
             config.event_types.append(etype)
             db.session.add(etype)
         db.session.flush()
 
-    # one-time migration of the old default type names to V/U/L
     for t in config.event_types:
         new = _DEFAULT_RENAMES.get(t.name)
         if new:
-            t.name, t.start_offset_min, t.default_duration_min = new
+            t.name, t.start_offset_min, t.default_duration_min, t.split_on = new
 
-    # make sure the active schedule always points at something valid
+    if config.stat_config is None:
+        _seed_stat_config(config)
+
     ids = [s.id for s in config.schedules]
     if config.active_schedule_id not in ids:
         config.active_schedule_id = ids[0] if ids else None
@@ -273,6 +383,7 @@ def _event_to_dict(ev):
         "days": _days_of(ev),
         "start": ev.start_min,
         "end": ev.end_min,
+        "color": ev.color or None,
         "room": ev.room or "",
         "teacher": ev.teacher or "",
         "note": ev.note or "",
@@ -281,9 +392,6 @@ def _event_to_dict(ev):
 
 
 def _state(config):
-    # Read via explicit queries instead of lazy relationship collections:
-    # rows created earlier in this same request are guaranteed to be
-    # included, regardless of the session's expire_on_commit setting.
     schedules = (TimetableSchedule.query
                  .filter_by(config_id=config.id)
                  .order_by(TimetableSchedule.position, TimetableSchedule.id)
@@ -297,16 +405,27 @@ def _state(config):
               .filter(TimetableSchedule.config_id == config.id)
               .all())
 
+    active = _get_schedule(config, config.active_schedule_id)
+
+    # periods + sleep times belong to the ACTIVE schedule
+    periods = []
+    if active is not None:
+        periods = (TimetablePeriod.query
+                   .filter_by(schedule_id=active.id)
+                   .order_by(TimetablePeriod.position, TimetablePeriod.id)
+                   .all())
+
     return {
         "settings": {
             "dayStart": config.day_start,
             "dayEnd": config.day_end,
-            "dayRanges": _day_ranges_of(config),
+            "dayRanges": _day_ranges_of(config, active),
             "showSaturday": bool(config.show_saturday),
             "showSunday": bool(config.show_sunday),
             "activeScheduleId": config.active_schedule_id,
             "theme": config.theme or "dark",
             "hourPx": config.hour_px or 48,
+            "statConfig": _sanitize_stat_config(config.stat_config),
         },
         "schedules": [
             {"id": s.id, "name": s.name, "position": s.position or 0} for s in schedules
@@ -316,8 +435,18 @@ def _state(config):
              "position": t.position or 0,
              "startOffset": t.start_offset_min or 0,
              "duration": t.default_duration_min or 60,
-             "opacity": t.opacity if t.opacity is not None else 100}
+             "opacity": t.opacity if t.opacity is not None else 100,
+             "splitOn": bool(t.split_on),
+             "splitMin": t.split_min if t.split_min is not None else 45,
+             "splitBreak": t.split_break_min if t.split_break_min is not None else 15}
             for t in types
+        ],
+        "periods": [
+            {"id": p.id, "name": p.name, "color": p.color, "icon": p.icon or "",
+             "opacity": p.opacity if p.opacity is not None else 30,
+             "start": p.start_min, "end": p.end_min,
+             "days": _period_days_of(p)}
+            for p in periods
         ],
         "events": [_event_to_dict(e) for e in events],
     }
@@ -349,8 +478,6 @@ def settings_save():
     if not isinstance(data, dict):
         return jsonify({"error": "No data provided"}), 400
 
-    # every field is optional — missing keys keep their current value,
-    # so the theme toggle can POST {"theme": "light"} on its own.
     ds = _clean_int(data.get("dayStart"), 0, 1440, config.day_start)
     de = _clean_int(data.get("dayEnd"), 0, 1440, config.day_end)
     if de <= ds:
@@ -359,13 +486,15 @@ def settings_save():
         ds = max(0, de - 60)
     config.day_start, config.day_end = ds, de
 
+    # wake/sleep now belongs to the ACTIVE schedule
     if "dayRanges" in data:
         ranges = _normalize_day_ranges(data.get("dayRanges"), ds, de)
-        # reassigning a fresh dict is always detected by SQLAlchemy —
-        # no flag_modified needed for the JSON column.
-        config.day_ranges = {
-            str(d): {"wake": w, "sleep": s} for d, (w, s) in ranges.items()
-        }
+        payload = {str(d): {"wake": w, "sleep": s} for d, (w, s) in ranges.items()}
+        sched = _get_schedule(config, config.active_schedule_id)
+        if sched is not None:
+            sched.day_ranges = payload
+        else:
+            config.day_ranges = payload  # legacy fallback
 
     config.show_saturday = bool(data.get("showSaturday", config.show_saturday))
     config.show_sunday = bool(data.get("showSunday", config.show_sunday))
@@ -373,6 +502,9 @@ def settings_save():
     theme = data.get("theme", config.theme or "dark")
     config.theme = theme if theme in ("dark", "light") else "dark"
     config.hour_px = _clean_int(data.get("hourPx"), 24, 120, config.hour_px or 48)
+
+    if "statConfig" in data:
+        config.stat_config = _sanitize_stat_config(data.get("statConfig"))
 
     db.session.commit()
     return jsonify({"status": "ok", "state": _state(config)})
@@ -457,11 +589,23 @@ def schedule_duplicate():
     db.session.add(copy)
     db.session.flush()
 
+    # sleep times + periods travel with the copy
+    if isinstance(src.day_ranges, dict):
+        copy.day_ranges = dict(src.day_ranges)
+    for p in src.periods:
+        db.session.add(TimetablePeriod(
+            schedule_id=copy.id, config_id=copy.config_id,
+            name=p.name, color=p.color, icon=p.icon, opacity=p.opacity,
+            start_min=p.start_min, end_min=p.end_min,
+            days=dict(p.days) if isinstance(p.days, dict) else None,
+            position=p.position,
+        ))
+
     for e in src.events:
         db.session.add(TimetableEvent(
             schedule_id=copy.id, type_id=e.type_id, title=e.title,
             day=e.day, days=e.days,
-            start_min=e.start_min, end_min=e.end_min,
+            start_min=e.start_min, end_min=e.end_min, color=e.color,
             room=e.room, teacher=e.teacher, note=e.note, parity=e.parity,
         ))
 
@@ -490,7 +634,7 @@ def schedule_delete():
     remaining = [s for s in config.schedules if s.id != sched.id]
     remaining.sort(key=lambda s: (s.position or 0, s.id))
 
-    db.session.delete(sched)  # cascades to its events
+    db.session.delete(sched)  # cascades to events AND its periods
     if config.active_schedule_id == sched.id:
         config.active_schedule_id = remaining[0].id
 
@@ -500,8 +644,6 @@ def schedule_delete():
 
 @timetable_bp.route("/schedules/copy-from", methods=["POST"])
 def schedules_copy_from():
-    """Append every block of another one of the user's schedules into a
-    target schedule — handy for building semester variants."""
     user = _require_user()
     if user is None:
         return redirect(url_for("auth.login_page"))
@@ -520,7 +662,7 @@ def schedules_copy_from():
         db.session.add(TimetableEvent(
             schedule_id=dst.id, type_id=e.type_id, title=e.title,
             day=e.day, days=e.days,
-            start_min=e.start_min, end_min=e.end_min,
+            start_min=e.start_min, end_min=e.end_min, color=e.color,
             room=e.room, teacher=e.teacher, note=e.note, parity=e.parity,
         ))
         count += 1
@@ -531,8 +673,6 @@ def schedules_copy_from():
 
 @timetable_bp.route("/schedules/import-json", methods=["POST"])
 def schedules_import_json():
-    """Restore a JSON backup: matching types are merged by name, every
-    schedule in the file becomes a new schedule and is set active."""
     user = _require_user()
     if user is None:
         return redirect(url_for("auth.login_page"))
@@ -544,12 +684,12 @@ def schedules_import_json():
     schedules_in = data.get("schedules")
     events_in = data.get("events") or []
     types_in = data.get("eventTypes") or []
+    periods_in = data.get("periods") or []
     if not isinstance(schedules_in, list) or not schedules_in:
         return jsonify({"error": "Backup contains no schedules"}), 400
 
     config = _get_or_create_config(user)
 
-    # merge types by name; remap the file's type ids onto ours
     by_name = {t.name: t for t in config.event_types}
     type_map = {}
     for t in types_in:
@@ -567,6 +707,9 @@ def schedules_import_json():
                 start_offset_min=_clean_int(t.get("startOffset"), 0, 59, 0),
                 default_duration_min=_clean_int(t.get("duration"), 15, 720, 60),
                 opacity=_clean_int(t.get("opacity"), 10, 100, 100),
+                split_on=bool(t.get("splitOn")),
+                split_min=_clean_int(t.get("splitMin"), 20, 120, 45),
+                split_break_min=_clean_int(t.get("splitBreak"), 0, 60, 15),
                 position=len(by_name),
             )
             db.session.add(target)
@@ -578,6 +721,7 @@ def schedules_import_json():
     taken_names = {s.name for s in config.schedules}
     next_pos = max([s.position or 0 for s in config.schedules], default=-1) + 1
     imported_blocks = 0
+    last_sched = None
 
     for s in schedules_in:
         if not isinstance(s, dict):
@@ -591,6 +735,7 @@ def schedules_import_json():
         db.session.flush()
         taken_names.add(name)
         next_pos += 1
+        last_sched = sched
 
         for e in events_in:
             if not isinstance(e, dict) or e.get("scheduleId") != s.get("id"):
@@ -609,6 +754,7 @@ def schedules_import_json():
                 day=days[0],
                 days=",".join(str(d) for d in days),
                 start_min=start, end_min=end,
+                color=_normalize_hex(e.get("color")),
                 room=_clean_str(e.get("room"), 120),
                 teacher=_clean_str(e.get("teacher"), 120),
                 note=(e.get("note") or "")[:2000] if isinstance(e.get("note"), str) else "",
@@ -618,12 +764,42 @@ def schedules_import_json():
 
         config.active_schedule_id = sched.id
 
+    # the backup's sleep times & periods belonged to one schedule — attach
+    # them to the last imported one (which is now active)
+    if last_sched is not None:
+        settings_in = data.get("settings")
+        if isinstance(settings_in, dict) and isinstance(settings_in.get("dayRanges"), list):
+            ranges = _normalize_day_ranges(settings_in["dayRanges"],
+                                           config.day_start, config.day_end)
+            last_sched.day_ranges = {
+                str(d): {"wake": w, "sleep": s} for d, (w, s) in ranges.items()
+            }
+        for p in periods_in:
+            if not isinstance(p, dict):
+                continue
+            name = _clean_str(p.get("name"), 60)
+            if not name:
+                continue
+            start = _clean_int(p.get("start"), 0, 1440, 480)
+            end = _clean_int(p.get("end"), 0, 1440, 1020)
+            if end <= start:
+                end = min(1440, start + 60)
+            db.session.add(TimetablePeriod(
+                schedule_id=last_sched.id, config_id=config.id,
+                name=name,
+                color=_normalize_hex(p.get("color")) or "#64748B",
+                icon=_clean_str(p.get("icon"), 8),
+                opacity=_clean_int(p.get("opacity"), 0, 100, 30),
+                start_min=start, end_min=end,
+                days=_normalize_period_days(p.get("days"), start, end),
+            ))
+
     db.session.commit()
     return jsonify({"status": "ok", "blocks": imported_blocks, "state": _state(config)})
 
 
 # ------------------------------------------------------------------
-# event types (name + color + scheduling rules per type)
+# event types
 # ------------------------------------------------------------------
 
 @timetable_bp.route("/types/save", methods=["POST"])
@@ -654,6 +830,9 @@ def types_save():
         offset = _clean_int(item.get("startOffset"), 0, 59, 0)
         duration = _clean_int(item.get("duration"), 15, 720, 60)
         opacity = _clean_int(item.get("opacity"), 10, 100, 100)
+        split_on = bool(item.get("splitOn"))
+        split_min = _clean_int(item.get("splitMin"), 20, 120, 45)
+        split_break = _clean_int(item.get("splitBreak"), 0, 60, 15)
 
         tid = item.get("id")
         t = existing.get(tid) if isinstance(tid, int) else None
@@ -667,16 +846,85 @@ def types_save():
         t.start_offset_min = offset
         t.default_duration_min = duration
         t.opacity = opacity
+        t.split_on = split_on
+        t.split_min = split_min
+        t.split_break_min = split_break
         kept_ids.add(t.id)
         position += 1
 
     db.session.flush()
 
-    # types the user removed → detach their events (they become "Unsorted")
     for t in list(existing.values()):
         if t.id not in kept_ids:
             TimetableEvent.query.filter_by(type_id=t.id).update({"type_id": None})
             db.session.delete(t)
+
+    db.session.commit()
+    return jsonify({"status": "ok", "state": _state(config)})
+
+
+# ------------------------------------------------------------------
+# time periods (per schedule)
+# ------------------------------------------------------------------
+
+@timetable_bp.route("/periods/save", methods=["POST"])
+def periods_save():
+    user = _require_user()
+    if user is None:
+        return redirect(url_for("auth.login_page"))
+
+    config = _get_or_create_config(user)
+    data = request.get_json(silent=True) or {}
+    items = data.get("periods")
+    if not isinstance(items, list):
+        return jsonify({"error": "periods must be a list"}), 400
+
+    target = _get_schedule(config, data.get("scheduleId", config.active_schedule_id))
+    if target is None:
+        target = _get_schedule(config, config.active_schedule_id)
+    if target is None:
+        return jsonify({"error": "No schedule to attach periods to"}), 400
+
+    existing = {p.id: p for p in target.periods}
+    kept_ids = set()
+    position = 0
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        name = _clean_str(item.get("name"), 60)
+        if not name:
+            continue
+        color = _normalize_hex(item.get("color")) or "#64748B"
+        icon = item.get("icon") if isinstance(item.get("icon"), str) else ""
+        icon = icon.strip()[:8]
+        opacity = _clean_int(item.get("opacity"), 0, 100, 30)
+        start = _clean_int(item.get("start"), 0, 1440, 480)
+        end = _clean_int(item.get("end"), 0, 1440, 1020)
+        if end <= start:
+            end = min(1440, start + 60)
+
+        pid = item.get("id")
+        p = existing.get(pid) if isinstance(pid, int) else None
+        if p is None:
+            p = TimetablePeriod(schedule_id=target.id, config_id=config.id)
+            db.session.add(p)
+        p.name = name
+        p.color = color
+        p.icon = icon
+        p.opacity = opacity
+        p.start_min = start
+        p.end_min = end
+        p.days = _normalize_period_days(item.get("days"), start, end)
+        p.position = position
+        kept_ids.add(p.id)
+        position += 1
+
+    db.session.flush()
+
+    for p in list(existing.values()):
+        if p.id not in kept_ids:
+            db.session.delete(p)
 
     db.session.commit()
     return jsonify({"status": "ok", "state": _state(config)})
@@ -709,7 +957,6 @@ def events_save():
     if end <= start:
         return jsonify({"error": "End must be after start"}), 400
 
-    # days: list of weekdays; `day` still accepted for old clients
     days = _parse_days_input(data.get("days"))
     if days is None:
         single = _clean_int(data.get("day"), 0, 6, None)
@@ -727,6 +974,7 @@ def events_save():
         type_id = etype.id if etype is not None else None
 
     note = data.get("note") if isinstance(data.get("note"), str) else ""
+    color = _normalize_hex(data.get("color"))  # None = use the type color
 
     event_id = data.get("id")
     if event_id is not None:
@@ -744,6 +992,7 @@ def events_save():
     ev.days = ",".join(str(d) for d in days)
     ev.start_min = start
     ev.end_min = end
+    ev.color = color
     ev.parity = parity
     ev.room = _clean_str(data.get("room"), 120)
     ev.teacher = _clean_str(data.get("teacher"), 120)
@@ -772,7 +1021,6 @@ def events_delete():
 
 @timetable_bp.route("/events/copy-day", methods=["POST"])
 def events_copy_day():
-    """Copy every block that touches `fromDay` to `toDay` as single-day copies."""
     user = _require_user()
     if user is None:
         return redirect(url_for("auth.login_page"))
@@ -791,7 +1039,7 @@ def events_copy_day():
         db.session.add(TimetableEvent(
             schedule_id=schedule.id, type_id=e.type_id, title=e.title,
             day=to_day, days=str(to_day),
-            start_min=e.start_min, end_min=e.end_min,
+            start_min=e.start_min, end_min=e.end_min, color=e.color,
             room=e.room, teacher=e.teacher, note=e.note, parity=e.parity,
         ))
 
@@ -801,8 +1049,6 @@ def events_copy_day():
 
 @timetable_bp.route("/events/clear-day", methods=["POST"])
 def events_clear_day():
-    """Remove one weekday: single-day blocks on it are deleted, multi-day
-    blocks just drop that day and keep the rest."""
     user = _require_user()
     if user is None:
         return redirect(url_for("auth.login_page"))
@@ -859,7 +1105,6 @@ def _ics_escape(text):
 
 
 def _ics_fold(line):
-    """Fold long content lines the RFC-5545 way (continuation via CRLF + space)."""
     if len(line) <= 73:
         return line
     out, rest = line[:73], line[73:]
@@ -870,7 +1115,6 @@ def _ics_fold(line):
 
 
 def _next_occurrence(day, parity, from_date):
-    """First date >= from_date matching the weekday and ISO-week parity."""
     for i in range(14):
         d = from_date + timedelta(days=i)
         if d.weekday() != day:

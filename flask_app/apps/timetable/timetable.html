@@ -62,7 +62,6 @@
     cursor:pointer;flex:0 1 auto;font-weight:600}
   .now-chip:hover{filter:brightness(1.12)}
 
-  /* ---------- dropdown (file menu, desktop) ---------- */
   .dd{position:relative}
   .dd .menu{display:none}
   .dd.open .menu{display:flex}
@@ -80,12 +79,16 @@
   .chip.total{--tc:#64748b}
   .muted{color:var(--muted);font-size:13px}
 
-  /* ---------- desktop board ---------- */
+  /* ---------- desktop board ----------
+     Corner ownership: gutter = top-left + bottom-left,
+     last day = top-right + bottom-right. NOTHING else is rounded, so the
+     inner elements can never poke through a corner. */
   .board-wrap{flex:1;min-height:0;overflow:auto;padding:12px 14px}
   .board{display:flex;width:100%;min-width:880px;background:var(--panel);
     border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
-  .gutter{flex:0 0 56px;border-right:1px solid var(--line);background:var(--panel)}
-  .g-head{height:44px;border-bottom:1px solid var(--line)}
+  .gutter{flex:0 0 56px;border-right:1px solid var(--line);background:var(--panel);
+    border-top-left-radius:var(--radius);border-bottom-left-radius:var(--radius)}
+  .g-head{height:44px;border-bottom:1px solid var(--line);border-top-left-radius:var(--radius)}
   .g-label{font-size:11px;color:var(--muted);border-top:1px solid var(--grid-hour);
     padding:2px 6px 0 0;text-align:right}
   .days{display:flex;flex:1}
@@ -93,6 +96,7 @@
   .day:first-child{border-left:none}
   .day-head{height:44px;display:flex;align-items:center;gap:8px;padding:0 8px 0 10px;
     border-bottom:1px solid var(--line);background:var(--head)}
+  .day:last-child .day-head{border-top-right-radius:var(--radius)}
   .is-today .day-head{background:var(--accent-soft)}
   .d-name{font-weight:700;font-size:13px}
   .is-today .d-name{color:var(--accent)}
@@ -114,15 +118,19 @@
     background-image:linear-gradient(var(--grid-hour) 1px,transparent 1px),
       linear-gradient(var(--grid-half) 1px,transparent 1px);
     background-size:100% var(--hour),100% calc(var(--hour)/2)}
+  .day:last-child .day-body{border-bottom-right-radius:var(--radius);overflow:hidden}
   .day-body:hover{background-color:var(--grid-hover)}
   .day.we .day-head{background:color-mix(in srgb,var(--head) 80%,var(--bg))}
   .day.we .day-body{background-color:var(--grid-we)}
   .day.we .day-body:hover{background-color:var(--grid-we-hover)}
   .day-body.drop-hint{outline:2px dashed var(--accent);outline-offset:-2px}
-  /* asleep zones (wake & sleep shading) */
+  /* asleep zone (hatched) + time-period zone (colored hatch) */
   .zone{position:absolute;left:0;right:0;z-index:0;pointer-events:none;
     background:repeating-linear-gradient(-45deg,
       color-mix(in srgb,var(--muted) 30%,transparent) 0 6px,transparent 6px 12px)}
+  .pzone{position:absolute;left:0;right:0;z-index:0;pointer-events:none;
+    background:repeating-linear-gradient(-45deg,var(--zh) 0 6px,transparent 6px 12px);
+    border-top:1px solid var(--zbd);border-bottom:1px solid var(--zbd)}
 
   /* ---------- events (desktop) ---------- */
   .ev{position:absolute;border-radius:8px;padding:3px 7px;font-size:12px;line-height:1.25;
@@ -136,12 +144,20 @@
   .ev.dragging{opacity:.88;z-index:20;box-shadow:0 14px 30px rgba(0,0,0,.4);
     cursor:grabbing;pointer-events:none}
   .ev.resizing{cursor:ns-resize;z-index:20;pointer-events:none}
+  /* filler behind the split segments: same fill, border & radius as the
+     blocks, so the pauses between periods are filled in and the whole
+     unit reads as one single block */
+  .ev-spine{position:absolute;z-index:1;pointer-events:none;border-radius:8px;opacity:.9;
+    background:var(--evbg);border:1px solid var(--evbd);border-left:4px solid var(--tc)}
   .ev-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ev-meta{color:var(--evt);opacity:.82;white-space:nowrap;overflow:hidden;
     text-overflow:ellipsis;margin-top:1px}
   .ptag{font-size:9.5px;font-weight:700;text-transform:uppercase;
     background:color-mix(in srgb,var(--evt) 16%,transparent);
     border-radius:4px;padding:1px 4px;vertical-align:1px}
+  /* period badge on blocks inside a period */
+  .pib{font-size:11px;margin-left:5px;vertical-align:1px}
+  .pib-dot{display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:1px}
   .ev-par{background-image:repeating-linear-gradient(-45deg,rgba(128,128,128,.09) 0 5px,transparent 5px 10px)}
   .ev-resize{position:absolute;left:0;right:0;bottom:0;height:8px;cursor:ns-resize;opacity:0;
     transition:opacity .12s;border-radius:0 0 8px 8px;touch-action:none}
@@ -155,7 +171,6 @@
     color:var(--text);border:1px solid var(--line);padding:5px 10px;border-radius:8px;
     font-size:12px;box-shadow:var(--shadow);white-space:nowrap}
 
-  /* ---------- context menu (desktop) ---------- */
   .ctx{position:fixed;z-index:250;display:none;min-width:210px;background:var(--panel);
     border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;
     flex-direction:column;gap:2px}
@@ -174,7 +189,7 @@
   .mb.open{display:flex}
   .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;
     box-shadow:var(--shadow);padding:20px;width:100%;max-width:520px;max-height:84vh;overflow:auto}
-  .modal.wide{max-width:780px}
+  .modal.wide{max-width:820px}
   .modal h3{margin:0 0 12px;font-size:17px}
   .modal label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);
     font-weight:600;margin-bottom:10px;flex:1}
@@ -185,9 +200,8 @@
   .row2{display:flex;gap:10px}
   .modal-actions{display:flex;gap:8px;margin-top:14px;align-items:center}
   .spacer{flex:1}
-  .full{width:100%;margin-bottom:10px}
 
-  /* toggle switches (Sat / Sun) */
+  /* toggle switches */
   .chk{flex-direction:row!important;align-items:center;gap:10px;font-size:13.5px;
     color:var(--text);cursor:pointer;margin-bottom:10px;position:relative;user-select:none}
   .chk input{position:absolute;opacity:0;width:0;height:0}
@@ -199,9 +213,12 @@
   .chk input:checked + .sw{background:var(--accent)}
   .chk input:checked + .sw::after{transform:translateX(18px)}
   .chk input:focus-visible + .sw{outline:2px solid var(--accent);outline-offset:2px}
+  .sw-sm{width:34px;height:20px}
+  .sw-sm::after{width:16px;height:16px}
+  .chk input:checked + .sw-sm::after{transform:translateX(14px)}
 
   /* settings tabs + segmented controls */
-  .set-tabs{display:flex;gap:6px;margin-bottom:16px}
+  .set-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
   .set-tab{border:1px solid var(--line);background:var(--panel-2);border-radius:9px;
     padding:7px 16px;cursor:pointer;color:var(--text);font-size:13px;font-family:inherit}
   .set-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
@@ -222,13 +239,13 @@
 
   /* wake & sleep per day */
   .wake-rows{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-  .wake-row{display:grid;grid-template-columns:84px 1fr 1fr;gap:8px;align-items:center}
+  .wake-row{display:grid;grid-template-columns:84px 1fr 1fr 52px;gap:8px;align-items:center}
   .wake-row .dname{font-weight:600;font-size:13px}
   .wlab{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
     font-weight:600;min-width:0}
   .wlab input{flex:1;min-width:0;padding:6px 8px;font-size:14px}
+  .wslp{font-size:11.5px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
 
-  /* time steppers */
   .time-wrap{display:flex;gap:5px;align-items:center}
   .time-wrap input{flex:1;min-width:0}
   .steppers{display:flex;gap:4px}
@@ -238,7 +255,6 @@
   .wake-warn{display:none;font-size:12px;color:var(--warn);margin:-2px 0 10px;
     align-items:center;gap:6px}
 
-  /* multi-day chips */
   .day-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
   .dchip{border:1px solid var(--line);background:var(--panel-2);color:var(--text);
     border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;user-select:none}
@@ -248,32 +264,67 @@
     border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer}
   .mini2:hover{background:var(--grid-hover)}
 
-  /* type rows */
-  .type-head,.type-row{display:grid;
-    grid-template-columns:42px 52px minmax(120px,1fr) minmax(265px,auto) minmax(52px,auto) 30px;
-    gap:8px;align-items:center}
-  .type-head{font-size:11px;color:var(--muted);margin-bottom:4px}
-  .type-head span:nth-child(5){text-align:right}
-  .type-row{margin-bottom:10px}
-  .type-row input[type=number]{padding:6px 8px;min-width:0}
-  /* custom color swatch: hidden native input + fill div we control */
+  /* color swatch (shared) */
   .tr-color{position:relative;width:42px;height:34px;flex:0 0 auto;border:1px solid var(--line);
     border-radius:8px;overflow:hidden;background:var(--panel-2)}
   .tr-color input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;
     padding:0;border:0;cursor:pointer}
   .tr-cfill{position:absolute;inset:0;pointer-events:none;
     box-shadow:inset 0 0 0 1px rgba(127,127,127,.25)}
-  .tr-nums{display:flex;gap:8px;align-items:center}
-  .tr-nums input[type=number]{flex:1;min-width:0}
-  .tr-nums input[type=range]{flex:1.4;min-width:64px;accent-color:var(--accent);
+
+  /* type rows (two-line rules cell: scheduling + per-type split) */
+  .type-head,.type-row{display:grid;
+    grid-template-columns:42px 52px minmax(120px,1fr) minmax(340px,auto) minmax(52px,auto) 30px;
+    gap:8px;align-items:center}
+  .type-head{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .type-head span:nth-child(5){text-align:right}
+  .type-row{margin-bottom:0;padding-bottom:12px;border-bottom:1px solid var(--line-soft)}
+  #typeRows .type-row:last-child{margin-bottom:10px;border-bottom:none;padding-bottom:0}
+  .type-row input[type=number]{padding:6px 8px;min-width:0}
+  .tr-nums{display:flex;flex-direction:column;gap:5px}
+  .tr-line{display:flex;gap:6px;align-items:center}
+  .tr-line input[type=number]{flex:1;min-width:0}
+  .tr-line input[type=range]{flex:1.4;min-width:60px;accent-color:var(--accent);
     padding:0;border:none;background:transparent;height:26px}
   .tr-opv{flex:0 0 auto;min-width:34px;text-align:right;font-size:11.5px;color:var(--muted);
     font-variant-numeric:tabular-nums}
+  .tr-slab{flex:0 0 auto;font-size:11px;color:var(--muted);font-weight:600}
+  .type-row:not(.sp-on) .tr-sp,.type-row:not(.sp-on) .tr-sb{opacity:.35}
   .tr-count{font-size:11.5px;color:var(--muted);white-space:nowrap;text-align:right}
   .icon-btn{border:1px solid var(--line);background:var(--panel-2);border-radius:8px;
     width:30px;height:30px;cursor:pointer;color:var(--muted)}
   .icon-btn:hover{background:color-mix(in srgb,var(--danger) 14%,transparent);
     color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
+
+  /* period rows */
+  .p-row{display:grid;
+    grid-template-columns:42px 44px minmax(100px,1fr) minmax(290px,auto) 30px;
+    gap:8px;align-items:center;margin-bottom:10px}
+  .p-row input[type=number],.p-row input[type=time]{padding:6px 8px;min-width:0}
+  .p-nums{display:flex;gap:8px;align-items:center}
+  .p-nums input{flex:1;min-width:0}
+  .p-nums input[type=range]{flex:1.2;min-width:60px;accent-color:var(--accent);
+    padding:0;border:none;background:transparent;height:26px}
+  .pd-scroll{overflow-x:auto;margin-bottom:8px}
+  .pd{display:grid;grid-template-columns:70px repeat(var(--np,1),minmax(128px,1fr));
+    gap:6px;align-items:center;margin-bottom:6px;min-width:min-content}
+  .pd .dname{font-weight:600;font-size:12.5px}
+  .pd-cell{display:flex;gap:4px;align-items:center;min-width:0}
+  .pd-cell input[type=time]{padding:4px 6px;font-size:12.5px;min-width:0;flex:1}
+  .pd-chk{display:inline-flex;align-items:center;position:relative;flex:0 0 auto}
+
+  /* stats settings */
+  .g-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;
+    border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+  .g-name{max-width:180px}
+  .g-chips{display:flex;gap:5px;flex-wrap:wrap;flex:1;min-width:160px}
+  .tchip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--text);border-radius:999px;padding:3px 9px;
+    font-size:11.5px;cursor:pointer;user-select:none}
+  .tchip .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .tchip.on{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+  .st-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 18px}
+  .st-grid .chk{margin-bottom:8px}
 
   /* help */
   .tips{margin:6px 0 4px;padding-left:18px;font-size:13.5px;line-height:1.6}
@@ -291,7 +342,7 @@
   .toast.out{opacity:0;transition:opacity .3s}
   @keyframes pop{from{transform:translateY(8px);opacity:0}}
 
-  /* ---------- mobile-only elements (hidden on desktop) ---------- */
+  /* ---------- mobile-only elements ---------- */
   #btnMobileMenu{display:none}
   #mobileWrap{display:none}
   .fabs{display:none}
@@ -380,15 +431,20 @@
       background:var(--line);margin:-6px auto 14px}
     .modal input,.modal select,.modal textarea{font-size:16px}
 
-    .type-head{display:none}
+    .type-head,.p-head{display:none}
     .type-row{grid-template-columns:42px 52px 1fr 30px;
       grid-template-areas:"c i n d" "r r r r"}
     .tr-color{grid-area:c}.tr-icon{grid-area:i}.tr-name{grid-area:n}
     .tr-nums{grid-area:r}.icon-btn{grid-area:d}
     .tr-count{display:none}
+    .p-row{grid-template-columns:42px 44px 1fr 30px;
+      grid-template-areas:"c i n d" "r r r r"}
+    .p-nums{grid-area:r}
 
-    .wake-row{grid-template-columns:76px 1fr 1fr}
+    .wake-row{grid-template-columns:64px 1fr 1fr 44px}
+    .pd{grid-template-columns:56px repeat(var(--np,1),minmax(150px,1fr))}
     .seg button{padding:10px 14px}
+    .st-grid{grid-template-columns:1fr}
   }
 
   @media print{
@@ -398,12 +454,12 @@
       --text:#000;--text-dim:#222;--muted:#555;--grid:#fff;--grid-we:#fafafa;
       --head:#f4f4f4;--ev-meta:#333;--accent-soft:#e8f0fe;--shadow:none}
     body{display:block;background:#fff}
-    .topbar,.stats,.hintbar,.mb,#toasts,.empty-note,#dragTip,.ctx,.dd,.fabs,.mnav,#mobileWrap,.zone{
-      display:none !important}
+    .topbar,.stats,.hintbar,.mb,#toasts,.empty-note,#dragTip,.ctx,.dd,.fabs,.mnav,#mobileWrap,
+    .zone,.pzone{display:none !important}
     .board{display:flex !important}
     .board-wrap{overflow:visible;padding:0}
     .board{min-width:0;width:100%;box-shadow:none;border:1px solid #94a3b8}
-    .ev,.day-head{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .ev,.day-head,.ev-spine{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .ev-resize,.now-line{display:none !important}
   }
 </style>
@@ -455,7 +511,6 @@
     Click anywhere on a day to add your first block — or use “＋ Add block”.
   </div>
 
-  <!-- mobile: day pills + one day as cards -->
   <div id="mobileWrap">
     <div class="m-pills" id="mPills"></div>
     <div class="m-dayhead" id="mDayHead"></div>
@@ -470,13 +525,11 @@
   to the server automatically.
 </footer>
 
-<!-- FABs (mobile only) -->
 <div class="fabs">
   <button class="fab sub" id="fabAdd" title="Add block">＋</button>
   <button class="fab main" id="fabEdit" title="Edit schedule">✏️</button>
 </div>
 
-<!-- mobile nav sheet -->
 <nav class="mnav" id="mobileNav"></nav>
 
 <!-- event modal -->
@@ -525,6 +578,15 @@
         <button type="button" class="btn" id="fFit"
           title="Snap this block to the selected type's usual start minute and length">↺ Fit to type</button>
       </div>
+      <div class="modal-actions" style="margin:0 0 10px;justify-content:flex-start">
+        <span style="font-size:12px;color:var(--muted);font-weight:600">Color</span>
+        <div class="tr-color" id="fColWrap" title="Click to pick a custom color" style="width:42px;height:30px">
+          <input type="color" id="fCol">
+          <span class="tr-cfill" id="fColFill"></span>
+        </div>
+        <button type="button" class="mini2" id="fColReset" title="Back to the type color">type</button>
+        <span class="muted" style="font-size:11.5px" id="fColHint">using type color</span>
+      </div>
       <div class="row2">
         <label><span id="fRoomLabelTxt">Room / place</span><input id="fRoom" maxlength="120" placeholder="e.g. HG F 5"></label>
         <label>Teacher<input id="fTeacher" maxlength="120" placeholder="optional"></label>
@@ -541,12 +603,14 @@
   </div>
 </div>
 
-<!-- settings modal: General + Types -->
+<!-- settings modal -->
 <div class="mb" id="settingsModal">
   <div class="modal wide">
     <div class="set-tabs">
       <button type="button" class="set-tab active" data-stab="general">General</button>
       <button type="button" class="set-tab" data-stab="types">Types</button>
+      <button type="button" class="set-tab" data-stab="periods">Periods</button>
+      <button type="button" class="set-tab" data-stab="stats">Stats</button>
     </div>
 
     <div class="set-page active" id="stab-general">
@@ -573,27 +637,57 @@
       </div>
       <label class="chk"><input type="checkbox" id="sSat"><span class="sw"></span> Show Saturday</label>
       <label class="chk"><input type="checkbox" id="sSun"><span class="sw"></span> Show Sunday</label>
-      <h4>Wake &amp; sleep per day</h4>
-      <p class="muted" style="margin-top:-6px">Hours outside your wake window are hatched on the
-        grid; blocks placed there get a 🌙 hint.</p>
+      <h4>Wake &amp; sleep — this timetable</h4>
+      <p class="muted" style="margin-top:-6px">Sleep times are saved per timetable. Hours outside
+        the wake window are hatched on the grid; blocks there get a 🌙 hint.</p>
       <div class="wake-rows" id="wakeRows"></div>
       <button type="button" class="btn" id="btnWakeAll" title="Copy Monday's times to every day">⧉ Copy Monday to all days</button>
     </div>
 
     <div class="set-page" id="stab-types">
-      <h4>Lecture types, colors &amp; scheduling rules</h4>
-      <p class="muted" style="margin-top:-6px">Each type has its own color (click the swatch) and
-        emoji, plus <b>Start :MM</b> (blocks of this type snap to that minute past the hour —
-        15 means 8:15, 9:15 …), a default <b>Length</b> used when you click the grid, and an
-        <b>Opacity</b> slider — the swatch previews exactly how the block background will look.
-        Removing a type keeps its blocks (they show as “Unsorted”).</p>
+      <h4>Lecture types, colors &amp; rules</h4>
+      <p class="muted" style="margin-top:-6px">Each type: color (click the swatch), emoji,
+        <b>Start :MM</b> snap, default <b>Length</b>, <b>Opacity</b>, and its own
+        <b>Split</b> rhythm (long blocks become period/break segments, e.g. 45/15 for V &amp; U).
+        Single blocks can override their color in the block editor.</p>
       <div class="type-head">
         <span>Color</span><span>Icon</span><span>Name</span>
-        <span>Start :MM · Length · Opacity</span>
+        <span>Start · Length · Opacity · Split (min/break)</span>
         <span>Blocks</span><span></span>
       </div>
       <div id="typeRows"></div>
       <button type="button" class="btn" id="btnAddType">＋ Add type</button>
+    </div>
+
+    <div class="set-page" id="stab-periods">
+      <h4>Time periods — this timetable</h4>
+      <p class="muted" style="margin-top:-6px">Recurring daily windows (e.g. “At school”) hatched
+        onto the grid like the sleep shading, with your own color, emoji and opacity. Every block
+        inside a period carries the period's icon. Periods are saved per timetable.</p>
+      <div id="periodRows"></div>
+      <button type="button" class="btn" id="btnAddPeriod">＋ Add period</button>
+      <h4>Per-day times</h4>
+      <p class="muted" style="margin-top:-6px">Adjust or switch off each period per weekday. The
+        start/end in the rows above always follow the days — earliest start to latest end — and
+        editing them applies the change to every day at once.</p>
+      <div class="pd-scroll"><div id="pdMatrix"></div></div>
+    </div>
+
+    <div class="set-page" id="stab-stats">
+      <h4>Stat chips</h4>
+      <div class="st-grid">
+        <label class="chk"><input type="checkbox" id="stTypes"><span class="sw sw-sm"></span> Hours per type</label>
+        <label class="chk"><input type="checkbox" id="stTotal"><span class="sw sw-sm"></span> Total scheduled</label>
+        <label class="chk"><input type="checkbox" id="stCount"><span class="sw sw-sm"></span> Block count</label>
+        <label class="chk"><input type="checkbox" id="stBusiest"><span class="sw sw-sm"></span> Busiest day</label>
+        <label class="chk"><input type="checkbox" id="stSleep"><span class="sw sw-sm"></span> Average sleep</label>
+        <label class="chk"><input type="checkbox" id="stPeriods"><span class="sw sw-sm"></span> Time periods</label>
+      </div>
+      <h4>Custom groups</h4>
+      <p class="muted" style="margin-top:-6px">Sum the hours of selected types under a name of
+        your choice (e.g. “School time” = V + U).</p>
+      <div id="groupRows"></div>
+      <button type="button" class="btn" id="btnAddGroup">＋ Add group</button>
     </div>
 
     <div class="modal-actions">
@@ -639,24 +733,28 @@
     <ul class="tips">
       <li><b>Click</b> an empty slot → new block. It uses the <b>last type you picked</b>,
         snapped to that type's usual start minute and default length.</li>
-      <li><b>Drag</b> a block to move it (day + start — the duration stays), drag its
-        <b>bottom edge</b> to resize. Multi-day blocks are time-shifted; change their days
-        in the editor.</li>
-      <li><b>Multi-day blocks:</b> in the block editor, click the day chips to put one block
-        on any combination of days (e.g. a commute Mon/Wed/Fri).</li>
-      <li><b>Right-click a block</b> → Edit · Duplicate · <b>Copy to day…</b> · Delete.</li>
-      <li><b>Right-click a timetable tab</b> → Rename · Duplicate · <b>Copy from another
-        timetable…</b> · Delete.</li>
-      <li><b>⋯</b> in a day header: copy that whole day to another day, or clear it.</li>
-      <li>“Repeats” makes a block appear only on <b>odd/even ISO weeks</b> — the week selector
-        on top filters the view.</li>
-      <li>⚙ <b>Settings → General</b>: theme (dark/light), grid size, week range and
-        <b>Wake &amp; sleep per day</b> — hours outside your wake window are hatched on the
-        grid and blocks there carry a 🌙 hint.</li>
-      <li>⚙ <b>Settings → Types</b>: color (click the swatch), emoji, usual start minute,
-        default length and an <b>opacity slider</b> — the swatch previews the block background
-        live; text contrast adapts automatically.</li>
-      <li><b>⬇ Export</b>: .ics for Google/Apple/Outlook, JSON backup, import, print.</li>
+      <li><b>Drag</b> a block to move it (day + start — the duration stays), drag the
+        <b>bottom edge of the last segment</b> to resize.</li>
+      <li><b>Splitting is per type</b> (⚙ Types): long blocks are divided into a period/break
+        rhythm (e.g. V &amp; U: 45 min + 15 min pause). The pauses are filled in with the same
+        color, so the whole unit reads as one block; each segment shows its own time.</li>
+      <li><b>Custom color:</b> every block can override its type color in the editor.</li>
+      <li><b>Multi-day blocks:</b> click the day chips to put one block on any combination
+        of days (e.g. a commute Mon/Wed/Fri).</li>
+      <li><b>Right-click a block</b> → Edit · Duplicate · <b>Copy to day…</b> · Delete.
+        <b>Right-click a timetable tab</b> → Rename · Duplicate · Copy from · Delete.</li>
+      <li><b>⋯</b> in a day header: copy that day to another day, or clear it.</li>
+      <li>“Repeats” makes a block appear only on <b>odd/even ISO weeks</b>.</li>
+      <li>⚙ <b>General</b>: theme, grid size, week range and <b>wake &amp; sleep</b> —
+        sleep times are saved <b>per timetable</b>.</li>
+      <li>⚙ <b>Types</b>: color, emoji, start :MM, default length, opacity, split rhythm.</li>
+      <li>⚙ <b>Periods</b>: hatched daily windows (“At school”, “At home”) with color, emoji,
+        opacity and per-day overrides — the row's start/end mirror the days (earliest start →
+        latest end) and editing them sets every day. Blocks inside them carry the period icon.
+        Also saved <b>per timetable</b>.</li>
+      <li>⚙ <b>Stats</b>: choose which chips show (per type, custom groups, periods,
+        avg sleep, total, count, busiest day).</li>
+      <li><b>⬇ Export</b>: .ics, JSON backup, import, print.</li>
       <li><b>On mobile</b>: tap ✏️ to enter edit mode (nothing can be changed before that),
         swipe between days, ☰ holds everything else.</li>
       <li>The hint bar at the bottom only appears while this schedule has no blocks yet —
@@ -693,16 +791,19 @@ const PASTELS = ['#2563EB','#0D9488','#7C3AED','#DB2777','#F59E0B','#65A30D',
                  '#0EA5E9','#EA580C','#DC2626','#4F46E5','#059669','#A16207'];
 const ZOOMS = [32, 40, 48, 60, 76];
 
-let state = null;          // {settings, schedules, eventTypes, events}
-let parityFilter = 'all';  // display filter: all | odd | even
+let state = null;
+let parityFilter = 'all';
 let editingEventId = null;
-let editDays = new Set();  // days of the block being edited
+let editDays = new Set();
+let editColor = null;        // per-entry color override (null = type color)
 let editingTypes = [];
+let editingPeriods = [];
+let editingGroups = [];
 let confirmCb = null;
 let promptSubmit = null;
-let suppressClick = false; // set after a drag so the following click is ignored
-let drag = null;           // active drag & drop session (desktop)
-let ctx = null;            // active context menu (desktop) {kind, page, eventId?, tabId?}
+let suppressClick = false;
+let drag = null;
+let ctx = null;
 
 /* mobile */
 const mqMobile = window.matchMedia('(max-width: 760px)');
@@ -710,7 +811,7 @@ const isMobile = () => mqMobile.matches;
 let mobileDay = (new Date().getDay()+6)%7;
 let mobileEdit = false;
 let mobileHintShown = false;
-let mnavPage = 'main';     // main | tab | copyfrom
+let mnavPage = 'main';
 let mnavTabId = null;
 
 if (mqMobile.addEventListener)
@@ -746,7 +847,6 @@ function isoWeek(d){
 }
 const currentParity = () => isoWeek(new Date()) % 2 ? 'odd' : 'even';
 
-/* Snap to the nearest "hour + offset" start, e.g. offset 15 → :15 marks. */
 function nearestOffset(m, o){
   const h = Math.floor(m/60)*60;
   let best = h + o - 60;
@@ -755,7 +855,6 @@ function nearestOffset(m, o){
   return Math.max(0, Math.min(1439, best));
 }
 
-/* last-used type (client-side preference only — the data itself is all server-side) */
 const lastTypeId = () => {
   try { const v = parseInt(localStorage.getItem('tt_last_type') || '', 10);
     return Number.isFinite(v) && state.eventTypes.some(t => t.id === v) ? v : null;
@@ -766,7 +865,7 @@ const setLastType = id => {
         else localStorage.removeItem('tt_last_type'); } catch(_){}
 };
 
-/* ================= color math (opacity + auto text contrast) ================= */
+/* ================= color math ================= */
 function hexToRgb(h){
   h = String(h || '').replace('#','');
   if (!/^[0-9a-fA-F]{6}$/.test(h)) return [148,163,184];
@@ -788,19 +887,27 @@ function themeBaseRGB(){
   return document.documentElement.dataset.theme === 'light' ? [255,255,255] : [15,25,48];
 }
 function rgba(rgb, a){ return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`; }
-/* Inline CSS vars for a block: type color, background alpha = opacity,
-   border alpha kept visible, text picked by contrast against the blended bg. */
-function blockVars(t){
-  const c = t ? t.color : '#8aa0c0';
-  const op = t ? clampInt(t.opacity, 10, 100, 100) : 30; // untyped blocks stay muted
+function pickText(effRgb){
+  return contrastL(effRgb, [17,24,38]) >= contrastL(effRgb, [242,245,251])
+    ? '#111826' : '#f2f5fb';
+}
+function blockVars(t, colorOverride){
+  const c = colorOverride || (t ? t.color : '#8aa0c0');
+  const op = t ? clampInt(t.opacity, 10, 100, 100) : 30;
   const a = op / 100;
   const rgb = hexToRgb(c);
   const base = themeBaseRGB();
   const eff = [0,1,2].map(i => rgb[i]*a + base[i]*(1-a));
-  const txt = contrastL(eff, [17,24,38]) >= contrastL(eff, [242,245,251])
-    ? '#111826' : '#f2f5fb';
+  const txt = pickText(eff);
   const bd = Math.min(1, Math.max(0.6, a));
   return `--tc:${c};--evbg:${rgba(rgb,a)};--evbd:${rgba(rgb,bd)};--evt:${txt}`;
+}
+/* time-period zone: colored hatch (like the sleep zone) */
+function periodVars(p){
+  const rgb = hexToRgb(p.color);
+  const a = clampInt(p.opacity, 0, 100, 30) / 100;
+  return `--zh:${rgba(rgb, Math.max(.10, a*.6))};` +
+         `--zbd:${rgba(rgb, Math.min(1, a+.25))}`;
 }
 
 /* ================= state accessors ================= */
@@ -824,8 +931,27 @@ function dayRange(d){
   return r ? {wake: r.wake, sleep: r.sleep}
            : {wake: state.settings.dayStart ?? 420, sleep: state.settings.dayEnd ?? 1320};
 }
+const sleepHours = r => (1440 - (r.sleep - r.wake)) / 60;
+function statCfg(){ return state.settings.statConfig || {}; }
 
-/* make sure every event has days + settings have 7 day-ranges */
+/* per-TYPE split: lesson/pause rhythm from the block's start */
+function splitSegments(e){
+  const t = typeById(e.typeId);
+  if (!t || !t.splitOn) return null;
+  const P = clampInt(t.splitMin, 20, 120, 45);
+  const B = clampInt(t.splitBreak, 0, 60, 15);
+  const dur = e.end - e.start;
+  if (dur <= P) return null;
+  const out = []; let s = e.start;
+  while (s < e.end && out.length < 24){
+    const e1 = Math.min(e.end, s + P);
+    out.push({start: s, end: e1});
+    if (e1 >= e.end) break;
+    s = e1 + B;
+  }
+  return out.length > 1 ? out : null;
+}
+
 function normState(st){
   st.events = (st.events || []).map(e => ({
     ...e,
@@ -846,6 +972,28 @@ function normState(st){
     let sleep = clampInt(r.sleep, 0, 1440, s.dayEnd);
     if (sleep <= wake) sleep = Math.min(1440, wake + 60);
     return {day: d, wake, sleep};
+  });
+  const sc = s.statConfig = s.statConfig || {};
+  ['showTypes','showTotal','showCount','showBusiest','showSleep','showPeriods']
+    .forEach(k => { if (k in sc) sc[k] = !!sc[k]; });
+  sc.groups = (Array.isArray(sc.groups) ? sc.groups : []).filter(g => g && g.name);
+  (st.eventTypes || []).forEach(t => {
+    t.splitOn = !!t.splitOn;
+    t.splitMin = clampInt(t.splitMin, 20, 120, 45);
+    t.splitBreak = clampInt(t.splitBreak, 0, 60, 15);
+    t.opacity = t.opacity == null ? 100 : t.opacity;
+  });
+  st.periods = (st.periods || []).map(p => {
+    const pd = {};
+    (Array.isArray(p.days) ? p.days : []).forEach(d => { if (d && d.day != null) pd[d.day] = d; });
+    return {...p, opacity: clampInt(p.opacity, 0, 100, 30), days:
+      [0,1,2,3,4,5,6].map(d => {
+        const it = pd[d] || {};
+        let start = clampInt(it.start, 0, 1440, p.start ?? 480);
+        let end = clampInt(it.end, 0, 1440, p.end ?? 1020);
+        if (end <= start) end = Math.min(1440, start + 60);
+        return {day: d, on: it.on !== false, start, end};
+      })};
   });
   return st;
 }
@@ -871,15 +1019,9 @@ async function call(path, body){
   return data;
 }
 
-/* ================= theme (Settings only) ================= */
+/* ================= theme ================= */
 function applyTheme(){
   document.documentElement.dataset.theme = state.settings.theme === 'light' ? 'light' : 'dark';
-}
-function toggleTheme(){
-  const next = state.settings.theme === 'light' ? 'dark' : 'light';
-  call('settings/save', {theme: next})
-    .then(() => toast(next === 'dark' ? 'Dark mode 🌙' : 'Light mode ☀️'))
-    .catch(err => toast(err.message, 'err'));
 }
 
 /* ================= rendering ================= */
@@ -893,8 +1035,6 @@ function renderAll(){
 }
 
 function renderHintbar(){
-  /* bottom hint bar only while the active schedule has no blocks;
-     afterwards the same info lives behind the ? help button */
   $('#hintbar').style.display = activeEvents().length ? 'none' : 'block';
 }
 
@@ -948,38 +1088,78 @@ function renderBoardDesktop(){
   $('#gutter').innerHTML = g;
 
   const evs = gridEvents();
+  const periods = state.periods || [];
   let html = '';
   for (const d of shownDays()){
     const r = dayRange(d);
     const dayEvs = evs.filter(e => e.days.includes(d));
     const laid = layoutDay(dayEvs);
     const total = dayEvs.reduce((a,e)=>a+(e.end-e.start),0);
+
+    /* zones under the blocks: sleep hatch + colored period hatch */
+    let zones = '';
+    if (r.wake > start)
+      zones += `<div class="zone" style="top:0;height:${(Math.min(r.wake,end)-start)/60*hp}px"
+        title="Asleep before ${fmt(r.wake)}"></div>`;
+    if (r.sleep < end)
+      zones += `<div class="zone" style="top:${(Math.max(r.sleep,start)-start)/60*hp}px;
+        height:${(end-Math.max(r.sleep,start))/60*hp}px" title="Asleep after ${fmt(r.sleep)}"></div>`;
+    for (const p of periods){
+      const pd = (p.days || [])[d];
+      if (!pd || !pd.on) continue;
+      const zt = Math.max(pd.start, start), zb = Math.min(pd.end, end);
+      if (zb <= zt) continue;
+      const top = (zt-start)/60*hp, h = (zb-zt)/60*hp;
+      zones += `<div class="pzone" style="${periodVars(p)};top:${top}px;height:${h}px"
+        title="${esc(p.name)} ${fmt(pd.start)}–${fmt(pd.end)}"></div>`;
+    }
+
     let evh = '';
     for (const e of laid){
-      const topM = Math.max(e.start, start), botM = Math.min(e.end, end);
-      if (botM <= topM) continue;
       const t = typeById(e.typeId);
-      const top = (topM-start)/60*hp;
-      const h = Math.max(16, (botM-topM)/60*hp - 2);
-      const xs = h < 34;
+      const segs = splitSegments(e) || [{start: e.start, end: e.end}];
       const multi = e.days.length > 1;
-      const out = e.start < r.wake || e.end > r.sleep; // outside wake window
-      evh += `<div class="ev ${e.parity!=='all'?'ev-par':''}" data-id="${e.id}"
-        style="${blockVars(t)};top:${top}px;height:${h}px;
-        left:calc(${(e._left*100).toFixed(3)}% + 3px);width:calc(${(e._width*100).toFixed(3)}% - 6px)"
-        title="${esc(e.title)} · ${fmt(e.start)}–${fmt(e.end)}${e.room?' · '+e.room:''}${out?' · 🌙 outside wake hours':''}">
-        <div class="ev-title">${t && t.icon ? esc(t.icon)+' ' : ''}${esc(e.title)}${e.parity!=='all'?` <span class="ptag">${e.parity}</span>`:''}</div>
-        ${xs ? '' : `<div class="ev-meta">${fmt(e.start)}–${fmt(e.end)}${multi?' · '+e.days.map(i=>DAY_SHORT[i]).join(' '):''}${e.room?' · '+esc(e.room):''}${out?' · 🌙':''}</div>`}
-        <div class="ev-resize" title="Drag to change the end time"></div>
-      </div>`;
+      const out = e.start < r.wake || e.end > r.sleep;
+      const L = e._left*100, W = e._width*100;
+      const vars = blockVars(t, e.color);
+      /* periods this block sits in → icon badge on the block (any type) */
+      const inPeriods = periods.filter(p => {
+        const pd = (p.days || [])[d];
+        return pd && pd.on && e.start < pd.end && e.end > pd.start;
+      });
+      const bHtml = inPeriods.map(p =>
+        `<span class="pib" title="${esc(p.name)}">${p.icon ? esc(p.icon)
+          : `<i class="pib-dot" style="background:${p.color}"></i>`}</span>`).join('');
+
+      /* filler behind the segments: same look as the blocks, ~15% wide,
+         so the unit is bound together on the left like one block */
+      if (segs.length > 1){
+        const top1 = (Math.max(segs[0].start, start)-start)/60*hp;
+        const hAll = (Math.min(segs[segs.length-1].end, end) - Math.max(segs[0].start, start))/60*hp - 2;
+        evh += `<div class="ev-spine ${e.parity!=='all'?'ev-par':''}" style="${vars};
+          left:calc(${L.toFixed(3)}% + 3px);width:calc(${(W*0.15).toFixed(3)}% - 3px);
+          top:${top1}px;height:${Math.max(10,hAll)}px"></div>`;
+      }
+
+      segs.forEach((sg, idx) => {
+        const topM = Math.max(sg.start, start), botM = Math.min(sg.end, end);
+        if (botM <= topM) return;
+        const top = (topM-start)/60*hp;
+        const h = Math.max(16, (botM-topM)/60*hp - 2);
+        const xs = h < 34;
+        const first = idx === 0, last = idx === segs.length - 1;
+        evh += `<div class="ev ${e.parity!=='all'?'ev-par':''}" data-id="${e.id}"
+          data-off="${sg.start - e.start}" data-s0="${sg.start}"
+          style="${vars};top:${top}px;height:${h}px;
+          left:calc(${(L*1).toFixed(3)}% + 3px);width:calc(${(W*1).toFixed(3)}% - 6px)"
+          title="${esc(e.title)} · ${fmt(e.start)}–${fmt(e.end)}${e.room?' · '+e.room:''}${out?' · 🌙 outside wake hours':''}">
+          ${first ? `<div class="ev-title">${t && t.icon ? esc(t.icon)+' ' : ''}${esc(e.title)}${bHtml}${e.parity!=='all'?` <span class="ptag">${e.parity}</span>`:''}</div>` : ''}
+          ${xs ? '' : `<div class="ev-meta">${fmt(sg.start)}–${fmt(sg.end)}${first&&multi?' · '+e.days.map(i=>DAY_SHORT[i]).join(' '):''}${first&&e.room?' · '+esc(e.room):''}${out?' · 🌙':''}</div>`}
+          ${last ? '<div class="ev-resize" title="Drag to change the end time"></div>' : ''}
+        </div>`;
+      });
     }
-    const zones = [];
-    if (r.wake > start)
-      zones.push(`<div class="zone" style="top:0;height:${(Math.min(r.wake,end)-start)/60*hp}px"
-        title="Asleep before ${fmt(r.wake)}"></div>`);
-    if (r.sleep < end)
-      zones.push(`<div class="zone" style="top:${(Math.max(r.sleep,start)-start)/60*hp}px;
-        height:${(end-Math.max(r.sleep,start))/60*hp}px" title="Asleep after ${fmt(r.sleep)}"></div>`);
+
     const nowLine = (d === todayIdx() && nowMin >= start && nowMin <= end)
       ? '<div class="now-line" id="nowLine"></div>' : '';
     const menuItems = shownDays().filter(x => x !== d).map(x =>
@@ -996,14 +1176,14 @@ function renderBoardDesktop(){
           </div>
         </details>
       </div>
-      <div class="day-body" data-day="${d}" style="height:${bodyH}px">${evh}${zones.join('')}${nowLine}</div>
+      <div class="day-body" data-day="${d}" style="height:${bodyH}px">${evh}${zones}${nowLine}</div>
     </div>`;
   }
   $('#days').innerHTML = html;
   $('#emptyHint').style.display = evs.length ? 'none' : 'block';
 }
 
-/* ---------- mobile: one day as cards ---------- */
+/* ---------- mobile ---------- */
 function renderBoardMobile(){
   const days = shownDays();
   if (!days.includes(mobileDay)) mobileDay = defaultDay();
@@ -1029,11 +1209,10 @@ function renderBoardMobile(){
     </div>
     <button class="mnav-arrow" data-dir="1" title="Next day">›</button>`;
 
-  /* cards: title, room/teacher, START time only — no durations on mobile */
   $('#mList').innerHTML = dayEvs.length ? dayEvs.map(e => {
     const t = typeById(e.typeId);
     const out = e.start < r.wake || e.end > r.sleep;
-    return `<div class="mcard" data-id="${e.id}" style="${blockVars(t)}">
+    return `<div class="mcard" data-id="${e.id}" style="${blockVars(t, e.color)}">
       <div class="mc-main">
         <div class="mc-title">${t && t.icon ? esc(t.icon)+' ' : ''}${esc(e.title)}${e.parity!=='all'?` <span class="ptag">${e.parity}</span>`:''}</div>
         ${(e.room||e.teacher) ? `<div class="mc-sub">${esc(e.room||'')}${e.room&&e.teacher?' · ':''}${esc(e.teacher||'')}</div>` : ''}
@@ -1044,34 +1223,67 @@ function renderBoardMobile(){
     ? 'Nothing today 🎉' : 'Nothing on '+DAY_NAMES[mobileDay]+' 🎉'}</div>`;
 }
 
+/* ---------- stats bar ---------- */
 function renderStats(){
   if (isMobile()) return;
+  const cfg = statCfg();
   const evs = gridEvents();
-  const map = new Map(); let total = 0;
-  const perDay = [0,0,0,0,0,0,0];
-  for (const e of evs){
-    const dur = e.end - e.start;
-    const k = e.typeId ?? 0;
-    map.set(k, (map.get(k)||0) + dur*e.days.length);
-    total += dur*e.days.length;
-    for (const d of e.days) perDay[d] += dur;
-  }
   if (!evs.length){
     $('#statsBar').innerHTML = '<span class="muted">No blocks in this view — click the grid or “＋ Add block” to start.</span>';
     return;
   }
-  const parts = [...map.entries()].sort((a,b)=>b[1]-a[1]).map(([tid, mins]) => {
-    const t = tid ? typeById(tid) : null;
-    const label = t ? `${t.icon ? esc(t.icon)+' ' : ''}${esc(t.name)}` : 'Unsorted';
-    return `<span class="chip" style="--tc:${t?t.color:'#8aa0c0'}">${label} <b>${hoursTxt(mins)}h</b></span>`;
-  });
-  let busiest = -1, bm = 0;
-  perDay.forEach((v,i)=>{ if (v > bm){ bm = v; busiest = i; } });
-  parts.push(`<span class="chip total">Scheduled <b>${hoursTxt(total)}h</b> / week</span>`);
-  parts.push(`<span class="chip total">${evs.length} block${evs.length===1?'':'s'}</span>`);
-  if (busiest >= 0)
-    parts.push(`<span class="chip total">Busiest ${DAY_NAMES[busiest]} <b>${hoursTxt(bm)}h</b></span>`);
-  $('#statsBar').innerHTML = parts.join('');
+  const perDay = [0,0,0,0,0,0,0];
+  const byType = new Map();
+  let total = 0;
+  for (const e of evs){
+    const d = e.end - e.start;
+    byType.set(e.typeId ?? 0, (byType.get(e.typeId ?? 0)||0) + d*e.days.length);
+    total += d*e.days.length;
+    for (const dd of e.days) perDay[dd] += d;
+  }
+  const chip = (label, mins, color) =>
+    `<span class="chip" style="--tc:${color||'#64748b'}">${label} <b>${hoursTxt(mins)}h</b></span>`;
+  const parts = [];
+
+  for (const g of (cfg.groups || [])){
+    if (g.on === false) continue;
+    const ts = state.eventTypes.filter(t => (g.types || []).includes(t.id));
+    if (!ts.length) continue;
+    const set = new Set(ts.map(t => t.id));
+    const mins = evs.reduce((a,e) =>
+      a + (e.typeId && set.has(e.typeId) ? (e.end-e.start)*e.days.length : 0), 0);
+    const icons = ts.map(t => t.icon).filter(Boolean).join('');
+    parts.push(chip(`${icons ? esc(icons)+' ' : ''}${esc(g.name)}`, mins, ts[0].color));
+  }
+  if (cfg.showTypes !== false){
+    for (const [tid, mins] of [...byType.entries()].sort((a,b)=>b[1]-a[1])){
+      const t = tid ? typeById(tid) : null;
+      const label = t ? `${t.icon ? esc(t.icon)+' ' : ''}${esc(t.name)}` : 'Unsorted';
+      parts.push(chip(label, mins, t ? t.color : '#8aa0c0'));
+    }
+  }
+  if (cfg.showPeriods !== false){
+    for (const p of (state.periods || [])){
+      const mins = (p.days || []).reduce((a,d) => a + (d.on ? d.end - d.start : 0), 0);
+      if (mins > 0) parts.push(chip(`${p.icon ? esc(p.icon)+' ' : ''}${esc(p.name)}`, mins, p.color));
+    }
+  }
+  if (cfg.showSleep !== false){
+    const avg = state.settings.dayRanges.reduce((a,r) => a + sleepHours(r), 0) / 7;
+    parts.push(`<span class="chip" style="--tc:#64748b">😴 Sleep avg <b>${avg.toFixed(1).replace(/\.0$/,'')}h</b></span>`);
+  }
+  if (cfg.showTotal !== false)
+    parts.push(`<span class="chip total">Scheduled <b>${hoursTxt(total)}h</b> / week</span>`);
+  if (cfg.showCount !== false)
+    parts.push(`<span class="chip total">${evs.length} block${evs.length===1?'':'s'}</span>`);
+  if (cfg.showBusiest !== false){
+    let busiest = -1, bm = 0;
+    perDay.forEach((v,i) => { if (v > bm){ bm = v; busiest = i; } });
+    if (busiest >= 0)
+      parts.push(`<span class="chip total">Busiest day <b>${DAY_NAMES[busiest]}</b></span>`);
+  }
+  $('#statsBar').innerHTML = parts.join('') ||
+    '<span class="muted">All stat chips are hidden — enable some in ⚙ Settings → Stats.</span>';
 }
 
 function updateNow(){
@@ -1107,8 +1319,8 @@ function updateNow(){
   }
   document.querySelectorAll('.ev.current').forEach(el => el.classList.remove('current'));
   if (cur){
-    const el = document.querySelector(`.day.is-today .ev[data-id="${cur.id}"]`);
-    if (el) el.classList.add('current');
+    document.querySelectorAll(`.day.is-today .ev[data-id="${cur.id}"]`)
+      .forEach(el => el.classList.add('current'));
   }
 }
 
@@ -1173,7 +1385,6 @@ function applyTypeDefaults(){
   $('#fEnd').value = fmt(Math.min(1439, start + (t.duration || 60)));
   updateWakeWarn();
 }
-/* warn when the block sits outside the wake window of any selected day */
 function updateWakeWarn(){
   const el = $('#fWakeWarn');
   const start = parseHM($('#fStart').value), end = parseHM($('#fEnd').value);
@@ -1188,6 +1399,17 @@ function updateWakeWarn(){
                    `(wake ${fmt(r.wake)} — sleep ${fmt(r.sleep)})`;
   el.style.display = 'flex';
 }
+function syncColorUI(){
+  const t = typeById(+$('#fType').value || null);
+  const shown = editColor || (t ? t.color : '#8aa0c0');
+  const rgb = hexToRgb(shown);
+  const a = clampInt(t ? t.opacity : 100, 10, 100, 100) / 100;
+  $('#fCol').value = shown;
+  $('#fColFill').style.background = rgba(rgb, a);
+  $('#fColHint').textContent = editColor ? 'custom color' : 'using type color';
+}
+$('#fCol').addEventListener('input', () => { editColor = $('#fCol').value; syncColorUI(); });
+$('#fColReset').addEventListener('click', () => { editColor = null; syncColorUI(); });
 
 function openEventModal(ev, prefill){
   editingEventId = ev ? ev.id : null;
@@ -1196,6 +1418,7 @@ function openEventModal(ev, prefill){
 
   editDays = new Set(ev ? ev.days
     : [(prefill && prefill.day != null) ? prefill.day : defaultDay()]);
+  editColor = ev ? (ev.color || null) : null;
   renderDayChips();
 
   let start;
@@ -1226,6 +1449,7 @@ function openEventModal(ev, prefill){
   setLastType(t ? t.id : null);
   updateRoomLabel();
   updateWakeWarn();
+  syncColorUI();
   openModal('#eventModal');
   setTimeout(() => $('#fTitle').focus(), 60);
 }
@@ -1239,6 +1463,7 @@ function eventPayload(includeId){
     start: parseHM($('#fStart').value),
     end: parseHM($('#fEnd').value),
     parity: $('#fParity').value,
+    color: editColor,
     room: $('#fRoom').value.trim(),
     teacher: $('#fTeacher').value.trim(),
     note: $('#fNote').value.trim(),
@@ -1283,12 +1508,12 @@ $('#fType').addEventListener('change', () => {
   updateRoomLabel();
   if (!editingEventId) applyTypeDefaults();
   updateWakeWarn();
+  syncColorUI();
 });
 $('#fFit').addEventListener('click', applyTypeDefaults);
 ['fStart','fEnd'].forEach(id =>
   document.getElementById(id).addEventListener('input', updateWakeWarn));
 
-/* ±15 min steppers */
 document.querySelectorAll('.mini[data-time]').forEach(b => b.addEventListener('click', () => {
   const inp = b.dataset.time === 'start' ? $('#fStart') : $('#fEnd');
   let m = parseHM(inp.value);
@@ -1305,11 +1530,11 @@ document.querySelectorAll('.mini[data-time]').forEach(b => b.addEventListener('c
   updateWakeWarn();
 }));
 
-/* ================= settings modal (General + Types) ================= */
+/* ================= settings modal ================= */
 function openSettingsTab(name){
   document.querySelectorAll('.set-tab').forEach(b => b.classList.toggle('active', b.dataset.stab === name));
-  $('#stab-general').classList.toggle('active', name === 'general');
-  $('#stab-types').classList.toggle('active', name === 'types');
+  ['general','types','periods','stats'].forEach(n =>
+    $('#stab-' + n).classList.toggle('active', n === name));
 }
 function renderWakeRows(){
   $('#wakeRows').innerHTML = state.settings.dayRanges.map(r => `
@@ -1317,8 +1542,174 @@ function renderWakeRows(){
       <span class="dname">${DAY_NAMES[r.day]}</span>
       <span class="wlab">Wake<input type="time" class="wk" value="${fmt(r.wake)}"></span>
       <span class="wlab">Sleep<input type="time" class="sl" value="${fmt(r.sleep)}"></span>
+      <span class="wslp" title="Sleep hours at these times">${sleepHours(r).toFixed(1).replace(/\.0$/,'')}h</span>
     </div>`).join('');
 }
+$('#wakeRows').addEventListener('input', () => {
+  document.querySelectorAll('#wakeRows .wake-row').forEach(row => {
+    const wk = parseHM(row.querySelector('.wk').value);
+    const sl = parseHM(row.querySelector('.sl').value);
+    if (wk != null && sl != null && sl > wk)
+      row.querySelector('.wslp').textContent =
+        ((1440 - (sl - wk)) / 60).toFixed(1).replace(/\.0$/,'') + 'h';
+  });
+});
+
+/* ---- periods editor ---- */
+function renderPeriodRows(){
+  $('#periodRows').innerHTML = editingPeriods.map((p, i) => `
+    <div class="p-row" data-idx="${i}">
+      <div class="tr-color" title="Click to pick a color">
+        <input type="color" class="p-cin" value="${esc(p.color)}">
+        <span class="tr-cfill" style="background:${rgba(hexToRgb(p.color), clampInt(p.opacity,0,100,30)/100)}"></span>
+      </div>
+      <input class="p-icon" maxlength="8" value="${esc(p.icon)}" placeholder="🏫">
+      <input class="p-name" maxlength="60" value="${esc(p.name)}" placeholder="e.g. At school">
+      <div class="p-nums">
+        <input type="time" class="p-start" value="${fmt(p.start)}" title="Start — sets every day, follows the earliest day start">
+        <input type="time" class="p-end" value="${fmt(p.end)}" title="End — sets every day, follows the latest day end">
+        <input type="range" class="p-op" min="0" max="100" step="5" value="${p.opacity}"
+          title="Opacity of the hatch">
+        <span class="tr-opv">${p.opacity}%</span>
+      </div>
+      <button type="button" class="icon-btn p-del" title="Remove period">✕</button>
+    </div>`).join('') || '<p class="muted">No periods yet — add one below.</p>';
+}
+function renderPdMatrix(){
+  const wrap = $('#pdMatrix');
+  if (!editingPeriods.length){ wrap.innerHTML = '<p class="muted">Add a period first.</p>'; return; }
+  wrap.style.setProperty('--np', editingPeriods.length);
+  let h = `<div class="pd"><span></span>${editingPeriods.map(p =>
+    `<span class="dname" style="color:${p.color}">${p.icon ? esc(p.icon)+' ' : ''}${esc(p.name)}</span>`).join('')}</div>`;
+  for (const d of [0,1,2,3,4,5,6]){
+    h += `<div class="pd" data-day="${d}"><span class="dname">${DAY_SHORT[d]}</span>` +
+      editingPeriods.map((p, i) => {
+        const pd = p.days[d];
+        return `<span class="pd-cell" data-pi="${i}">
+          <label class="pd-chk"><input type="checkbox" class="pd-on" ${pd.on?'checked':''}><span class="sw sw-sm"></span></label>
+          <input type="time" class="pd-s" value="${fmt(pd.start)}">
+          <input type="time" class="pd-e" value="${fmt(pd.end)}">
+        </span>`;
+      }).join('') + `</div>`;
+  }
+  wrap.innerHTML = h;
+  syncPdDim();
+}
+function syncPdDim(){
+  document.querySelectorAll('#pdMatrix .pd-cell').forEach(cell => {
+    const off = !cell.querySelector('.pd-on').checked;
+    cell.style.opacity = off ? '.55' : '1';
+  });
+}
+/* keep a period row's general start/end in sync with its days:
+   earliest start → latest end across the active days */
+function syncPeriodGeneral(p, pi){
+  const act = p.days.filter(d => d.on);
+  if (act.length){
+    p.start = Math.min(...act.map(d => d.start));
+    p.end = Math.max(...act.map(d => d.end));
+  }
+  const prow = document.querySelector('.p-row[data-idx="' + pi + '"]');
+  if (prow){
+    const sInp = prow.querySelector('.p-start'), eInp = prow.querySelector('.p-end');
+    if (sInp) sInp.value = fmt(p.start);
+    if (eInp) eInp.value = fmt(p.end);
+  }
+}
+$('#pdMatrix').addEventListener('input', e => {
+  const cell = e.target.closest('.pd-cell'); if (!cell) return;
+  const row = cell.closest('.pd');
+  const p = editingPeriods[+cell.dataset.pi];
+  const pd = p.days[+row.dataset.day];
+  if (e.target.classList.contains('pd-on')) pd.on = e.target.checked;
+  if (e.target.classList.contains('pd-s')) pd.start = parseHM(e.target.value) ?? pd.start;
+  if (e.target.classList.contains('pd-e')) pd.end = parseHM(e.target.value) ?? pd.end;
+  syncPeriodGeneral(p, cell.dataset.pi);
+  syncPdDim();
+});
+$('#periodRows').addEventListener('input', e => {
+  const row = e.target.closest('.p-row'); if (!row) return;
+  const i = +row.dataset.idx;
+  const p = editingPeriods[i];
+  if (e.target.classList.contains('p-cin'))  p.color = e.target.value;
+  if (e.target.classList.contains('p-icon')) p.icon = e.target.value;
+  if (e.target.classList.contains('p-name')) p.name = e.target.value;
+  if (e.target.classList.contains('p-start')){
+    p.start = parseHM(e.target.value) ?? p.start;
+    p.days.forEach(d => { d.start = p.start; });   // general start → every day
+  }
+  if (e.target.classList.contains('p-end')){
+    p.end = parseHM(e.target.value) ?? p.end;
+    p.days.forEach(d => { d.end = p.end; });       // general end → every day
+  }
+  if (e.target.classList.contains('p-op'))    p.opacity = clampInt(e.target.value, 0, 100, 30);
+  const fill = row.querySelector('.tr-cfill');
+  if (fill) fill.style.background = rgba(hexToRgb(p.color), clampInt(p.opacity,0,100,30)/100);
+  const opv = row.querySelector('.tr-opv');
+  if (opv) opv.textContent = clampInt(p.opacity,0,100,30) + '%';
+  renderPdMatrix();
+});
+$('#periodRows').addEventListener('click', e => {
+  const del = e.target.closest('.p-del'); if (!del) return;
+  editingPeriods.splice(+del.closest('.p-row').dataset.idx, 1);
+  renderPeriodRows(); renderPdMatrix();
+});
+$('#btnAddPeriod').addEventListener('click', () => {
+  const start = state.settings.dayStart ?? 480;
+  const end = Math.min(1440, start + 300);
+  editingPeriods.push({
+    id: null, name: '', color: PASTELS[editingPeriods.length % PASTELS.length],
+    icon: '🏫', opacity: 30, start, end,
+    days: [0,1,2,3,4,5,6].map(d => ({day: d, on: true, start, end})),
+  });
+  renderPeriodRows(); renderPdMatrix();
+  const rows = document.querySelectorAll('.p-row');
+  if (rows.length) rows[rows.length-1].querySelector('.p-name').focus();
+});
+
+/* ---- stats editor ---- */
+function renderGroupRows(){
+  $('#groupRows').innerHTML = editingGroups.map((g, i) => `
+    <div class="g-row" data-idx="${i}">
+      <label class="chk" style="margin:0"><input type="checkbox" class="g-on" ${g.on!==false?'checked':''}><span class="sw sw-sm"></span></label>
+      <input class="g-name" maxlength="60" value="${esc(g.name)}" placeholder="Group name">
+      <div class="g-chips">${state.eventTypes.map(t => `
+        <button type="button" class="tchip ${(g.types||[]).includes(t.id)?'on':''}" data-tid="${t.id}">
+          <span class="dot" style="background:${t.color}"></span>${t.icon ? esc(t.icon)+' ' : ''}${esc(t.name)}</button>`).join('') || '<span class="muted">no types</span>'}
+      </div>
+      <button type="button" class="icon-btn g-del" title="Remove group">✕</button>
+    </div>`).join('') || '<p class="muted">No custom groups — add one below.</p>';
+}
+$('#groupRows').addEventListener('input', e => {
+  const row = e.target.closest('.g-row'); if (!row) return;
+  const g = editingGroups[+row.dataset.idx];
+  if (e.target.classList.contains('g-on')) g.on = e.target.checked;
+  if (e.target.classList.contains('g-name')) g.name = e.target.value;
+});
+$('#groupRows').addEventListener('click', e => {
+  const row = e.target.closest('.g-row'); if (!row) return;
+  const i = +row.dataset.idx;
+  const chip = e.target.closest('.tchip');
+  if (chip){
+    const tid = +chip.dataset.tid;
+    const arr = editingGroups[i].types = editingGroups[i].types || [];
+    const at = arr.indexOf(tid);
+    if (at >= 0) arr.splice(at, 1); else arr.push(tid);
+    chip.classList.toggle('on');
+    return;
+  }
+  if (e.target.closest('.g-del')){
+    editingGroups.splice(i, 1);
+    renderGroupRows();
+  }
+});
+$('#btnAddGroup').addEventListener('click', () => {
+  editingGroups.push({name: '', on: true, types: []});
+  renderGroupRows();
+  const rows = document.querySelectorAll('.g-row');
+  if (rows.length) rows[rows.length-1].querySelector('.g-name').focus();
+});
+
 function openSettings(tab){
   const s = state.settings;
   $('#sStart').value = fmt(s.dayStart);
@@ -1329,8 +1720,20 @@ function openSettings(tab){
   const th = s.theme === 'light' ? 'light' : 'dark';
   document.querySelectorAll('#thSeg button').forEach(b => b.classList.toggle('on', b.dataset.th === th));
   renderWakeRows();
-  editingTypes = state.eventTypes.map(t => ({...t, opacity: t.opacity == null ? 100 : t.opacity}));
+  editingTypes = state.eventTypes.map(t => ({...t, opacity: t.opacity == null ? 100 : t.opacity,
+    splitOn: !!t.splitOn, splitMin: t.splitMin || 45, splitBreak: t.splitBreak ?? 15}));
   renderTypeRows();
+  editingPeriods = (state.periods || []).map(p => ({...p, days: p.days.map(d => ({...d}))}));
+  renderPeriodRows(); renderPdMatrix();
+  const cfg = statCfg();
+  $('#stTypes').checked = cfg.showTypes !== false;
+  $('#stTotal').checked = cfg.showTotal !== false;
+  $('#stCount').checked = cfg.showCount !== false;
+  $('#stBusiest').checked = cfg.showBusiest !== false;
+  $('#stSleep').checked = cfg.showSleep !== false;
+  $('#stPeriods').checked = cfg.showPeriods !== false;
+  editingGroups = (cfg.groups || []).map(g => ({name: g.name, on: g.on !== false, types: [...(g.types||[])]}));
+  renderGroupRows();
   openSettingsTab(tab || 'general');
   openModal('#settingsModal');
 }
@@ -1349,6 +1752,7 @@ $('#btnWakeAll').addEventListener('click', () => {
     row.querySelector('.wk').value = wk;
     row.querySelector('.sl').value = sl;
   });
+  $('#wakeRows').dispatchEvent(new Event('input'));
   toast('Copied Monday to all days — now press Save settings');
 });
 $('#btnSettingsSave').addEventListener('click', async () => {
@@ -1369,43 +1773,62 @@ $('#btnSettingsSave').addEventListener('click', async () => {
     }
   }
   const thBtn = document.querySelector('#thSeg button.on');
-  const items = editingTypes.filter(t => t.name.trim()).map(t => ({
+  const types = editingTypes.filter(t => t.name.trim()).map(t => ({
     id: t.id, name: t.name.trim(), color: t.color, icon: (t.icon||'').trim(),
     startOffset: clampInt(t.startOffset, 0, 59, 0),
     duration: clampInt(t.duration, 15, 720, 60),
     opacity: clampInt(t.opacity, 10, 100, 100),
+    splitOn: !!t.splitOn,
+    splitMin: clampInt(t.splitMin, 20, 120, 45),
+    splitBreak: clampInt(t.splitBreak, 0, 60, 15),
   }));
+  const periods = editingPeriods.filter(p => p.name.trim()).map(p => ({
+    id: p.id, name: p.name.trim(), color: p.color, icon: (p.icon||'').trim(),
+    opacity: clampInt(p.opacity, 0, 100, 30),
+    start: p.start, end: p.end,
+    days: p.days.map(d => ({day: d.day, on: !!d.on, start: d.start, end: d.end})),
+  }));
+  const statConfig = {
+    showTypes: $('#stTypes').checked,
+    showTotal: $('#stTotal').checked,
+    showCount: $('#stCount').checked,
+    showBusiest: $('#stBusiest').checked,
+    showSleep: $('#stSleep').checked,
+    showPeriods: $('#stPeriods').checked,
+    groups: editingGroups.filter(g => g.name.trim())
+      .map(g => ({name: g.name.trim(), on: g.on !== false, types: [...(g.types||[])]})),
+  };
   try {
     await call('settings/save', {
-      dayStart: ds, dayEnd: de,
-      dayRanges,
+      dayStart: ds, dayEnd: de, dayRanges,
       showSaturday: $('#sSat').checked, showSunday: $('#sSun').checked,
       theme: thBtn ? thBtn.dataset.th : 'dark',
       hourPx: parseInt($('#sZoom').value, 10) || 48,
+      statConfig,
     });
-    await call('types/save', {types: items});
+    await call('types/save', {types});
+    await call('periods/save', {periods, scheduleId: activeId()});
     closeModal('#settingsModal');
     toast('Settings saved ✓');
   } catch (err){ toast(err.message, 'err'); }
 });
 
-/* type rows editor — custom swatch + opacity slider */
+/* type rows editor */
 function typeFillStyle(t){
-  const rgb = hexToRgb(t.color);
-  const a = clampInt(t.opacity, 10, 100, 100) / 100;
-  return rgba(rgb, a);
+  return rgba(hexToRgb(t.color), clampInt(t.opacity, 10, 100, 100) / 100);
 }
 function updateTypeRowVisual(row, t){
   const fill = row.querySelector('.tr-cfill');
   if (fill) fill.style.background = typeFillStyle(t);
   const opv = row.querySelector('.tr-opv');
   if (opv) opv.textContent = clampInt(t.opacity, 10, 100, 100) + '%';
+  row.classList.toggle('sp-on', !!t.splitOn);
 }
 function renderTypeRows(){
   const counts = {};
   for (const e of state.events){ if (e.typeId != null) counts[e.typeId] = (counts[e.typeId]||0)+1; }
   $('#typeRows').innerHTML = editingTypes.map((t, i) => `
-    <div class="type-row" data-idx="${i}">
+    <div class="type-row ${t.splitOn?'sp-on':''}" data-idx="${i}">
       <div class="tr-color" title="Click to pick a color">
         <input type="color" class="tr-cin" value="${esc(t.color)}">
         <span class="tr-cfill" style="background:${typeFillStyle(t)}"></span>
@@ -1413,13 +1836,25 @@ function renderTypeRows(){
       <input class="tr-icon" maxlength="8" value="${esc(t.icon)}" placeholder="🙂">
       <input class="tr-name" maxlength="60" value="${esc(t.name)}" placeholder="Type name">
       <div class="tr-nums">
-        <input type="number" class="tr-off" min="0" max="59" step="5" value="${t.startOffset||0}"
-          title="Blocks of this type snap to :MM past the hour (15 → 8:15)">
-        <input type="number" class="tr-dur" min="15" max="720" step="15" value="${t.duration||60}"
-          title="Default length in minutes">
-        <input type="range" class="tr-op" min="10" max="100" step="5" value="${t.opacity==null?100:t.opacity}"
-          title="Opacity: how strongly the color fills the block">
-        <span class="tr-opv">${t.opacity==null?100:t.opacity}%</span>
+        <div class="tr-line">
+          <input type="number" class="tr-off" min="0" max="59" step="5" value="${t.startOffset||0}"
+            title="Blocks of this type snap to :MM past the hour (15 → 8:15)">
+          <input type="number" class="tr-dur" min="15" max="720" step="15" value="${t.duration||60}"
+            title="Default length in minutes">
+          <input type="range" class="tr-op" min="10" max="100" step="5" value="${t.opacity==null?100:t.opacity}"
+            title="Opacity: how strongly the color fills the block">
+          <span class="tr-opv">${t.opacity==null?100:t.opacity}%</span>
+        </div>
+        <div class="tr-line">
+          <label class="chk" style="margin:0" title="Split long blocks into period/break segments">
+            <input type="checkbox" class="tr-son" ${t.splitOn?'checked':''}><span class="sw sw-sm"></span>
+          </label>
+          <span class="tr-slab">split</span>
+          <input type="number" class="tr-sp" min="20" max="120" step="5" value="${t.splitMin||45}"
+            title="Lesson period length (min)">
+          <input type="number" class="tr-sb" min="0" max="60" step="5" value="${t.splitBreak??15}"
+            title="Break between periods (min)">
+        </div>
       </div>
       <span class="tr-count">${counts[t.id] || 0}</span>
       <button type="button" class="icon-btn tr-del" title="Remove type">✕</button>
@@ -1434,7 +1869,10 @@ $('#typeRows').addEventListener('input', e => {
   if (e.target.classList.contains('tr-off'))  editingTypes[i].startOffset = clampInt(e.target.value, 0, 59, 0);
   if (e.target.classList.contains('tr-dur'))  editingTypes[i].duration = clampInt(e.target.value, 15, 720, 60);
   if (e.target.classList.contains('tr-op'))   editingTypes[i].opacity = clampInt(e.target.value, 10, 100, 100);
-  updateTypeRowVisual(row, editingTypes[i]);   // swatch + % readout update live
+  if (e.target.classList.contains('tr-son'))  editingTypes[i].splitOn = e.target.checked;
+  if (e.target.classList.contains('tr-sp'))   editingTypes[i].splitMin = clampInt(e.target.value, 20, 120, 45);
+  if (e.target.classList.contains('tr-sb'))   editingTypes[i].splitBreak = clampInt(e.target.value, 0, 60, 15);
+  updateTypeRowVisual(row, editingTypes[i]);
 });
 $('#typeRows').addEventListener('click', e => {
   const del = e.target.closest('.tr-del'); if (!del) return;
@@ -1443,7 +1881,8 @@ $('#typeRows').addEventListener('click', e => {
 });
 $('#btnAddType').addEventListener('click', () => {
   editingTypes.push({id:null, name:'', color:PASTELS[editingTypes.length % PASTELS.length],
-                     icon:'', startOffset:0, duration:60, opacity:100});
+                     icon:'', startOffset:0, duration:60, opacity:100,
+                     splitOn:false, splitMin:45, splitBreak:15});
   renderTypeRows();
   const rows = document.querySelectorAll('.type-row');
   if (rows.length) rows[rows.length-1].querySelector('.tr-name').focus();
@@ -1461,7 +1900,7 @@ $('#scheduleTabs').addEventListener('click', e => {
   if (tab && tab.dataset.sid) call('schedules/activate', {id: +tab.dataset.sid}).catch(err => toast(err.message,'err'));
 });
 
-/* ================= file menu (export / import / print, desktop) ================= */
+/* ================= file menu ================= */
 $('#btnFileMenu').addEventListener('click', () => $('#fileMenuWrap').classList.toggle('open'));
 $('#fileMenu').addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
@@ -1533,7 +1972,7 @@ $('#mobileWrap').addEventListener('touchend', e => {
     stepMobileDay(dx < 0 ? 1 : -1);
 }, {passive:true});
 
-/* ================= mobile nav sheet (☰) ================= */
+/* ================= mobile nav sheet ================= */
 function renderMobileNav(){
   const el = $('#mobileNav');
   let h = '';
@@ -1650,7 +2089,7 @@ $('#mobileNav').addEventListener('click', e => {
   }
 });
 
-/* ================= context menus (desktop right-click) ================= */
+/* ================= context menus (desktop) ================= */
 function renderCtx(){
   const m = $('#ctxMenu');
   if (!ctx){ m.classList.remove('open'); return; }
@@ -1740,7 +2179,7 @@ $('#ctxMenu').addEventListener('click', e => {
     if (!ev){ closeCtx(); return; }
     const copyPayload = days => ({scheduleId: ev.scheduleId, typeId: ev.typeId,
       title: ev.title, days, start: ev.start, end: ev.end, parity: ev.parity,
-      room: ev.room, teacher: ev.teacher, note: ev.note});
+      color: ev.color, room: ev.room, teacher: ev.teacher, note: ev.note});
     if (act === 'ev-edit'){ closeCtx(); openEventModal(ev);
     } else if (act === 'ev-dup'){ closeCtx();
       call('events/save', copyPayload(ev.days))
@@ -1841,7 +2280,10 @@ $('#days').addEventListener('pointerdown', e => {
   const multi = ev.days.length > 1;
   drag = {mode: handle ? 'resize' : 'move', ev, el: evEl,
           sx: e.clientX, sy: e.clientY, moved: false, suppress: !!handle,
-          dur: ev.end - ev.start, multi, newDay: null, newStart: null, newEnd: null};
+          dur: ev.end - ev.start, multi,
+          off: parseInt(evEl.dataset.off || '0', 10) || 0,
+          segStart: parseInt(evEl.dataset.s0 || '0', 10) || ev.start,
+          newDay: null, newStart: null, newEnd: null};
 
   const onMove = pe => {
     if (!drag) return;
@@ -1858,7 +2300,7 @@ $('#days').addEventListener('pointerdown', e => {
       const body = hit ? hit.closest('.day-body') : null;
       if (!body) return;
       const r = body.getBoundingClientRect();
-      let start = Math.round((st.dayStart + (pe.clientY - r.top)/hp*60) / 15) * 15;
+      let start = Math.round((st.dayStart + (pe.clientY - r.top)/hp*60 - drag.off) / 15) * 15;
       start = Math.max(st.dayStart, Math.min(Math.max(st.dayStart, st.dayEnd - drag.dur), start));
       drag.newDay = +body.dataset.day;
       drag.newStart = start;
@@ -1866,16 +2308,16 @@ $('#days').addEventListener('pointerdown', e => {
       if (drag.el.parentElement !== body) body.appendChild(drag.el);
       drag.el.style.left = '3px';
       drag.el.style.width = 'calc(100% - 6px)';
-      drag.el.style.top = ((start - st.dayStart)/60*hp) + 'px';
+      drag.el.style.top = ((start + drag.off - st.dayStart)/60*hp) + 'px';
       dragTip(`${fmt(start)}–${fmt(start + drag.dur)} · ${DAY_NAMES[drag.newDay]}` +
               (drag.multi ? ' · time only (multi-day)' : ''), pe);
     } else {
       const r = drag.el.parentElement.getBoundingClientRect();
       let end = Math.round((st.dayStart + (pe.clientY - r.top)/hp*60) / 15) * 15;
-      end = Math.max(drag.ev.start + 15, Math.min(1440, end));
+      end = Math.max(drag.segStart + 15, Math.min(1440, end));
       drag.newEnd = end;
-      drag.el.style.height = Math.max(16, (end - drag.ev.start)/60*hp - 2) + 'px';
-      dragTip(`${fmt(drag.ev.start)}–${fmt(end)}`, pe);
+      drag.el.style.height = Math.max(16, (end - drag.segStart)/60*hp - 2) + 'px';
+      dragTip(`${fmt(drag.segStart)}–${fmt(end)}`, pe);
     }
   };
   const cleanup = () => {
@@ -1904,7 +2346,7 @@ $('#days').addEventListener('pointerdown', e => {
     renderAll();
     call('events/save', {id: e2.id, scheduleId: e2.scheduleId, typeId: e2.typeId,
       title: e2.title, days: e2.days, start: e2.start, end: e2.end, parity: e2.parity,
-      room: e2.room, teacher: e2.teacher, note: e2.note})
+      color: e2.color, room: e2.room, teacher: e2.teacher, note: e2.note})
       .catch(err => toast(err.message, 'err'));
   };
   window.addEventListener('pointermove', onMove);
@@ -1928,7 +2370,6 @@ $('#nowChip').addEventListener('click', () => {
   else toast('Today is not visible on the board');
 });
 
-/* grid zoom (desktop) */
 function zoomStep(dir){
   const cur = hourPx();
   let i = ZOOMS.indexOf(cur);
