@@ -67,7 +67,10 @@ class TimetableSchedule(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Per-day wake/sleep for THIS schedule:
-    # {"0": {"wake": 420, "sleep": 1320}, ...} (JSON keys are strings)
+    # {"0": {"wake": 420, "sleep": 1320}, ...} (JSON keys are strings).
+    # A sleep value <= wake means the sleep time is AFTER midnight on the
+    # next day (wake 08:00 + sleep 01:00 = asleep 01:00–08:00). Old rows
+    # always have sleep > wake, so they keep their exact meaning.
     day_ranges = db.Column(db.JSON)
 
     events = db.relationship(
@@ -160,6 +163,10 @@ class TimetableEvent(db.Model):
     teacher = db.Column(db.String(120), default="")
     note = db.Column(db.Text, default="")
 
+    # LEGACY: odd/even ISO-week parity was removed from the UI entirely;
+    # the column and stored values stay so old databases keep working.
+    # The app and the .ics export treat every block as weekly. New blocks
+    # get the column default 'all'.
     parity = db.Column(db.String(8), nullable=False, default="all")  # all | odd | even
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

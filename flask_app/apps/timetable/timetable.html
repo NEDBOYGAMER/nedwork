@@ -152,13 +152,9 @@
   .ev-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ev-meta{color:var(--evt);opacity:.82;white-space:nowrap;overflow:hidden;
     text-overflow:ellipsis;margin-top:1px}
-  .ptag{font-size:9.5px;font-weight:700;text-transform:uppercase;
-    background:color-mix(in srgb,var(--evt) 16%,transparent);
-    border-radius:4px;padding:1px 4px;vertical-align:1px}
   /* period badge on blocks inside a period */
   .pib{font-size:11px;margin-left:5px;vertical-align:1px}
   .pib-dot{display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:1px}
-  .ev-par{background-image:repeating-linear-gradient(-45deg,rgba(128,128,128,.09) 0 5px,transparent 5px 10px)}
   .ev-resize{position:absolute;left:0;right:0;bottom:0;height:8px;cursor:ns-resize;opacity:0;
     transition:opacity .12s;border-radius:0 0 8px 8px;touch-action:none}
   .ev:hover .ev-resize{opacity:1;
@@ -188,7 +184,8 @@
     display:none;align-items:flex-start;justify-content:center;padding:7vh 16px 16px;z-index:100}
   .mb.open{display:flex}
   .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;
-    box-shadow:var(--shadow);padding:20px;width:100%;max-width:520px;max-height:84vh;overflow:auto}
+    box-shadow:var(--shadow);padding:20px 20px 0;width:100%;max-width:520px;max-height:84vh;
+    overflow:auto}
   .modal.wide{max-width:820px}
   .modal h3{margin:0 0 12px;font-size:17px}
   .modal label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);
@@ -200,6 +197,11 @@
   .row2{display:flex;gap:10px}
   .modal-actions{display:flex;gap:8px;margin-top:14px;align-items:center}
   .spacer{flex:1}
+  /* sticky footer bar: Save/Cancel always reachable, even when the modal
+     content is taller than the screen */
+  .modal-actions.foot{position:sticky;bottom:0;margin:14px -20px 0;
+    padding:12px 20px 20px;background:var(--panel);
+    box-shadow:0 -10px 14px -12px rgba(0,0,0,.45)}
 
   /* toggle switches */
   .chk{flex-direction:row!important;align-items:center;gap:10px;font-size:13.5px;
@@ -349,7 +351,7 @@
   .mnav{display:none}
 
   @media (max-width:760px){
-    #scheduleTabs,#btnAddSchedule,#paritySel,#btnAddBlock,#btnSettings,
+    #scheduleTabs,#btnAddSchedule,#btnAddBlock,#btnSettings,
     .zoom-group,#fileMenuWrap,#btnHelp,.topbar .sep{display:none!important}
     .topbar{padding:8px 10px}
     .now-chip{max-width:38vw;font-size:12px;padding:7px 12px}
@@ -390,16 +392,27 @@
     body.mobile-edit .mcard{cursor:pointer}
     .mcard.current{border-color:color-mix(in srgb,var(--accent) 60%,var(--line));
       box-shadow:0 0 0 2px var(--accent)}
+    .mc-main{flex:1;min-width:0}
     .mc-title{font-weight:700;font-size:14.5px;line-height:1.3}
     .mc-sub{font-size:12.5px;color:var(--evt);opacity:.75;margin-top:2px;white-space:nowrap;
       overflow:hidden;text-overflow:ellipsis}
     .mc-time{font-size:12.5px;color:var(--evt);opacity:.85;
       font-variant-numeric:tabular-nums;flex:0 0 auto}
+    /* split rhythm on mobile: segment times with the pauses between them */
+    .mc-segline{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:4px;
+      font-size:11.5px;font-variant-numeric:tabular-nums}
+    .mc-seg{color:var(--evt);opacity:.85}
+    .mc-pause{color:var(--evt);opacity:.55;font-size:10.5px}
+    /* red "you are here" line between the cards, like the desktop grid */
+    .m-now{display:flex;align-items:center;gap:8px;margin:2px 0 12px;color:#ef4444}
+    .m-now-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;flex:0 0 auto}
+    .m-now-time{font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+    .m-now-line{flex:1;border-top:2px solid #ef4444;opacity:.85}
     .mempty{background:var(--panel);border:1px dashed var(--line);border-radius:12px;
       padding:26px 14px;text-align:center;color:var(--muted);font-size:14px}
 
     .fabs{display:flex;flex-direction:column;gap:10px;position:fixed;right:16px;
-      bottom:calc(16px + env(safe-area-inset-bottom));z-index:90}
+      bottom:calc(16px + env(safe-area-inset-bottom));z-index:92;transform:translateZ(0)}
     .fab{width:56px;height:56px;border-radius:50%;border:none;font-size:22px;
       box-shadow:0 8px 20px rgba(0,0,0,.35);cursor:pointer;
       display:flex;align-items:center;justify-content:center}
@@ -430,6 +443,7 @@
     .modal::before{content:"";display:block;width:42px;height:4px;border-radius:2px;
       background:var(--line);margin:-6px auto 14px}
     .modal input,.modal select,.modal textarea{font-size:16px}
+    .modal-actions.foot{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
 
     .type-head,.p-head{display:none}
     .type-row{grid-template-columns:42px 52px 1fr 30px;
@@ -445,6 +459,15 @@
     .pd{grid-template-columns:56px repeat(var(--np,1),minmax(150px,1fr))}
     .seg button{padding:10px 14px}
     .st-grid{grid-template-columns:1fr}
+
+    /* iOS Safari keeps its bottom address bar expanded until the first
+       scroll, hiding anything pinned to the very bottom. Lift the FABs,
+       toasts & scroll padding above it on iOS only. */
+    @supports (-webkit-touch-callout:none){
+      .fabs{bottom:calc(62px + env(safe-area-inset-bottom))}
+      .board-wrap{padding-bottom:calc(180px + env(safe-area-inset-bottom))}
+      #toasts{bottom:calc(84px + env(safe-area-inset-bottom))}
+    }
   }
 
   @media print{
@@ -471,11 +494,6 @@
   <div class="tabs" id="scheduleTabs"></div>
   <button class="btn" id="btnAddSchedule" title="Create a new timetable">＋ New</button>
   <div class="actions">
-    <select class="btn" id="paritySel" title="Which weeks to show">
-      <option value="all">All weeks</option>
-      <option value="odd">Odd ISO weeks</option>
-      <option value="even">Even ISO weeks</option>
-    </select>
     <button class="btn primary" id="btnAddBlock">＋ Add block</button>
     <button class="btn" id="btnSettings">⚙ Settings</button>
     <span class="zoom-group">
@@ -538,14 +556,7 @@
     <h3 id="evModalTitle">Add block</h3>
     <form id="evForm">
       <label>Title<input id="fTitle" maxlength="160" placeholder="e.g. Analysis I"></label>
-      <div class="row2">
-        <label>Type<select id="fType"></select></label>
-        <label>Repeats<select id="fParity">
-          <option value="all">Every week</option>
-          <option value="odd">Odd ISO weeks only</option>
-          <option value="even">Even ISO weeks only</option>
-        </select></label>
-      </div>
+      <label>Type<select id="fType"></select></label>
       <label style="margin-bottom:4px">Days <span style="font-weight:400">(a block can be on several days)</span></label>
       <div class="day-chips" id="fDays"></div>
       <div class="chip-presets">
@@ -585,6 +596,8 @@
           <span class="tr-cfill" id="fColFill"></span>
         </div>
         <button type="button" class="mini2" id="fColReset" title="Back to the type color">type</button>
+        <button type="button" class="mini2" id="fColFromSame"
+          title="Copy the color of the last block with the same name & type">⟲ from same</button>
         <span class="muted" style="font-size:11.5px" id="fColHint">using type color</span>
       </div>
       <div class="row2">
@@ -592,7 +605,7 @@
         <label>Teacher<input id="fTeacher" maxlength="120" placeholder="optional"></label>
       </div>
       <label>Notes<textarea id="fNote" rows="2" maxlength="2000" placeholder="optional"></textarea></label>
-      <div class="modal-actions">
+      <div class="modal-actions foot">
         <button type="button" class="btn danger" id="btnEvDelete">Delete</button>
         <button type="button" class="btn" id="btnEvDuplicate">Duplicate</button>
         <span class="spacer"></span>
@@ -638,8 +651,9 @@
       <label class="chk"><input type="checkbox" id="sSat"><span class="sw"></span> Show Saturday</label>
       <label class="chk"><input type="checkbox" id="sSun"><span class="sw"></span> Show Sunday</label>
       <h4>Wake &amp; sleep — this timetable</h4>
-      <p class="muted" style="margin-top:-6px">Sleep times are saved per timetable. Hours outside
-        the wake window are hatched on the grid; blocks there get a 🌙 hint.</p>
+      <p class="muted" style="margin-top:-6px">Sleep times are saved per timetable. A sleep time
+        <b>before</b> the wake time (e.g. 01:00 when you wake at 08:00) means <b>after midnight</b>.
+        Hours outside the wake window are hatched on the grid; blocks there get a 🌙 hint.</p>
       <div class="wake-rows" id="wakeRows"></div>
       <button type="button" class="btn" id="btnWakeAll" title="Copy Monday's times to every day">⧉ Copy Monday to all days</button>
     </div>
@@ -690,7 +704,7 @@
       <button type="button" class="btn" id="btnAddGroup">＋ Add group</button>
     </div>
 
-    <div class="modal-actions">
+    <div class="modal-actions foot">
       <span class="spacer"></span>
       <button type="button" class="btn" data-close>Cancel</button>
       <button type="button" class="btn primary" id="btnSettingsSave">Save settings</button>
@@ -704,7 +718,7 @@
     <h3 id="promptTitle">Name</h3>
     <form id="promptForm">
       <input id="promptInput" maxlength="120" autocomplete="off">
-      <div class="modal-actions">
+      <div class="modal-actions foot">
         <span class="spacer"></span>
         <button type="button" class="btn" data-close>Cancel</button>
         <button type="submit" class="btn primary">OK</button>
@@ -718,7 +732,7 @@
   <div class="modal">
     <h3>Are you sure?</h3>
     <p id="confirmMsg" style="font-size:14px"></p>
-    <div class="modal-actions">
+    <div class="modal-actions foot">
       <span class="spacer"></span>
       <button type="button" class="btn" id="btnConfirmCancel">Cancel</button>
       <button type="button" class="btn danger" id="btnConfirmOk">Yes, do it</button>
@@ -737,14 +751,18 @@
         <b>bottom edge of the last segment</b> to resize.</li>
       <li><b>Splitting is per type</b> (⚙ Types): long blocks are divided into a period/break
         rhythm (e.g. V &amp; U: 45 min + 15 min pause). The pauses are filled in with the same
-        color, so the whole unit reads as one block; each segment shows its own time.</li>
-      <li><b>Custom color:</b> every block can override its type color in the editor.</li>
+        color, so the whole unit reads as one block; each segment shows its own time — on
+        <b>mobile</b> the segments and pauses are listed on the card.</li>
+      <li><b>Past midnight:</b> a sleep time <b>before</b> the wake time counts as the next day
+        (wake 08:00, sleep 01:00). The grid hatches only the hours inside the visible day.</li>
+      <li><b>Custom color:</b> every block can override its type color in the editor — and
+        <b>⟲ from same</b> copies the color of the last block with the same name &amp; type
+        (also in the right-click menu as “Color from same”).</li>
       <li><b>Multi-day blocks:</b> click the day chips to put one block on any combination
         of days (e.g. a commute Mon/Wed/Fri).</li>
-      <li><b>Right-click a block</b> → Edit · Duplicate · <b>Copy to day…</b> · Delete.
-        <b>Right-click a timetable tab</b> → Rename · Duplicate · Copy from · Delete.</li>
+      <li><b>Right-click a block</b> → Edit · Color from same · Duplicate · <b>Copy to day…</b> ·
+        Delete. <b>Right-click a timetable tab</b> → Rename · Duplicate · Copy from · Delete.</li>
       <li><b>⋯</b> in a day header: copy that day to another day, or clear it.</li>
-      <li>“Repeats” makes a block appear only on <b>odd/even ISO weeks</b>.</li>
       <li>⚙ <b>General</b>: theme, grid size, week range and <b>wake &amp; sleep</b> —
         sleep times are saved <b>per timetable</b>.</li>
       <li>⚙ <b>Types</b>: color, emoji, start :MM, default length, opacity, split rhythm.</li>
@@ -756,7 +774,8 @@
         avg sleep, total, count, busiest day).</li>
       <li><b>⬇ Export</b>: .ics, JSON backup, import, print.</li>
       <li><b>On mobile</b>: tap ✏️ to enter edit mode (nothing can be changed before that),
-        swipe between days, ☰ holds everything else.</li>
+        the <b>red line</b> shows where you are in the day, swipe between days, ☰ holds
+        everything else.</li>
       <li>The hint bar at the bottom only appears while this schedule has no blocks yet —
         all of it lives here.</li>
     </ul>
@@ -768,7 +787,7 @@
       <tr><td><kbd>?</kbd></td><td>This help</td></tr>
       <tr><td><kbd>Esc</kbd></td><td>Close dialogs &amp; menus</td></tr>
     </table>
-    <div class="modal-actions">
+    <div class="modal-actions foot">
       <span class="spacer"></span>
       <button type="button" class="btn primary" data-close>Got it</button>
     </div>
@@ -792,7 +811,6 @@ const PASTELS = ['#2563EB','#0D9488','#7C3AED','#DB2777','#F59E0B','#65A30D',
 const ZOOMS = [32, 40, 48, 60, 76];
 
 let state = null;
-let parityFilter = 'all';
 let editingEventId = null;
 let editDays = new Set();
 let editColor = null;        // per-entry color override (null = type color)
@@ -837,15 +855,10 @@ const clampInt = (v, lo, hi, dflt) => {
   const n = parseInt(v, 10);
   return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
 };
-
-function isoWeek(d){
-  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = dt.getUTCDay() || 7;
-  dt.setUTCDate(dt.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
-  return Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
-}
-const currentParity = () => isoWeek(new Date()) % 2 ? 'odd' : 'even';
+/* sleep <= wake means the sleep time is on the NEXT day (after midnight) */
+const sleepAbsOf = r => (r.sleep <= r.wake ? r.sleep + 1440 : r.sleep);
+const sleepHours = r => (1440 - (sleepAbsOf(r) - r.wake)) / 60;
+const fmtW = m => fmt(m % 1440);   // absolute minutes that may exceed 24:00
 
 function nearestOffset(m, o){
   const h = Math.floor(m/60)*60;
@@ -919,10 +932,7 @@ const activeSchedule = () => state.schedules.find(s => s.id === activeId()) || n
 const typeById = id => (id != null ? state.eventTypes.find(t => t.id === id) : null) || null;
 const activeEvents = () => { const s = activeSchedule();
   return s ? state.events.filter(e => e.scheduleId === s.id) : []; };
-const gridEvents = () => parityFilter === 'all' ? activeEvents()
-  : activeEvents().filter(e => e.parity === 'all' || e.parity === parityFilter);
-const liveEvents = () => { const p = currentParity();
-  return activeEvents().filter(e => e.parity === 'all' || e.parity === p); };
+const gridEvents = () => activeEvents();
 function shownDays(){ const s = state.settings; const d = [0,1,2,3,4];
   if (s.showSaturday) d.push(5); if (s.showSunday) d.push(6); return d; }
 const defaultDay = () => shownDays().includes(todayIdx()) ? todayIdx() : 0;
@@ -931,7 +941,6 @@ function dayRange(d){
   return r ? {wake: r.wake, sleep: r.sleep}
            : {wake: state.settings.dayStart ?? 420, sleep: state.settings.dayEnd ?? 1320};
 }
-const sleepHours = r => (1440 - (r.sleep - r.wake)) / 60;
 function statCfg(){ return state.settings.statConfig || {}; }
 
 /* per-TYPE split: lesson/pause rhythm from the block's start */
@@ -952,6 +961,17 @@ function splitSegments(e){
   return out.length > 1 ? out : null;
 }
 
+/* last block with the same name & type — the source for "copy color from same" */
+function findSameColorSource(excludeId, typeId, title){
+  const key = String(title || '').trim().toLowerCase();
+  if (!key) return null;
+  const cands = activeEvents().filter(x =>
+    x.id !== excludeId &&
+    (x.typeId ?? null) === (typeId ?? null) &&
+    String(x.title || '').trim().toLowerCase() === key);
+  return cands.length ? cands.reduce((a, b) => (b.id > a.id ? b : a)) : null;
+}
+
 function normState(st){
   st.events = (st.events || []).map(e => ({
     ...e,
@@ -970,7 +990,8 @@ function normState(st){
     const r = map[d] || {};
     let wake = clampInt(r.wake, 0, 1440, s.dayStart);
     let sleep = clampInt(r.sleep, 0, 1440, s.dayEnd);
-    if (sleep <= wake) sleep = Math.min(1440, wake + 60);
+    if (wake > 1439) wake = 0;    // 24:00 == 00:00 (same moment)
+    if (sleep > 1439) sleep = 0;  // 24:00 == 00:00; sleep <= wake → next day
     return {day: d, wake, sleep};
   });
   const sc = s.statConfig = s.statConfig || {};
@@ -1092,6 +1113,7 @@ function renderBoardDesktop(){
   let html = '';
   for (const d of shownDays()){
     const r = dayRange(d);
+    const slAbs = sleepAbsOf(r);   // sleep time may sit after midnight
     const dayEvs = evs.filter(e => e.days.includes(d));
     const laid = layoutDay(dayEvs);
     const total = dayEvs.reduce((a,e)=>a+(e.end-e.start),0);
@@ -1101,9 +1123,9 @@ function renderBoardDesktop(){
     if (r.wake > start)
       zones += `<div class="zone" style="top:0;height:${(Math.min(r.wake,end)-start)/60*hp}px"
         title="Asleep before ${fmt(r.wake)}"></div>`;
-    if (r.sleep < end)
-      zones += `<div class="zone" style="top:${(Math.max(r.sleep,start)-start)/60*hp}px;
-        height:${(end-Math.max(r.sleep,start))/60*hp}px" title="Asleep after ${fmt(r.sleep)}"></div>`;
+    if (slAbs < end)
+      zones += `<div class="zone" style="top:${(Math.max(slAbs,start)-start)/60*hp}px;
+        height:${(end-Math.max(slAbs,start))/60*hp}px" title="Asleep after ${fmt(slAbs)}"></div>`;
     for (const p of periods){
       const pd = (p.days || [])[d];
       if (!pd || !pd.on) continue;
@@ -1119,7 +1141,7 @@ function renderBoardDesktop(){
       const t = typeById(e.typeId);
       const segs = splitSegments(e) || [{start: e.start, end: e.end}];
       const multi = e.days.length > 1;
-      const out = e.start < r.wake || e.end > r.sleep;
+      const out = e.start < r.wake || e.end > slAbs;
       const L = e._left*100, W = e._width*100;
       const vars = blockVars(t, e.color);
       /* periods this block sits in → icon badge on the block (any type) */
@@ -1136,7 +1158,7 @@ function renderBoardDesktop(){
       if (segs.length > 1){
         const top1 = (Math.max(segs[0].start, start)-start)/60*hp;
         const hAll = (Math.min(segs[segs.length-1].end, end) - Math.max(segs[0].start, start))/60*hp - 2;
-        evh += `<div class="ev-spine ${e.parity!=='all'?'ev-par':''}" style="${vars};
+        evh += `<div class="ev-spine" style="${vars};
           left:calc(${L.toFixed(3)}% + 3px);width:calc(${(W*0.15).toFixed(3)}% - 3px);
           top:${top1}px;height:${Math.max(10,hAll)}px"></div>`;
       }
@@ -1148,12 +1170,12 @@ function renderBoardDesktop(){
         const h = Math.max(16, (botM-topM)/60*hp - 2);
         const xs = h < 34;
         const first = idx === 0, last = idx === segs.length - 1;
-        evh += `<div class="ev ${e.parity!=='all'?'ev-par':''}" data-id="${e.id}"
+        evh += `<div class="ev" data-id="${e.id}"
           data-off="${sg.start - e.start}" data-s0="${sg.start}"
           style="${vars};top:${top}px;height:${h}px;
           left:calc(${(L*1).toFixed(3)}% + 3px);width:calc(${(W*1).toFixed(3)}% - 6px)"
           title="${esc(e.title)} · ${fmt(e.start)}–${fmt(e.end)}${e.room?' · '+e.room:''}${out?' · 🌙 outside wake hours':''}">
-          ${first ? `<div class="ev-title">${t && t.icon ? esc(t.icon)+' ' : ''}${esc(e.title)}${bHtml}${e.parity!=='all'?` <span class="ptag">${e.parity}</span>`:''}</div>` : ''}
+          ${first ? `<div class="ev-title">${t && t.icon ? esc(t.icon)+' ' : ''}${esc(e.title)}${bHtml}</div>` : ''}
           ${xs ? '' : `<div class="ev-meta">${fmt(sg.start)}–${fmt(sg.end)}${first&&multi?' · '+e.days.map(i=>DAY_SHORT[i]).join(' '):''}${first&&e.room?' · '+esc(e.room):''}${out?' · 🌙':''}</div>`}
           ${last ? '<div class="ev-resize" title="Drag to change the end time"></div>' : ''}
         </div>`;
@@ -1196,31 +1218,66 @@ function renderBoardMobile(){
   }).join('');
 
   const r = dayRange(mobileDay);
-  const dayEvs = evs.filter(e => e.days.includes(mobileDay)).sort((a,b)=>a.start-b.start);
-  const total = dayEvs.reduce((a,e)=>a+(e.end-e.start),0);
+  const slAbs = sleepAbsOf(r);
+  const dayEvs = evs.filter(e => e.days.includes(mobileDay))
+    .sort((a,b) => a.start - b.start || b.end - a.end || a.id - b.id);
+  const total = dayEvs.reduce((a,e) => a + (e.end - e.start), 0);
 
   $('#mDayHead').innerHTML = `
     <button class="mnav-arrow" data-dir="-1" title="Previous day">‹</button>
     <div class="mday-title">
       <span>${DAY_NAMES[mobileDay]}${mobileDay===todayIdx()?'<span class="today-tag">Today</span>':''}</span>
       <span class="mday-sub">${dayEvs.length
-        ? `${dayEvs.length} block${dayEvs.length===1?'':'s'} · ${hoursTxt(total)}h`
+        ? `${dayEvs.length} block${dayEvs.length===1?'':'s'} · ${hoursTxt(total)}h · ${fmt(r.wake)}–${fmtW(slAbs)}`
         : 'nothing planned'}</span>
     </div>
     <button class="mnav-arrow" data-dir="1" title="Next day">›</button>`;
 
-  $('#mList').innerHTML = dayEvs.length ? dayEvs.map(e => {
+  const nowMin = nowMinutes();
+  const showNow = mobileDay === todayIdx();
+  const nowDivider = () =>
+    `<div class="m-now"><span class="m-now-dot"></span><span class="m-now-time">${fmt(nowMin)}</span>` +
+    `<span class="m-now-line"></span></div>`;
+
+  const cardHtml = e => {
     const t = typeById(e.typeId);
-    const out = e.start < r.wake || e.end > r.sleep;
+    const out = e.start < r.wake || e.end > slAbs;
+    const segs = splitSegments(e);
+    let segLine = '';
+    if (segs && segs.length > 1){
+      const bits = [];
+      segs.forEach((s, i) => {
+        if (i) bits.push(`<span class="mc-pause">⏸ ${s.start - segs[i-1].end}′</span>`);
+        bits.push(`<span class="mc-seg">${fmt(s.start)}–${fmt(s.end)}</span>`);
+      });
+      segLine = `<div class="mc-segline">${bits.join('')}</div>`;
+    }
     return `<div class="mcard" data-id="${e.id}" style="${blockVars(t, e.color)}">
       <div class="mc-main">
-        <div class="mc-title">${t && t.icon ? esc(t.icon)+' ' : ''}${esc(e.title)}${e.parity!=='all'?` <span class="ptag">${e.parity}</span>`:''}</div>
-        ${(e.room||e.teacher) ? `<div class="mc-sub">${esc(e.room||'')}${e.room&&e.teacher?' · ':''}${esc(e.teacher||'')}</div>` : ''}
+        <div class="mc-title">${t && t.icon ? esc(t.icon)+' ' : ''}${esc(e.title)}</div>
+        ${(e.room || e.teacher) ? `<div class="mc-sub">${esc(e.room||'')}${e.room&&e.teacher?' · ':''}${esc(e.teacher||'')}</div>` : ''}
+        ${e.note ? `<div class="mc-sub">${esc(e.note)}</div>` : ''}
+        ${segLine}
       </div>
-      <div class="mc-time" ${out?`title="Outside wake hours (${fmt(r.wake)}–${fmt(r.sleep)})"`:''}>${out?'🌙 ':''}${fmt(e.start)}</div>
+      <div class="mc-time" ${out?`title="Outside wake hours (${fmt(r.wake)}–${fmtW(slAbs)})"`:''}>${out?'🌙 ':''}${fmt(e.start)}–${fmt(e.end)}</div>
     </div>`;
-  }).join('') : `<div class="mempty">${mobileDay===todayIdx()
-    ? 'Nothing today 🎉' : 'Nothing on '+DAY_NAMES[mobileDay]+' 🎉'}</div>`;
+  };
+
+  if (!dayEvs.length){
+    $('#mList').innerHTML = (showNow ? nowDivider() : '') +
+      `<div class="mempty">${mobileDay===todayIdx()
+        ? 'Nothing today 🎉' : 'Nothing on '+DAY_NAMES[mobileDay]+' 🎉'}</div>`;
+    return;
+  }
+  /* red "you are here" line: before the first block that starts later than now */
+  let html = '';
+  let nowPlaced = !showNow;
+  for (const e of dayEvs){
+    if (!nowPlaced && e.start > nowMin){ html += nowDivider(); nowPlaced = true; }
+    html += cardHtml(e);
+  }
+  if (!nowPlaced) html += nowDivider();
+  $('#mList').innerHTML = html;
 }
 
 /* ---------- stats bar ---------- */
@@ -1289,7 +1346,7 @@ function renderStats(){
 function updateNow(){
   if (!state) return;
   const nowMin = nowMinutes();
-  const todays = liveEvents().filter(e => e.days.includes(todayIdx())).sort((a,b)=>a.start-b.start);
+  const todays = activeEvents().filter(e => e.days.includes(todayIdx())).sort((a,b)=>a.start-b.start);
   let txt;
   const cur = todays.find(e => e.start <= nowMin && nowMin < e.end);
   if (cur) txt = `Now: ${cur.title} · until ${fmt(cur.end)}`;
@@ -1307,6 +1364,8 @@ function updateNow(){
       const el = document.querySelector(`.mcard[data-id="${cur.id}"]`);
       if (el) el.classList.add('current');
     }
+    const mt = document.getElementById('mNowTime');
+    if (mt) mt.textContent = fmt(nowMin);
     return;
   }
   const line = document.getElementById('nowLine');
@@ -1391,12 +1450,13 @@ function updateWakeWarn(){
   if (start == null || end == null){ el.style.display = 'none'; return; }
   const bad = [...editDays].filter(d => {
     const r = dayRange(d);
-    return start < r.wake || end > r.sleep;
+    return start < r.wake || end > sleepAbsOf(r);
   });
   if (!bad.length){ el.style.display = 'none'; return; }
   const r = dayRange(bad[0]);
+  const slTxt = fmt(r.sleep) + (r.sleep <= r.wake ? ' (+1d)' : '');
   el.textContent = `🌙 Outside wake hours on ${bad.map(d=>DAY_SHORT[d]).join(', ')} ` +
-                   `(wake ${fmt(r.wake)} — sleep ${fmt(r.sleep)})`;
+                   `(wake ${fmt(r.wake)} — sleep ${slTxt})`;
   el.style.display = 'flex';
 }
 function syncColorUI(){
@@ -1410,6 +1470,16 @@ function syncColorUI(){
 }
 $('#fCol').addEventListener('input', () => { editColor = $('#fCol').value; syncColorUI(); });
 $('#fColReset').addEventListener('click', () => { editColor = null; syncColorUI(); });
+/* copy the color of the last block with the same name & type */
+$('#fColFromSame').addEventListener('click', () => {
+  const typeId = $('#fType').value ? +$('#fType').value : null;
+  const src = findSameColorSource(editingEventId, typeId, $('#fTitle').value);
+  if (!src){ toast('No other block with this name & type', 'err'); return; }
+  editColor = src.color || null;
+  syncColorUI();
+  toast(src.color ? `Color copied from “${src.title}” ✓`
+                  : `“${src.title}” has no own color — type color used`);
+});
 
 function openEventModal(ev, prefill){
   editingEventId = ev ? ev.id : null;
@@ -1432,14 +1502,18 @@ function openEventModal(ev, prefill){
   const selId = ev ? ev.typeId
     : (prefill && prefill.typeId != null ? prefill.typeId : lastTypeId());
   const t = typeById(selId);
-  let end = ev ? ev.end : start + (t ? (t.duration || 60) : 60);
-  end = Math.max(start + 15, Math.min(1440, end));
+  let end;
+  if (ev){
+    end = ev.end;   // raw value — may be < start (block past midnight)
+  } else {
+    end = start + (t ? (t.duration || 60) : 60);
+    end = Math.max(start + 15, Math.min(1439, end));
+  }
 
   $('#fTitle').value = ev ? ev.title : '';
   $('#fType').value = t ? String(t.id) : '';
   $('#fStart').value = fmt(Math.min(start, 1439));
-  $('#fEnd').value = fmt(Math.min(end, 1439));
-  $('#fParity').value = ev ? (ev.parity || 'all') : 'all';
+  $('#fEnd').value = fmt(end % 1440);   // 24:00 displays as 00:00, wraps back on save
   $('#fRoom').value = ev ? (ev.room || '') : '';
   $('#fTeacher').value = ev ? (ev.teacher || '') : '';
   $('#fNote').value = ev ? (ev.note || '') : '';
@@ -1462,7 +1536,6 @@ function eventPayload(includeId){
     days: [...editDays].sort((a,b) => a-b),
     start: parseHM($('#fStart').value),
     end: parseHM($('#fEnd').value),
-    parity: $('#fParity').value,
     color: editColor,
     room: $('#fRoom').value.trim(),
     teacher: $('#fTeacher').value.trim(),
@@ -1471,31 +1544,24 @@ function eventPayload(includeId){
   if (includeId && editingEventId) p.id = editingEventId;
   return p;
 }
-function validTimes(p){
-  if (p.start == null || p.end == null){ toast('Please set start and end time', 'err'); return false; }
-  if (p.end <= p.start){ toast('End must be after start', 'err'); return false; }
-  return true;
+/* shared save path: end before start = past midnight (asks for a confirm) */
+function saveEvent(duplicate){
+  const p = eventPayload(!duplicate);
+  if (p.start == null || p.end == null){ toast('Please set start and end time', 'err'); return; }
+  if (p.end === p.start){ toast('End must be after start', 'err'); return; }
+  const go = async () => {
+    try {
+      await call('events/save', p);
+      closeModal('#eventModal');
+      toast(duplicate ? 'Duplicated ✓' : (editingEventId ? 'Block updated ✓' : 'Block added ✓'));
+    } catch (err){ toast(err.message, 'err'); }
+  };
+  if (p.end < p.start && p.end !== 0){
+    confirmAction(`“${p.title}” runs past midnight (${fmt(p.start)} → ${fmt(p.end)} next day). Save it like this?`, go);
+  } else go();
 }
-
-$('#evForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const p = eventPayload(true);
-  if (!validTimes(p)) return;
-  try {
-    await call('events/save', p);
-    closeModal('#eventModal');
-    toast(editingEventId ? 'Block updated ✓' : 'Block added ✓');
-  } catch (err){ toast(err.message, 'err'); }
-});
-$('#btnEvDuplicate').addEventListener('click', async () => {
-  const p = eventPayload(false);
-  if (!validTimes(p)) return;
-  try {
-    await call('events/save', p);
-    closeModal('#eventModal');
-    toast('Duplicated ✓');
-  } catch (err){ toast(err.message, 'err'); }
-});
+$('#evForm').addEventListener('submit', e => { e.preventDefault(); saveEvent(false); });
+$('#btnEvDuplicate').addEventListener('click', () => saveEvent(true));
 $('#btnEvDelete').addEventListener('click', () => {
   const ev = state.events.find(x => x.id === editingEventId);
   confirmAction(`Delete “${ev ? ev.title : 'this block'}”?`, async () => {
@@ -1537,21 +1603,26 @@ function openSettingsTab(name){
     $('#stab-' + n).classList.toggle('active', n === name));
 }
 function renderWakeRows(){
-  $('#wakeRows').innerHTML = state.settings.dayRanges.map(r => `
+  $('#wakeRows').innerHTML = state.settings.dayRanges.map(r => {
+    const wrapped = r.sleep <= r.wake;   // sleep time is on the next day
+    return `
     <div class="wake-row" data-day="${r.day}">
       <span class="dname">${DAY_NAMES[r.day]}</span>
       <span class="wlab">Wake<input type="time" class="wk" value="${fmt(r.wake)}"></span>
       <span class="wlab">Sleep<input type="time" class="sl" value="${fmt(r.sleep)}"></span>
-      <span class="wslp" title="Sleep hours at these times">${sleepHours(r).toFixed(1).replace(/\.0$/,'')}h</span>
-    </div>`).join('');
+      <span class="wslp" title="Time asleep between these two times${wrapped?' — sleep is on the next day':''}">${sleepHours(r).toFixed(1).replace(/\.0$/,'')}h${wrapped?' (+1d)':''}</span>
+    </div>`;
+  }).join('');
 }
 $('#wakeRows').addEventListener('input', () => {
   document.querySelectorAll('#wakeRows .wake-row').forEach(row => {
     const wk = parseHM(row.querySelector('.wk').value);
     const sl = parseHM(row.querySelector('.sl').value);
-    if (wk != null && sl != null && sl > wk)
-      row.querySelector('.wslp').textContent =
-        ((1440 - (sl - wk)) / 60).toFixed(1).replace(/\.0$/,'') + 'h';
+    const el = row.querySelector('.wslp');
+    if (wk != null && sl != null){
+      const sh = (1440 - ((sl <= wk ? sl + 1440 : sl) - wk)) / 60;
+      el.textContent = sh.toFixed(1).replace(/\.0$/,'') + 'h' + (sl <= wk ? ' (+1d)' : '');
+    }
   });
 });
 
@@ -1768,9 +1839,7 @@ $('#btnSettingsSave').addEventListener('click', async () => {
     if (r.wake == null || r.sleep == null){
       toast(`Set wake & sleep for ${DAY_NAMES[r.day]}`, 'err'); return;
     }
-    if (r.sleep <= r.wake){
-      toast(`Sleep must be after wake on ${DAY_NAMES[r.day]}`, 'err'); return;
-    }
+    // sleep before wake is fine — it counts as after midnight
   }
   const thBtn = document.querySelector('#thSeg button.on');
   const types = editingTypes.filter(t => t.name.trim()).map(t => ({
@@ -2007,12 +2076,6 @@ function renderMobileNav(){
       `<button class="mrow" data-act="tab-new">＋ New timetable</button>
        <hr class="msep">
        <button class="mrow" data-act="add">＋ Add block</button>
-       <div class="mn-title">Week</div>
-       <div class="seg" style="width:100%;justify-content:center;margin:2px 0 8px">
-         ${['all','odd','even'].map(p =>
-           `<button class="${parityFilter===p?'on':''}" data-act="parity" data-p="${p}">
-              ${p==='all'?'All':p==='odd'?'Odd':'Even'}</button>`).join('')}
-       </div>
        <hr class="msep">
        <button class="mrow" data-act="settings">⚙ Settings</button>
        <button class="mrow" data-act="ics">📅 Export .ics</button>
@@ -2033,9 +2096,6 @@ $('#mobileNav').addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const act = b.dataset.act;
   if (act === 'back'){ mnavPage = 'main'; renderMobileNav(); return; }
-  if (mnavPage === 'main' && act === 'parity'){
-    parityFilter = b.dataset.p; renderAll(); closeMnav(); return;
-  }
   if (act === 'tab-activate'){
     closeMnav();
     call('schedules/activate', {id: +b.dataset.id}).catch(err => toast(err.message,'err'));
@@ -2122,6 +2182,7 @@ function renderCtx(){
     } else {
       h = `<div class="ctx-head">${esc(ev.title)} · ${ev.days.map(i=>DAY_SHORT[i]).join(' ')}</div>
         <button class="mi" data-act="ev-edit">✏️ Edit</button>
+        <button class="mi" data-act="ev-samecolor">🎨 Color from same</button>
         <button class="mi" data-act="ev-dup">⧉ Duplicate</button>
         <button class="mi" data-act="ev-copyto">📄 Copy to day…</button>
         <button class="mi danger" data-act="ev-del">🗑 Delete…</button>`;
@@ -2178,9 +2239,16 @@ $('#ctxMenu').addEventListener('click', e => {
     const ev = state.events.find(x => x.id === ctx.eventId);
     if (!ev){ closeCtx(); return; }
     const copyPayload = days => ({scheduleId: ev.scheduleId, typeId: ev.typeId,
-      title: ev.title, days, start: ev.start, end: ev.end, parity: ev.parity,
+      title: ev.title, days, start: ev.start, end: ev.end,
       color: ev.color, room: ev.room, teacher: ev.teacher, note: ev.note});
     if (act === 'ev-edit'){ closeCtx(); openEventModal(ev);
+    } else if (act === 'ev-samecolor'){ closeCtx();
+      const src = findSameColorSource(ev.id, ev.typeId, ev.title);
+      if (!src){ toast('No other block with this name & type yet', 'err'); return; }
+      const p = copyPayload(ev.days); p.color = src.color || null;
+      call('events/save', p)
+        .then(() => toast(src.color ? 'Color copied ✓' : 'Color reset to type color ✓'))
+        .catch(err => toast(err.message, 'err'));
     } else if (act === 'ev-dup'){ closeCtx();
       call('events/save', copyPayload(ev.days))
         .then(() => toast('Duplicated ✓')).catch(err => toast(err.message, 'err'));
@@ -2345,7 +2413,7 @@ $('#days').addEventListener('pointerdown', e => {
     }
     renderAll();
     call('events/save', {id: e2.id, scheduleId: e2.scheduleId, typeId: e2.typeId,
-      title: e2.title, days: e2.days, start: e2.start, end: e2.end, parity: e2.parity,
+      title: e2.title, days: e2.days, start: e2.start, end: e2.end,
       color: e2.color, room: e2.room, teacher: e2.teacher, note: e2.note})
       .catch(err => toast(err.message, 'err'));
   };
@@ -2357,7 +2425,6 @@ $('#days').addEventListener('pointerdown', e => {
 /* ================= topbar buttons ================= */
 $('#btnAddBlock').addEventListener('click', () => openEventModal(null, null));
 $('#btnHelp').addEventListener('click', () => openModal('#helpModal'));
-$('#paritySel').addEventListener('change', e => { parityFilter = e.target.value; renderAll(); });
 $('#nowChip').addEventListener('click', () => {
   if (isMobile()){
     const el = document.querySelector('.mcard.current');

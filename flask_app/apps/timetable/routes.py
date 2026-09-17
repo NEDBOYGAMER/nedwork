@@ -40,7 +40,7 @@ DEFAULT_TYPES = [
 _DEFAULT_RENAMES = {
     "Lecture":  ("V (Lecture)",    15, 90, True),
     "Exercise": ("U (Exercise)",   15, 45, True),
-    "Learning": ("L (Self-study)",  0, 60, False),
+    "Learning": ("L (Self-study)", 0, 60, False),
 }
 
 
@@ -190,6 +190,10 @@ def _days_of(ev):
 
 
 def _normalize_day_ranges(raw, fallback_wake, fallback_sleep):
+    """wake/sleep in minutes since midnight (0-1440). A sleep time <= wake
+    is ALLOWED and means the sleep time is after midnight on the next day
+    (wake 08:00 + sleep 01:00 = asleep 01:00–08:00). Old rows always stored
+    sleep > wake, so they keep their exact meaning."""
     out = {}
     for item in (raw if isinstance(raw, list) else []):
         if not isinstance(item, dict):
@@ -199,8 +203,6 @@ def _normalize_day_ranges(raw, fallback_wake, fallback_sleep):
             continue
         wake = _clean_int(item.get("wake"), 0, 1440, fallback_wake)
         sleep = _clean_int(item.get("sleep"), 0, 1440, fallback_sleep)
-        if sleep <= wake:
-            sleep = min(1440, wake + 60)
         out[d] = (wake, sleep)
     for d in range(7):
         out.setdefault(d, (fallback_wake, fallback_sleep))
@@ -209,7 +211,9 @@ def _normalize_day_ranges(raw, fallback_wake, fallback_sleep):
 
 def _day_ranges_of(config, schedule=None):
     """Effective wake/sleep for a schedule, with legacy fallbacks:
-    schedule.day_ranges → config.day_ranges (old install) → grid bounds."""
+    schedule.day_ranges → config.day_ranges (old install) → grid bounds.
+    Values are returned raw; a sleep <= wake is interpreted as after
+    midnight (next day) by the frontend."""
     raw = {}
     if schedule is not None and isinstance(schedule.day_ranges, dict):
         raw = schedule.day_ranges
@@ -220,8 +224,6 @@ def _day_ranges_of(config, schedule=None):
         entry = raw.get(str(d)) or raw.get(d) or {}
         wake = _clean_int(entry.get("wake"), 0, 1440, config.day_start)
         sleep = _clean_int(entry.get("sleep"), 0, 1440, config.day_end)
-        if sleep <= wake:
-            sleep = min(1440, wake + 60)
         out.append({"day": d, "wake": wake, "sleep": sleep})
     return out
 
@@ -387,7 +389,7 @@ def _event_to_dict(ev):
         "room": ev.room or "",
         "teacher": ev.teacher or "",
         "note": ev.note or "",
-        "parity": ev.parity or "all",
+        "parity": ev.parity or "all",  # legacy — ignored by the UI
     }
 
 
@@ -742,8 +744,9 @@ def schedules_import_json():
                 continue
             start = _clean_int(e.get("start"), 0, 1440, 480)
             end = _clean_int(e.get("end"), 0, 1440, start + 60)
-            if end <= start:
+            if end == start:
                 end = min(1440, start + 60)
+            # end < start stays as-is: the block runs past midnight
             days = _parse_days_input(e.get("days")) \
                 or _parse_days_input(e.get("day")) or [0]
             parity = e.get("parity")
@@ -950,12 +953,14 @@ def events_save():
         return jsonify({"error": "Unknown schedule"}), 400
 
     title = _clean_str(data.get("title"), 160, "Untitled")
-    start = _clean_int(data.get("start"), 0, 1440, None)
+    start = _clean_int(data.get("start"), 0, 1439, None)
     end = _clean_int(data.get("end"), 0, 1440, None)
     if start is None or end is None:
         return jsonify({"error": "Invalid time"}), 400
-    if end <= start:
+    if end == start:
         return jsonify({"error": "End must be after start"}), 400
+    # end < start is allowed on purpose: the block runs past midnight
+    # (e.g. start 22:00, end 01:00 → 22:00–25:00 internally)
 
     days = _parse_days_input(data.get("days"))
     if days is None:
@@ -964,9 +969,12 @@ def events_save():
     if not days:
         return jsonify({"error": "Pick at least one day (Mon–Sun)"}), 400
 
-    parity = data.get("parity") or "all"
-    if parity not in PARITIES:
-        parity = "all"
+    # parity: the UI no longer sends it — only touch the stored value when a
+    # client explicitly provides one, so legacy odd/even rows survive edits
+    new_parity = None
+    if "parity" in data:
+        parity = data.get("parity") or "all"
+        new_parity = parity if parity in PARITIES else "all"
 
     type_id = data.get("typeId")
     if type_id is not None:
@@ -993,7 +1001,8 @@ def events_save():
     ev.start_min = start
     ev.end_min = end
     ev.color = color
-    ev.parity = parity
+    if new_parity is not None:
+        ev.parity = new_parity
     ev.room = _clean_str(data.get("room"), 120)
     ev.teacher = _clean_str(data.get("teacher"), 120)
     ev.note = note.strip()[:2000]
@@ -1114,24 +1123,23 @@ def _ics_fold(line):
     return out
 
 
-def _next_occurrence(day, parity, from_date):
+def _next_occurrence(day, from_date):
     for i in range(14):
         d = from_date + timedelta(days=i)
-        if d.weekday() != day:
-            continue
-        if parity in ("odd", "even"):
-            week_odd = d.isocalendar()[1] % 2 == 1
-            if (parity == "odd") != week_odd:
-                continue
-        return d
+        if d.weekday() == day:
+            return d
     return None
+
+
+def _event_end_min(e):
+    """Blocks may run past midnight: end before start means the next day."""
+    return e.end_min + 1440 if e.end_min <= e.start_min else e.end_min
 
 
 def _vevent_lines(e, day, first_date, stamp):
     etype = e.type
     start_dt = datetime.combine(first_date, time(0, 0)) + timedelta(minutes=e.start_min)
-    end_dt = datetime.combine(first_date, time(0, 0)) + timedelta(minutes=e.end_min)
-    interval = ";INTERVAL=2" if e.parity in ("odd", "even") else ""
+    end_dt = datetime.combine(first_date, time(0, 0)) + timedelta(minutes=_event_end_min(e))
 
     desc = []
     if etype is not None:
@@ -1140,8 +1148,6 @@ def _vevent_lines(e, day, first_date, stamp):
         desc.append("Teacher: " + e.teacher)
     if e.note:
         desc.append(e.note)
-    if e.parity in ("odd", "even"):
-        desc.append("Occurs on %s ISO weeks" % e.parity)
 
     return [
         "BEGIN:VEVENT",
@@ -1149,7 +1155,7 @@ def _vevent_lines(e, day, first_date, stamp):
         "DTSTAMP:" + stamp,
         "DTSTART:" + start_dt.strftime("%Y%m%dT%H%M%S"),
         "DTEND:" + end_dt.strftime("%Y%m%dT%H%M%S"),
-        "RRULE:FREQ=WEEKLY%s;COUNT=30" % interval,
+        "RRULE:FREQ=WEEKLY;COUNT=30",
         "SUMMARY:" + _ics_escape(e.title),
         "LOCATION:" + _ics_escape(e.room or ""),
         "DESCRIPTION:" + _ics_escape(" - ".join(desc)),
@@ -1177,7 +1183,7 @@ def export_ics():
              "CALSCALE:GREGORIAN"]
     for e in sorted(schedule.events, key=lambda x: (x.day, x.start_min)):
         for d in _days_of(e):
-            first = _next_occurrence(d, e.parity or "all", today)
+            first = _next_occurrence(d, today)
             if first is None:
                 continue
             lines.extend(_vevent_lines(e, d, first, stamp))
