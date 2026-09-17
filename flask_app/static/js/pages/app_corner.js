@@ -203,7 +203,7 @@ function renderSkeleton() {
     if (!container) return;
     container.innerHTML = '';
 
-    for (let s = 0; s < 2; s++) {
+    for (let i = 0; i < 6; i++) {
         const shelf = document.createElement('div');
         shelf.className = 'skel-shelf';
 

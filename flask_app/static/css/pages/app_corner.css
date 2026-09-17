@@ -954,25 +954,58 @@ body.context-open {
         padding: 0 var(--space-4);
     }
 
-    /* Phone-sized capsules: one dominant card + a peek of the next */
-    .app-corner {
-        --card-w: min(68vw, 260px);
-        --card-w-sm: min(54vw, 210px);
+    /* ── Grid shelves — no horizontal scrolling on phones ──────────
+       Every shelf wraps its cards 3 per row instead of being a
+       carousel. Fades/arrows/snap are neutralized below; the JS nav
+       also self-disables because grid rows produce no scroll overflow. */
+    .shelf-row,
+    .skel-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        padding: 4px 0 14px;
+        margin-bottom: 0;
+        overflow: visible;
+        scroll-snap-type: none;
+        overscroll-behavior: auto;
     }
 
-    .hero {
-        min-height: 220px;
+    .shelf-row .app-card,
+    .shelf-row .app-card--sm,
+    .skel-card {
+        width: 100%;   /* fill the grid cell instead of --card-w */
     }
 
-    .hero-content {
-        padding: var(--space-4);
-        gap: var(--space-1);
+    /* Carousel chrome off */
+    .fade,
+    .shelf-arrow {
+        display: none !important;
     }
 
+    /* Smaller tiles → tighter name overlay */
+    .app-card-name {
+        left: 8px;
+        right: 8px;
+        bottom: 6px;
+        font-size: 12px;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+    }
+
+    .app-card--sm .app-card-name {
+        left: 8px;
+        right: 8px;
+        bottom: 6px;
+        font-size: 12px;
+    }
+
+    .capsule-initial { font-size: clamp(22px, 24%, 40px); }
+
+    /* Hero stays full-width */
+    .hero { min-height: 220px; }
+    .hero-content { padding: var(--space-4); gap: var(--space-1); }
     .hero-title { font-size: clamp(24px, 7.5vw, 32px); }
     .hero-badge { font-size: 10px; letter-spacing: 0.14em; }
     .hero-desc { display: none; }
-
     .hero-content .hero-btn {
         margin-top: var(--space-1);
         font-size: 14px;
@@ -981,29 +1014,6 @@ body.context-open {
 
     .shelf-title { font-size: 15px; }
     .shelf-count { font-size: 11px; }
-
-    .shelf-row {
-        gap: var(--space-3);
-        padding: 8px 2px 16px;
-    }
-
-    .fade { width: 44px; }
-
-    .app-card-name {
-        left: 12px;
-        right: 12px;
-        bottom: 9px;
-        font-size: 15px;
-    }
-
-    .app-card--sm .app-card-name {
-        left: 10px;
-        right: 10px;
-        bottom: 8px;
-        font-size: 13px;
-    }
-
-    .capsule-initial { font-size: clamp(30px, 26%, 56px); }
 
     /* Shelf pills: visible without hover on touch */
     .shelf-disable-btn,
@@ -1019,25 +1029,4 @@ body.context-open {
     }
 
     #disabled-section { padding-top: var(--space-4); }
-}
-
-/* ==========================================================================
-   Reduced motion — kill entrance/tilt/zoom flourishes
-   ========================================================================== */
-
-@media (prefers-reduced-motion: reduce) {
-    .reveal,
-    .hero,
-    .hover-panel,
-    .card-context,
-    .cc-sheet {
-        animation: none !important;
-        transition-duration: 0.01ms !important;
-    }
-
-    .app-card,
-    .app-card-art img,
-    .hero-art img {
-        transition-duration: 0.01ms !important;
-    }
 }
