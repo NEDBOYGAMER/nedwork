@@ -126,3 +126,163 @@ body.no-sidenav #content {
     background: var(--accent-soft);
     color: var(--accent);
 }
+
+
+
+
+/* ==========================================================================
+   MOBILE — off-canvas drawer (≤768px)
+   Desktop is untouched: everything below is inside the media query, except
+   the toggle/backdrop base rules, which are display:none there.
+
+   Keep this breakpoint in sync with app_corner.css (768px header clearance).
+   ========================================================================== */
+
+/* These elements don't exist visually on desktop */
+.sidenav-toggle,
+.sidenav-backdrop {
+    display: none;
+}
+
+@media (max-width: 768px) {
+
+    /* ── Layout neutralizer ─────────────────────────────────────────
+       Undo the desktop sidebar offset so content uses the full width.
+       Only the mechanism your layout actually uses matters — the rest
+       is inert. If your offset is done some other way, tweak here. */
+    body {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        grid-template-columns: 1fr !important; /* inert unless body is a grid */
+        overflow-x: hidden;
+    }
+
+    #content,
+    .surface-layer {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+    }
+
+    /* Scroll lock while the drawer is open */
+    body.sidenav-open {
+        overflow: hidden;
+    }
+
+    /* ── The drawer ───────────────────────────────────────────────── */
+    body #side-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(82vw, 320px);
+        display: flex;
+        flex-direction: column;
+        background: var(--surface-strong);
+        border-right: 1px solid var(--line);
+        /* top padding clears the floating X button + notch */
+        padding: calc(64px + env(safe-area-inset-top, 0px)) 14px
+                 calc(16px + env(safe-area-inset-bottom, 0px));
+        z-index: 1200;
+        transform: translateX(-105%);
+        visibility: hidden;
+        transition:
+            transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+            visibility 0s linear 0.32s;
+        overscroll-behavior: contain;
+    }
+
+    body #side-nav.open {
+        transform: translateX(0);
+        visibility: visible;
+        transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+        box-shadow: 24px 0 64px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Drawer internals — comfortable touch targets */
+    body #side-nav .nav-section {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    body #side-nav #bottom-nav {
+        margin-top: auto;
+    }
+
+    body #side-nav .nav-item {
+        width: 100%;
+        padding: 14px 16px;
+        font-size: 15px;
+        border-radius: 10px;
+    }
+
+    /* ── Backdrop ─────────────────────────────────────────────────── */
+    .sidenav-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 1150;
+        background: rgba(0, 0, 0, 0.55);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.28s ease;
+    }
+
+    body.sidenav-open .sidenav-backdrop {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* ── Hamburger toggle (morphs to an X when open) ──────────────── */
+    .sidenav-toggle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        position: fixed;
+        top: calc(12px + env(safe-area-inset-top, 0px));
+        left: calc(12px + env(safe-area-inset-left, 0px));
+        z-index: 1250; /* above drawer + backdrop */
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--surface-strong) 88%, transparent);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        color: var(--text);
+        cursor: pointer;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+        transition: border-color 0.2s ease, transform 0.15s ease;
+        touch-action: manipulation;
+    }
+
+    .sidenav-toggle:active {
+        transform: scale(0.93);
+    }
+
+    .sidenav-toggle .bar {
+        display: block;
+        width: 18px;
+        height: 2px;
+        border-radius: 2px;
+        background: currentColor;
+        transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+                    opacity 0.18s ease;
+    }
+
+    .sidenav-toggle.open .bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .sidenav-toggle.open .bar:nth-child(2) { opacity: 0; }
+    .sidenav-toggle.open .bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body #side-nav,
+    .sidenav-toggle,
+    .sidenav-toggle .bar,
+    .sidenav-backdrop {
+        transition: none !important;
+    }
+}

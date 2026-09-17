@@ -24,6 +24,13 @@ const CAN_HOVER =
     window.matchMedia('(hover: hover) and (pointer: fine)').matches &&
     !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/* Touch-capable primary input → hover buttons are replaced by a
+   long-press context sheet. Mirrors the CSS query
+   "(hover: none), (pointer: coarse)" in app_corner.css. */
+const IS_TOUCH =
+    window.matchMedia('(hover: none)').matches ||
+    window.matchMedia('(pointer: coarse)').matches;
+
 document.addEventListener('DOMContentLoaded', async () => {
 
     renderSkeleton();
@@ -218,6 +225,7 @@ function renderSkeleton() {
 
 function render() {
     hidePanel();
+    closeContextMenu();
 
     const container = document.getElementById('shelves-container');
     if (!container) return;
@@ -577,55 +585,64 @@ function buildCard(app, { disabled = false, cardRestore = false, small = false }
 
     card.append(artWrap, scrim, name);
 
-    /* Actions */
-    const actions = document.createElement('div');
-    actions.className = 'app-card-actions';
-
-
     /* Glossy Steam-style shine that sweeps across the artwork on hover */
     const shine = document.createElement('div');
     shine.className = 'app-card-shine';
     shine.setAttribute('aria-hidden', 'true');
     card.appendChild(shine);
 
+    /* One action list drives BOTH surfaces: the desktop hover buttons and
+       the touch long-press sheet — they can never diverge. */
+    const menuItems = [];
+
     if (cardRestore) {
-        const restoreBtn = document.createElement('button');
-        restoreBtn.className = 'app-action-btn restore-btn';
-        restoreBtn.type = 'button';
-        restoreBtn.title = 'Restore app';
-        restoreBtn.innerHTML = '&#8635;';
-        restoreBtn.addEventListener('click', (event) => {
-            event.stopPropagation();
-            restoreApp(app.id);
+        menuItems.push({
+            btnClass: 'restore-btn',
+            menuClass: 'is-restore',
+            icon: '&#8635;',
+            title: 'Restore app',
+            action: () => restoreApp(app.id),
         });
-        actions.appendChild(restoreBtn);
     } else if (!disabled) {
         const favActive = isAppFavorited(app);
-
-        const favoriteBtn = document.createElement('button');
-        favoriteBtn.className = `app-action-btn favorite-btn${favActive ? ' active' : ''}`;
-        favoriteBtn.type = 'button';
-        favoriteBtn.title = favActive ? 'Remove from favorites' : 'Add to favorites';
-        favoriteBtn.innerHTML = '&#9733;';
-        favoriteBtn.addEventListener('click', (event) => {
-            event.stopPropagation();
-            toggleFavorite(app.id);
+        menuItems.push({
+            btnClass: 'favorite-btn',
+            active: favActive,
+            menuClass: `is-fav${favActive ? ' active' : ''}`,
+            icon: '&#9733;',
+            title: favActive ? 'Remove from favorites' : 'Add to favorites',
+            action: () => toggleFavorite(app.id),
         });
-        actions.appendChild(favoriteBtn);
-
-        const disableBtn = document.createElement('button');
-        disableBtn.className = 'app-action-btn disable-btn';
-        disableBtn.type = 'button';
-        disableBtn.title = 'Disable app';
-        disableBtn.innerHTML = '&#10005;';
-        disableBtn.addEventListener('click', (event) => {
-            event.stopPropagation();
-            disableApp(app.id);
+        menuItems.push({
+            btnClass: 'disable-btn',
+            menuClass: 'is-danger',
+            icon: '&#10005;',
+            title: 'Disable app',
+            action: () => disableApp(app.id),
         });
-        actions.appendChild(disableBtn);
     }
 
-    card.appendChild(actions);
+    /* Desktop hover buttons (hidden on touch via CSS) */
+    if (menuItems.length > 0) {
+        const actions = document.createElement('div');
+        actions.className = 'app-card-actions';
+
+        menuItems.forEach((item) => {
+            const btn = document.createElement('button');
+            btn.className = ['app-action-btn', item.btnClass, item.active ? 'active' : '']
+                .filter(Boolean).join(' ');
+            btn.type = 'button';
+            btn.title = item.title;
+            btn.innerHTML = item.icon;
+            btn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                item.action();
+            });
+            actions.appendChild(btn);
+        });
+
+        card.appendChild(actions);
+    }
 
     /* Interactions */
     if (!disabled) {
@@ -634,10 +651,18 @@ function buildCard(app, { disabled = false, cardRestore = false, small = false }
             bindHoverPanel(card, app, interactive);
         }
 
+        let suppressClick = false;
+
         if (interactive) {
             card.setAttribute('role', 'link');
             card.tabIndex = 0;
-            card.addEventListener('click', () => openApp(app));
+            card.addEventListener('click', () => {
+                if (suppressClick) {   // a long-press just opened the sheet
+                    suppressClick = false;
+                    return;
+                }
+                openApp(app);
+            });
             card.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
@@ -647,6 +672,13 @@ function buildCard(app, { disabled = false, cardRestore = false, small = false }
         } else {
             card.classList.add('app-card--placeholder');
         }
+
+        if (IS_TOUCH && menuItems.length > 0) {
+            bindLongPress(card, menuItems, () => { suppressClick = true; });
+        }
+    } else if (cardRestore && IS_TOUCH) {
+        // Disabled cards: long-press to restore
+        bindLongPress(card, menuItems);
     }
 
     return card;
@@ -764,6 +796,130 @@ function positionPanel() {
 
     hoverPanel.style.left = `${Math.round(left)}px`;
     hoverPanel.style.top = `${Math.round(top)}px`;
+}
+
+/* ==========================================================================
+   Long-press context sheet (touch) — replaces the hover action buttons
+   ========================================================================== */
+
+let contextEl = null;
+let contextHideTimer = null;
+
+function ensureContextMenu() {
+    if (contextEl) return contextEl;
+
+    contextEl = document.createElement('div');
+    contextEl.id = 'card-context';
+    contextEl.className = 'card-context';
+    contextEl.hidden = true;
+    contextEl.innerHTML = `
+        <div class="cc-backdrop"></div>
+        <div class="cc-sheet" role="menu" aria-label="App actions">
+            <div class="cc-handle" aria-hidden="true"></div>
+            <div class="cc-header">
+                <span class="badge badge-accent cc-type"></span>
+                <h4 class="cc-name"></h4>
+            </div>
+            <div class="cc-items"></div>
+            <button type="button" class="cc-item cc-cancel">Cancel</button>
+        </div>`;
+    document.body.appendChild(contextEl);
+
+    contextEl.querySelector('.cc-backdrop').addEventListener('click', closeContextMenu);
+    contextEl.querySelector('.cc-cancel').addEventListener('click', closeContextMenu);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeContextMenu();
+    });
+
+    return contextEl;
+}
+
+function openContextMenu(card, items) {
+    if (!items || items.length === 0) return;
+    const el = ensureContextMenu();
+    clearTimeout(contextHideTimer);
+
+    const app = apps.find(a => String(a.id) === String(card.dataset.appId));
+    el.querySelector('.cc-type').textContent = app?.type || 'App';
+    el.querySelector('.cc-name').textContent = app?.name || 'App';
+
+    const wrap = el.querySelector('.cc-items');
+    wrap.innerHTML = '';
+
+    items.forEach((item) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `cc-item ${item.menuClass}`;
+        btn.setAttribute('role', 'menuitem');
+        btn.innerHTML =
+            `<span class="cc-icon" aria-hidden="true">${item.icon}</span>` +
+            `<span>${item.title}</span>`;
+        btn.addEventListener('click', () => {
+            closeContextMenu();
+            item.action();
+        });
+        wrap.appendChild(btn);
+    });
+
+    el.hidden = false;
+    // double rAF so the slide-up transition actually plays
+    requestAnimationFrame(() =>
+        requestAnimationFrame(() => el.classList.add('show'))
+    );
+    document.body.classList.add('context-open'); // scroll lock
+}
+
+function closeContextMenu() {
+    if (!contextEl || contextEl.hidden) return;
+    contextEl.classList.remove('show');
+    document.body.classList.remove('context-open');
+    contextHideTimer = setTimeout(() => {
+        contextEl.hidden = true;
+    }, 260);
+}
+
+/* Press-and-hold (~450ms, without scrolling) opens the sheet */
+function bindLongPress(card, items, onFired = () => {}) {
+    const LONG_PRESS_MS = 450;
+    const MOVE_TOLERANCE = 12;
+    let timer = null;
+    let startX = 0;
+    let startY = 0;
+
+    const cancel = () => {
+        if (timer) {
+            clearTimeout(timer);
+            timer = null;
+        }
+    };
+
+    card.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse') return; // desktop keeps hover buttons
+        startX = e.clientX;
+        startY = e.clientY;
+        cancel();
+        timer = setTimeout(() => {
+            timer = null;
+            if (navigator.vibrate) navigator.vibrate(15); // haptic tick
+            onFired();                                    // swallow the click
+            openContextMenu(card, items);
+        }, LONG_PRESS_MS);
+    });
+
+    card.addEventListener('pointermove', (e) => {
+        // finger drifted → that's a shelf scroll, not a press
+        if (timer &&
+            Math.hypot(e.clientX - startX, e.clientY - startY) > MOVE_TOLERANCE) {
+            cancel();
+        }
+    });
+
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) =>
+        card.addEventListener(ev, cancel)
+    );
+
+    // Suppress the browser's own long-press behaviour on the tile
+    card.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
 /* ────────────────────────────────────────────────────────────────

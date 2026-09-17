@@ -723,6 +723,200 @@
 }
 
 /* ==========================================================================
+   Touch devices — hover buttons live in the long-press context sheet
+   ========================================================================== */
+
+/* Mirrors IS_TOUCH in app_corner.js */
+@media (hover: none), (pointer: coarse) {
+
+    /* Star / cross / restore buttons are desktop-only; on touch they are
+       reachable by long-pressing a card (app_corner.js). */
+    .app-card-actions {
+        display: none;
+    }
+
+    /* Kill the browser's own long-press UI (iOS callout, Android selection) */
+    .app-card {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+}
+
+/* Touchscreens: no sticky hover states — use tap feedback instead */
+@media (hover: none) {
+    .app-card {
+        transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .app-card:hover {
+        border-color: var(--line);
+        box-shadow: none;
+    }
+
+    .app-card:hover .app-card-art img {
+        transform: none;
+    }
+
+    .app-card:active {
+        transform: scale(0.97);
+    }
+
+    .hero:hover {
+        border-color: var(--line);
+        box-shadow: none;
+    }
+
+    .hero:hover .hero-art img {
+        transform: none;
+    }
+}
+
+/* ==========================================================================
+   Long-press context menu (touch) — bottom action sheet
+   ========================================================================== */
+
+.card-context {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.card-context[hidden] {
+    display: none;
+}
+
+.cc-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    transition: opacity 0.22s ease;
+}
+
+.card-context.show .cc-backdrop {
+    opacity: 1;
+}
+
+.cc-sheet {
+    position: relative;
+    width: min(420px, 100%);
+    max-height: 80vh;
+    max-height: 80dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--surface-strong);
+    border: 1px solid var(--line);
+    border-bottom: none;
+    border-radius: 18px 18px 0 0;
+    padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.5);
+    transform: translateY(102%);
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.card-context.show .cc-sheet {
+    transform: translateY(0);
+}
+
+body.context-open {
+    overflow: hidden; /* scroll lock while the sheet is up */
+}
+
+.cc-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+    margin: 4px auto 10px;
+}
+
+.cc-header {
+    padding: 2px 10px 10px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 6px;
+}
+
+.cc-type {
+    font-size: 10px;
+}
+
+.cc-name {
+    margin: 6px 0 0;
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cc-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 12px;
+    background: none;
+    border: none;
+    border-radius: 10px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.cc-item:active {
+    background: var(--accent-soft);
+}
+
+.cc-icon {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    font-size: 13px;
+}
+
+.cc-item.is-danger { color: var(--danger); }
+.cc-item.is-danger .cc-icon {
+    color: var(--danger);
+    border-color: rgba(229, 72, 77, 0.4);
+}
+
+.cc-item.is-fav.active { color: #FFC94D; }
+.cc-item.is-fav.active .cc-icon {
+    color: #FFC94D;
+    border-color: rgba(255, 201, 77, 0.5);
+    background: rgba(232, 162, 61, 0.15);
+}
+
+.cc-item.is-restore { color: var(--accent); }
+.cc-item.is-restore .cc-icon {
+    color: var(--accent);
+    border-color: var(--accent-border);
+}
+
+.cc-cancel {
+    margin-top: 6px;
+    justify-content: center;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* ==========================================================================
    Responsive
    ========================================================================== */
 
@@ -739,15 +933,92 @@
     }
 }
 
+/* The shared sidenav becomes a drawer at ≤768px and floats a hamburger
+   button top-left (see sidenav.css) — give the header clearance. */
+@media (max-width: 768px) {
+    #app-corner-header {
+        padding-top: calc(64px + env(safe-area-inset-top, 0px));
+    }
+}
+
 @media (max-width: 640px) {
-    #app-corner-header { padding: var(--space-6) var(--space-4) var(--space-4); }
-    #hero-slot, #shelves-container { padding: 0 var(--space-4); }
+    #app-corner-header {
+        padding: calc(72px + env(safe-area-inset-top, 0px)) var(--space-4) var(--space-4);
+    }
 
-    .app-corner { --card-w: 250px; --card-w-sm: 210px; }
+    #app-corner-title { font-size: clamp(28px, 8.5vw, 34px); }
+    #app-corner-tagline { font-size: 13px; }
 
-    .hero-content { padding: var(--space-4); }
+    #hero-slot,
+    #shelves-container {
+        padding: 0 var(--space-4);
+    }
+
+    /* Phone-sized capsules: one dominant card + a peek of the next */
+    .app-corner {
+        --card-w: min(68vw, 260px);
+        --card-w-sm: min(54vw, 210px);
+    }
+
+    .hero {
+        min-height: 220px;
+    }
+
+    .hero-content {
+        padding: var(--space-4);
+        gap: var(--space-1);
+    }
+
+    .hero-title { font-size: clamp(24px, 7.5vw, 32px); }
+    .hero-badge { font-size: 10px; letter-spacing: 0.14em; }
     .hero-desc { display: none; }
-    .hero-btn { margin-top: var(--space-1); }
+
+    .hero-content .hero-btn {
+        margin-top: var(--space-1);
+        font-size: 14px;
+        padding: 10px 18px;
+    }
+
+    .shelf-title { font-size: 15px; }
+    .shelf-count { font-size: 11px; }
+
+    .shelf-row {
+        gap: var(--space-3);
+        padding: 8px 2px 16px;
+    }
+
+    .fade { width: 44px; }
+
+    .app-card-name {
+        left: 12px;
+        right: 12px;
+        bottom: 9px;
+        font-size: 15px;
+    }
+
+    .app-card--sm .app-card-name {
+        left: 10px;
+        right: 10px;
+        bottom: 8px;
+        font-size: 13px;
+    }
+
+    .capsule-initial { font-size: clamp(30px, 26%, 56px); }
+
+    /* Shelf pills: visible without hover on touch */
+    .shelf-disable-btn,
+    .shelf-restore-btn {
+        opacity: 1;
+        padding: 8px 12px;
+        font-size: 11px;
+    }
+
+    #shelves-container {
+        gap: var(--space-6);
+        padding-bottom: calc(var(--space-8) + env(safe-area-inset-bottom, 0px));
+    }
+
+    #disabled-section { padding-top: var(--space-4); }
 }
 
 /* ==========================================================================
@@ -757,7 +1028,9 @@
 @media (prefers-reduced-motion: reduce) {
     .reveal,
     .hero,
-    .hover-panel {
+    .hover-panel,
+    .card-context,
+    .cc-sheet {
         animation: none !important;
         transition-duration: 0.01ms !important;
     }
