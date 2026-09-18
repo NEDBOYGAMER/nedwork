@@ -79,7 +79,6 @@ async function fill_dashboard(name = current_dashboard) {
     instances.forEach(inst => inst.dispose?.())
     instances = []
     gridEl().innerHTML = ""
-    manager?.destroy?.()          // detach old grid's breakpoint listener
 
     manager = new GridManager(gridEl(), { onLayoutChange: () => persist() })
 
@@ -95,8 +94,7 @@ async function fill_dashboard(name = current_dashboard) {
     widgets.forEach(widget => {
         const instance = createWidget(widget, ctx)
         if (instance) instances.push(instance)
-        })
-    manager.settleLayout()   // mobile only: de-collide mapped positions; no-op on desktop
+    })
 }
 
 function persist() {
@@ -482,13 +480,11 @@ async function open_dashboard_switcher(anchor) {
         list.appendChild(item)
     })
 
-    document.body.appendChild(list)   // must be in the DOM before measuring
-
     const rect = anchor.getBoundingClientRect()
     list.style.top = `${rect.bottom + 8}px`
-    // keep the popover inside the viewport (matters on phones)
-    const maxLeft = window.innerWidth - list.offsetWidth - 12
-    list.style.left = `${Math.max(12, Math.min(rect.left, maxLeft))}px`
+    list.style.left = `${rect.left}px`
+
+    document.body.appendChild(list)
 }
 
 async function switch_dashboard(name) {

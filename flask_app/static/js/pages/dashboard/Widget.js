@@ -53,26 +53,6 @@ export class Widget {
 
         this.card.appendChild(this.grip)
 
-        // kebab "..." button - hidden on desktop (right-click opens the
-        // context menu); the only menu entry point on touch devices
-        this.menuBtn = document.createElement("button")
-        this.menuBtn.type = "button"
-        this.menuBtn.className = "card-menu-btn"
-        this.menuBtn.title = "Widget menu"
-        this.menuBtn.setAttribute("aria-label", "Widget menu")
-        this.menuBtn.innerHTML =
-            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">' +
-            '<circle cx="12" cy="5" r="2"></circle>' +
-            '<circle cx="12" cy="12" r="2"></circle>' +
-            '<circle cx="12" cy="19" r="2"></circle>' +
-            '</svg>'
-        this.menuBtn.addEventListener("click", (event) => {
-            event.stopPropagation()
-            const r = this.menuBtn.getBoundingClientRect()
-            this.openMenu(r.left + window.scrollX, r.bottom + window.scrollY + 6)
-        })
-        this.card.appendChild(this.menuBtn)
-
         // regular widgets get a title bar; full-bleed widgets get the whole
         // card for their own content
         if (!this.fullBleed) {
@@ -120,40 +100,32 @@ export class Widget {
     setUpContext() {
         this.card.addEventListener("contextmenu", (event) => {
             event.preventDefault()
-            this.openMenu(event.pageX, event.pageY)
+
+            document.getElementById("context-menu")?.remove()
+
+            const menu = document.createElement("ul")
+            menu.id = "context-menu"
+            menu.className = "context-menu"
+            menu.style.left = `${event.pageX}px`
+            menu.style.top = `${event.pageY}px`
+
+            const edit = document.createElement("li")
+            edit.className = "context-option"
+            edit.innerText = "Edit"
+            edit.addEventListener("click", () => this.edit())
+
+            const del = document.createElement("li")
+            del.className = "context-option"
+            del.innerText = "Delete"
+            del.addEventListener("click", () => this.delete())
+
+            menu.append(edit, del)
+            document.body.appendChild(menu)
         })
 
         document.addEventListener("click", () => {
             document.getElementById("context-menu")?.remove()
         }, { capture: true })
-    }
-
-    /* Build + position the context menu. Clamped into the viewport so it
-       never overflows the screen edge (important on phones). */
-    openMenu(pageX, pageY) {
-        document.getElementById("context-menu")?.remove()
-
-        const menu = document.createElement("ul")
-        menu.id = "context-menu"
-        menu.className = "context-menu"
-
-        const edit = document.createElement("li")
-        edit.className = "context-option"
-        edit.innerText = "Edit"
-        edit.addEventListener("click", () => this.edit())
-
-        const del = document.createElement("li")
-        del.className = "context-option"
-        del.innerText = "Delete"
-        del.addEventListener("click", () => this.delete())
-
-        menu.append(edit, del)
-        document.body.appendChild(menu)
-
-        const maxLeft = window.innerWidth - menu.offsetWidth - 8
-        const maxTop = window.scrollY + window.innerHeight - menu.offsetHeight - 8
-        menu.style.left = `${Math.max(8, Math.min(pageX, maxLeft))}px`
-        menu.style.top = `${Math.max(window.scrollY + 8, Math.min(pageY, maxTop))}px`
     }
 
     edit() {
