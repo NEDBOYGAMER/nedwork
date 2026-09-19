@@ -15,3 +15,11 @@ def favicon():
         'favicon.ico',
         mimetype='image/vnd.microsoft.icon'
     )
+
+@main_bp.route('/manifest.json')
+def manifest():
+    return send_from_directory(
+        os.path.join(current_app.root_path, 'static'),
+        'manifest.json',
+        mimetype='application/manifest+json'
+    )

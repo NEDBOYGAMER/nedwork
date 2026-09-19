@@ -106,3 +106,38 @@
     from { opacity: 0; transform: translateY(-6px); }
     to   { opacity: 1; transform: translateY(0); }
 }
+
+
+/* Mobile: dashboard is desktop-only - show a notice instead */
+.dash-mobile-notice { display: none; }
+
+@media (max-width: 768px) {
+    .dash-mobile-notice {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-3);
+        text-align: center;
+        padding: var(--space-8) var(--space-5);
+        min-height: calc(100vh - 130px);
+    }
+
+    .dash-mobile-icon { font-size: 42px; }
+    .dash-mobile-notice h2 { margin: 0; }
+    .dash-mobile-notice p { margin: 0; color: var(--text-muted); }
+
+    .dash-mobile-links {
+        display: flex;
+        gap: var(--space-3);
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: var(--space-2);
+    }
+
+    /* hide the entire desktop dashboard UI */
+    .dash-header,
+    #card-grid,
+    #add-widget-btn,
+    #modal-menu { display: none !important; }
+}

@@ -18,14 +18,18 @@ let instances = []
 let savePending = false
 
 const gridEl = () => document.getElementById("card-grid")
+const isMobile = () => window.matchMedia("(max-width: 768px)").matches
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (isMobile()) return
     adjust_headers();
     adjust_grid();
     setup_modal();
     fill_dashboard(current_dashboard)
     setup_dashboard_switcher()
 });
+window.matchMedia("(max-width: 768px)").addEventListener("change", () => location.reload())
+
 
 async function adjust_headers() {
     try {

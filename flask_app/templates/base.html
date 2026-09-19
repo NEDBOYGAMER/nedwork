@@ -37,9 +37,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Nedwork{% endblock %}</title>
 
-    <!-- Applies saved theme/accent/background before first paint, avoids a
-         flash of the wrong colors. Reads the local cache written by
-         settings.js after it loads/saves settings from the server. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark light">
+    <meta name="theme-color" content="#16161A">
+
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+
+    
     <script>
         (function () {
             var theme = localStorage.getItem('_dark_mode');
