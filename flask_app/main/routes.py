@@ -23,3 +23,13 @@ def manifest():
         'manifest.json',
         mimetype='application/manifest+json'
     )
+
+@main_bp.route('/sw.js')
+def service_worker():
+    resp = send_from_directory(
+        os.path.join(current_app.root_path, 'static'),
+        'sw.js',
+        mimetype='application/javascript'
+    )
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
