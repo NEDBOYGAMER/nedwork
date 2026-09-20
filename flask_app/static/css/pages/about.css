@@ -5,12 +5,23 @@
    Stated deviations (per §11 of the style rules):
    1. --brand / --brand-soft: the nedwork logo assets are a fixed orange
       (#C77400). These variables are used ONLY for decorative elements
-      (hero glow, wordmark glow, constellation, footer mark) — never on
-      interactive elements, which stay on --accent.
+      (hero glow, wordmark glow, constellation, footer mark, scroll bar) —
+      never on interactive elements, which stay on --accent.
    2. Theme/accent/grid application (§14) is duplicated in js/pages/about.js
       because this page does not extend base.html.
    3. The hero backdrop (.hero-bg) is page content, not the §4 ambient
       layer — it's the requested "big header image", dimmed by .hero-shade.
+   4. .container is deliberately much wider on this page — the /about page
+      spreads over (almost) the full viewport instead of the usual column.
+
+   Motion notes:
+   - Scroll-driven effects use native CSS scroll timelines where supported
+     (@supports blocks) and fall back to the JS/IntersectionObserver path.
+   - Everything is disabled under prefers-reduced-motion.
+   - Pointer-driven motion (tilt, cursor glow, hero parallax) is skipped on
+     touch devices and for reduced motion.
+   - The suggestion form card carries .no-tilt: it's the one place the user
+     actually types, so it stays perfectly still.
    ========================================================================== */
 
 :root {
@@ -27,25 +38,317 @@ html { scroll-behavior: smooth; }
 
 
 /* ==========================================================================
+   Layout — this page spreads. much wider container than the global 1180px.
+   ========================================================================== */
+
+.container {
+    max-width: min(1560px, 100% - var(--space-8));
+}
+
+@media (max-width: 700px) {
+    .container { max-width: 100%; }
+}
+
+
+/* ==========================================================================
+   Scroll progress bar + cursor spotlight
+   ========================================================================== */
+
+.scroll-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--brand));
+    transform-origin: 0 50%;
+    transform: scaleX(0);
+    z-index: 500;
+    pointer-events: none;
+}
+
+.cursor-glow {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 360px;
+    height: 360px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-soft), transparent 68%);
+    filter: blur(24px);
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0);
+    pointer-events: none;
+    z-index: 1;               /* above the ambient layer, below .surface-layer */
+    transition: opacity .4s ease;
+    will-change: transform;
+}
+.cursor-glow.is-on { opacity: .55; }
+
+/* touch devices never get a cursor spotlight */
+@media (hover: none), (pointer: coarse) {
+    .cursor-glow { display: none; }
+}
+
+/* ==========================================================================
+   Back-to-dashboard arrow — fixed top-right
+   This page is standalone (no side nav), so the arrow is the one way home.
+   Same pill language as .jump-pill; purely CSS, no JS needed.
+   ========================================================================== */
+
+/* ==========================================================================
+   Back-to-dashboard arrow — bare text link, no pill.
+   Bigger arrow + label; feedback is color + arrow nudge on hover.
+   ========================================================================== */
+
+/* ==========================================================================
+   Back-to-dashboard arrow — bare text link, no pill.
+   Bigger arrow + label; feedback is color + arrow nudge on hover.
+   ========================================================================== */
+
+/* ==========================================================================
+   Back-to-dashboard arrow — bare text link, no pill.
+   Bigger arrow + label; feedback is color + arrow nudge on hover.
+   ========================================================================== */
+
+.back-dash {
+    position: fixed;
+    top: var(--space-4);
+    left: var(--space-8);            /* ← you put it top-left; swap to
+                                        right: var(--space-4) for top-right */
+    z-index: 300;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;                    /* invisible cushion — keeps a comfy tap target */
+    background: none;                /* no pill, no fill */
+    border: none;
+    color: var(--text);
+    text-decoration: none;
+    line-height: 1;
+    white-space: nowrap;
+    animation: back-dash-in .5s cubic-bezier(.2, .7, .3, 1) .35s backwards;
+    transition: color .2s ease, transform .2s ease;
+}
+
+/* hover feedback = color flip + arrow nudging left ("back" motion) */
+.back-dash:hover { color: var(--accent); transform: translateY(-1px); }
+.back-dash:active { transform: translateY(0) scale(.97); }
+.back-dash:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+/* bigger arrow */
+.back-dash .icon {
+    width: 26px;
+    height: 26px;
+    transition: transform .2s ease;
+}
+.back-dash:hover .icon { transform: translateX(-3px); }
+
+/* bigger text */
+.back-dash-label { font-size: 17px; font-weight: 500; }
+
+@keyframes back-dash-in {
+    from { opacity: 0; transform: translateX(18px); }
+    to   { opacity: 1; transform: none; }
+}
+/* ==========================================================================
+   Ambient layer — drifting dot grid + ONE subtle glow, top right.
+   (the old bottom-left blob is gone on purpose)
+   ========================================================================== */
+
+body::before {
+    /* dot grid — slowly drifting instead of static */
+    animation: grid-drift 90s linear infinite;
+}
+
+@keyframes grid-drift {
+    to { background-position: 240px 240px; }
+}
+
+.aurora {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+.aurora span {
+    position: absolute;
+    top: -14%;
+    right: -10%;
+    width: 38vw;
+    height: 38vw;
+    max-width: 560px;
+    max-height: 560px;
+    border-radius: 50%;
+    background: var(--accent);
+    filter: blur(120px);
+    opacity: .08;
+    will-change: transform;
+    animation: aurora-a 34s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-a {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to   { transform: translate3d(-6vw, 8vh, 0) scale(1.12); }
+}
+
+/* konami easter egg: aurora wakes up too */
+body.party .aurora span { opacity: .22; animation-duration: 8s; }
+
+/* party mode: the whole surface hue-cycles briefly */
+body.party .surface-layer { animation: hue-cycle 2.2s linear infinite; }
+body.party .aurora span   { animation: hue-cycle 2.2s linear infinite; }
+
+@keyframes hue-cycle {
+    to { filter: hue-rotate(360deg); }
+}
+
+
+/* ==========================================================================
+   Floating section nav — appears after the hero, scrollspy-highlighted.
+   JS toggles .is-visible and .active; CSS does the rest.
+
+   Labels are absolutely positioned: hidden text takes ZERO layout space,
+   so the dots stand alone flush right. On hover / active the whole row
+   (label + dot) slides forward — the dot only moves when text shows.
+   ========================================================================== */
+
+.float-nav {
+    position: fixed;
+    right: clamp(10px, 2vw, 28px);
+    top: 50%;
+    translate: 0 -50%;
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    opacity: 0;
+    visibility: hidden;
+    translate: 8px -50%;
+    transition: opacity .35s ease, translate .35s ease, visibility 0s linear .35s;
+}
+
+.float-nav.is-visible {
+    opacity: 1;
+    visibility: visible;
+    translate: 0 -50%;
+    transition: opacity .35s ease, translate .35s ease;
+}
+
+.float-nav a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 6px 0;
+    text-decoration: none;
+    translate: 0 0;                           /* idle: flush right */
+    transition: translate .25s ease;          /* "forward" slide on hover */
+}
+
+/* label: out of flow, so it never touches layout — the dots stay lined up.
+   It sits just left of the dot and slides out of it when shown. */
+.float-nav span {
+    position: absolute;
+    top: 50%;
+    right: calc(100% + 12px);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+    white-space: nowrap;
+    opacity: 0;
+    translate: 8px -50%;                      /* hidden: 8px closer to the dot */
+    transition: opacity .2s ease, translate .2s ease, color .2s ease, border-color .2s ease;
+    pointer-events: none;                     /* never blocks hovering the dot */
+}
+
+/* text appears — and the row (label + dot) moves forward together */
+.float-nav a:hover,
+.float-nav a.active {
+    translate: -6px 0;
+}
+
+.float-nav a:hover span,
+.float-nav a.active span {
+    opacity: 1;
+    translate: 0 -50%;
+}
+
+.float-nav a.active span {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* the dot itself */
+.float-nav i {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    transition: background .2s ease, border-color .2s ease, transform .2s ease;
+}
+
+.float-nav a:hover i {
+    transform: scale(1.3);
+    border-color: var(--accent);
+}
+
+.float-nav a.active i {
+    background: var(--accent);
+    border-color: var(--accent);
+    transform: scale(1.25);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+@media (max-width: 1100px) {
+    .float-nav { display: none; }
+}
+
+
+/* ==========================================================================
    Hero
    ========================================================================== */
 
 .hero {
     position: relative;
-    min-height: clamp(520px, 66vh, 720px);
+    min-height: clamp(560px, 72vh, 780px);
     display: flex;
     align-items: center;
     border-bottom: 1px solid var(--line);
     overflow: hidden;
 }
 
-/* big header image — optional asset, see asset list */
+/* big header image — base scale 1.08 leaves room for pointer parallax
+   (JS, via transform) AND scroll drift (CSS, via the `translate`
+   property — the two never fight over the same property). */
 .hero-bg {
     position: absolute;
     inset: 0;
     background-size: cover;
     background-position: center;
     opacity: .38;
+    transform: scale(1.08);
+    transition: transform .4s cubic-bezier(.2, .7, .3, 1);
+    will-change: transform, translate;
+}
+
+/* scroll drift: as you scroll away, the backdrop sinks and dims.
+   Uses `translate`/`opacity`, not `transform`, so the JS pointer
+   parallax keeps working at the same time. */
+@supports (animation-timeline: scroll()) {
+    .hero-bg {
+        animation: hero-bg-drift linear both;
+        animation-timeline: scroll(root);
+        animation-range: 0 900px;
+    }
+    @keyframes hero-bg-drift {
+        to { translate: 0 110px; opacity: .16; }
+    }
 }
 
 /* dim the image so text stays readable in both themes */
@@ -77,7 +380,8 @@ html { scroll-behavior: smooth; }
 /* konami easter egg: the glow briefly wakes up */
 body.party .hero-glow { opacity: 1; animation-duration: 4s; }
 
-/* the nedwork constellation — custom inline svg, decorative */
+/* the nedwork constellation — custom inline svg, decorative.
+   Lines draw themselves in; the whole constellation then drifts forever. */
 .hero-net {
     position: absolute;
     right: -60px;
@@ -86,6 +390,12 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     color: var(--brand);
     opacity: .18;
     pointer-events: none;
+    animation: net-float 14s ease-in-out infinite alternate;
+}
+
+@keyframes net-float {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(-18px, -24px, 0); }
 }
 
 .hero-net line {
@@ -98,6 +408,21 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
 
 @keyframes net-draw { to { stroke-dashoffset: 0; } }
 
+/* stars twinkle */
+.hero-net circle {
+    animation: star-twinkle 3.4s ease-in-out infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+}
+.hero-net circle:nth-child(2n)  { animation-delay: .8s; }
+.hero-net circle:nth-child(3n)  { animation-delay: 1.6s; }
+.hero-net circle:nth-child(4n)  { animation-delay: 2.2s; }
+
+@keyframes star-twinkle {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: .35; }
+}
+
 .hero-inner {
     position: relative;
     width: 100%;
@@ -109,16 +434,35 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     padding-bottom: var(--space-8);
 }
 
-/* entrance */
+/* scroll exit: the hero content lifts away and fades as you scroll down.
+   Again via `translate`/`opacity` so nothing else touches `transform`. */
+@supports (animation-timeline: scroll()) {
+    .hero-inner {
+        animation: hero-exit linear both;
+        animation-timeline: scroll(root);
+        animation-range: 0 520px;
+    }
+    @keyframes hero-exit {
+        to { translate: 0 -70px; opacity: .25; }
+    }
+}
+
+/* entrance — staggered */
 .hero-wordmark, .hero-tagline, .hero-actions, .jump {
     animation: rise .6s ease backwards;
 }
-.hero-tagline  { animation-delay: .08s; }
-.hero-actions  { animation-delay: .16s; }
-.jump          { animation-delay: .24s; }
+.hero-wordmark { animation-delay: .08s; }
+.hero-tagline  { animation-delay: .16s; }
+.hero-actions  { animation-delay: .24s; }
+.jump          { animation-delay: .32s; }
+
+@keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+}
 
 .hero-wordmark {
-    width: min(620px, 88vw);
+    width: min(680px, 88vw);
     height: auto;
     filter: drop-shadow(0 16px 48px var(--brand-soft));
 }
@@ -132,10 +476,33 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
 
 .hero-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 
-/* section jump pills */
+/* primary button shine sweep */
+.btn-primary {
+    position: relative;
+    overflow: hidden;
+}
+.btn-primary::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -80%;
+    width: 45%;
+    height: 100%;
+    background: linear-gradient(105deg, transparent, rgba(255, 255, 255, .28), transparent);
+    transform: skewX(-20deg);
+    transition: left .55s ease;
+    pointer-events: none;
+}
+.btn-primary:hover::after { left: 135%; }
+.btn-primary .icon { transition: transform .25s ease; }
+.btn-primary:hover .icon { transform: translateY(2px); }
+
+/* section jump pills — sliding fill */
 .jump { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
 
 .jump-pill {
+    position: relative;
+    overflow: hidden;
     font-size: 13px;
     color: var(--text-muted);
     background: var(--surface);
@@ -143,30 +510,57 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     border-radius: var(--radius-pill);
     padding: 4px 12px;
     text-decoration: none;
-    transition: border-color .15s ease, color .15s ease;
+    transition: border-color .2s ease, color .2s ease, transform .2s ease;
 }
-.jump-pill:hover { border-color: var(--accent); color: var(--text); text-decoration: none; }
-
-/* entrance */
-.hero-badges, .hero-wordmark, .hero-tagline, .hero-actions, .jump {
-    animation: rise .6s ease backwards;
+.jump-pill::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent-soft);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform .28s ease;
 }
-.hero-wordmark { animation-delay: .08s; }
-.hero-tagline  { animation-delay: .16s; }
-.hero-actions  { animation-delay: .24s; }
-.jump          { animation-delay: .32s; }
+.jump-pill:hover::before { transform: scaleX(1); }
+.jump-pill:hover {
+    border-color: var(--accent);
+    color: var(--text);
+    text-decoration: none;
+    transform: translateY(-2px);
+}
+.jump-pill:active { transform: translateY(0) scale(.97); }
 
-@keyframes rise {
-    from { opacity: 0; transform: translateY(14px); }
-    to   { opacity: 1; transform: none; }
+/* scroll cue — two fading dashes at the hero's bottom edge */
+.hero-scroll-cue {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    translate: -50% 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    pointer-events: none;
+}
+.hero-scroll-cue span {
+    width: 1px;
+    height: 16px;
+    background: linear-gradient(var(--text-muted), transparent);
+    animation: cue-fall 1.6s ease-in-out infinite;
+}
+.hero-scroll-cue span:nth-child(2) { animation-delay: .25s; }
+
+@keyframes cue-fall {
+    0%   { opacity: 0; transform: translateY(-6px); }
+    40%  { opacity: 1; }
+    100% { opacity: 0; transform: translateY(8px); }
 }
 
-/* floating app-icon "trading card" */
+/* floating app-icon "trading card" — gently bobbing when idle */
 .hero-icon-card {
     position: absolute;
-    right: clamp(24px, 8vw, 96px);
+    right: clamp(24px, 8vw, 120px);
     top: 50%;
-    transform: translateY(-50%) rotate(-5deg);
     width: 176px;
     padding: var(--space-4);
     background: var(--surface);
@@ -174,9 +568,22 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     border-top: 3px solid var(--brand);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow);
-    transition: transform .25s ease;
+    animation: card-float 5s ease-in-out infinite alternate;
+    transition: transform .25s ease, border-color .25s ease;
+    will-change: transform;
 }
-.hero-icon-card:hover { transform: translateY(-50%) rotate(0deg) scale(1.02); }
+
+@keyframes card-float {
+    from { margin-top: -8px; rotate: -5deg; }
+    to   { margin-top:  8px; rotate: -3deg; }
+}
+
+.hero-icon-card:hover {
+    rotate: 0deg;
+    scale: 1.03;
+    border-top-color: var(--accent);
+    animation-play-state: paused;
+}
 .hero-icon-card img { width: 100%; display: block; border-radius: var(--radius-sm); }
 .hero-icon-caption {
     display: block;
@@ -199,17 +606,32 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
 .page-body {
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
+    gap: var(--space-9, 72px);
     padding-top: var(--space-8);
     padding-bottom: var(--space-8);
 }
 
 .section { scroll-margin-top: var(--space-6); }
 
-
 .section-head { margin-bottom: var(--space-5); }
-.section-head h2 { margin: 0 0 var(--space-2); }
+.section-head h2 { margin: 0 0 var(--space-2); position: relative; display: inline-block; }
 .section-head .sub { margin: 0; color: var(--text-muted); font-size: 14px; }
+
+/* headings get an accent underline that draws itself in on reveal */
+.section-head h2::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -6px;
+    width: 100%;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform .7s cubic-bezier(.2, .7, .3, 1) .25s;
+}
+.section.reveal.in .section-head h2::after { transform: scaleX(1); }
 
 .section-head-row {
     display: flex;
@@ -221,9 +643,104 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
 }
 .section-head-row .section-head { margin-bottom: 0; }
 
-/* scroll reveal */
-.reveal { opacity: 0; transform: translateY(12px); transition: opacity .5s ease, transform .5s ease; }
+/* scroll reveal (fallback path — upgraded below where scroll timelines
+   are supported, so the reveal is literally tied to scroll position) */
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s cubic-bezier(.2, .7, .3, 1); }
 .reveal.in { opacity: 1; transform: none; }
+
+@supports (animation-timeline: view()) {
+    .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+        animation: reveal-scroll linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 55%;
+    }
+    /* deep-link support: /about#costs must not be invisible if the
+       animation range hasn't run yet when the jump lands */
+    .reveal:target { animation: none; }
+
+    @keyframes reveal-scroll {
+        from { opacity: 0; transform: translateY(28px); }
+        to   { opacity: 1; transform: none; }
+    }
+}
+
+
+/* ==========================================================================
+   Cards — shared lift + glow border on hover, shine sweep.
+   (no gradient text anywhere — titles stay readable, always)
+   ========================================================================== */
+
+.page-body .card {
+    position: relative;
+    overflow: hidden;
+    transition:
+        transform .25s cubic-bezier(.2, .7, .3, 1),
+        border-color .25s ease,
+        box-shadow .25s ease;
+}
+
+.page-body .card:hover {
+    transform: translateY(-4px);
+    border-color: var(--line);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .14), 0 0 0 1px var(--accent-soft);
+}
+
+[data-theme="light"] .page-body .card:hover { box-shadow: var(--shadow), 0 0 0 1px var(--accent-soft); }
+
+/* the shine that sweeps across a card on hover */
+.page-body .card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -80%;
+    width: 45%;
+    height: 100%;
+    background: linear-gradient(105deg, transparent, var(--surface-hover), transparent);
+    transform: skewX(-20deg);
+    opacity: 0;
+    pointer-events: none;
+    transition: left .7s ease, opacity .3s ease;
+}
+.page-body .card:hover::after { left: 135%; opacity: 1; }
+
+/* the suggestion form card: still and calm — no lift, no tilt, no shine */
+.no-tilt { overflow: visible; }
+.no-tilt:hover { transform: none; box-shadow: var(--shadow); }
+.no-tilt::after { display: none; }
+
+/* icon chips get a little louder when their card is hovered */
+.chip .icon { transition: transform .25s ease; }
+.page-body .card:not(.no-tilt):hover .chip .icon { animation: chip-wiggle .5s ease; }
+
+@keyframes chip-wiggle {
+    25%  { transform: rotate(-10deg) scale(1.1); }
+    60%  { transform: rotate(8deg)  scale(1.1); }
+    100% { transform: rotate(0deg) scale(1); }
+}
+
+/* content links get an underline that sweeps in */
+.page-body a:not(.btn):not(.jump-pill) {
+    text-decoration: none;
+    background-image: linear-gradient(var(--accent), var(--accent));
+    background-size: 0% 1.5px;
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    transition: background-size .25s ease, color .15s ease;
+}
+.page-body a:not(.btn):not(.jump-pill):hover {
+    text-decoration: none;
+    background-size: 100% 1.5px;
+}
+
+
+/* ==========================================================================
+   About
+   ========================================================================== */
+
+.about-card h2 { margin: 0 0 var(--space-3); }
 
 
 /* ==========================================================================
@@ -238,7 +755,17 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
 }
 
 .fact { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4) var(--space-5); }
-.fact-value  { font-family: var(--font-display); font-size: 32px; font-weight: 600; line-height: 1.15; }
+
+.fact-value {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+    transition: color .2s ease;
+}
+.fact:hover .fact-value { color: var(--accent); }
+
 .fact-label  { font-size: 13px; color: var(--text); }
 .fact-sub    { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
 
@@ -247,7 +774,8 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
 
 
 /* ==========================================================================
-   Updates timeline
+   Updates timeline — the spine FILLS with accent as you scroll.
+   JS sets --fill (0..1) on the <ol>; the ::after overlay paints it.
    ========================================================================== */
 
 .timeline {
@@ -260,6 +788,7 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     gap: var(--space-4);
 }
 
+/* base spine */
 .timeline::before {
     content: '';
     position: absolute;
@@ -271,7 +800,28 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     border-radius: 1px;
 }
 
+/* accent fill overlay — height driven by --fill from JS */
+.timeline::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 6px;
+    width: 2px;
+    height: calc((100% - 12px) * var(--fill, 0));
+    background: linear-gradient(var(--accent), var(--accent));
+    border-radius: 1px;
+    transition: height .15s linear;
+}
+
 .tl-item { position: relative; }
+
+/* staggered slide-in */
+.tl-item { opacity: 0; transform: translateX(-16px); }
+.tl-item.tl-in { animation: tl-in .5s cubic-bezier(.2, .7, .3, 1) forwards; }
+
+@keyframes tl-in {
+    to { opacity: 1; transform: none; }
+}
 
 .tl-item::before {
     content: '';
@@ -283,11 +833,21 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     border-radius: 50%;
     background: var(--bg);
     border: 2px solid var(--text-muted);
+    transition: border-color .2s ease, transform .2s ease;
 }
 
+.tl-item:hover::before { border-color: var(--accent); transform: scale(1.25); }
+
+/* latest item's dot pulses forever */
 .tl-item.is-latest::before {
     border-color: var(--accent);
     box-shadow: 0 0 0 4px var(--accent-soft);
+    animation: dot-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+    0%, 100% { box-shadow: 0 0 0 4px var(--accent-soft); }
+    50%      { box-shadow: 0 0 0 10px transparent; }
 }
 
 .tl-card { padding: var(--space-4) var(--space-5); }
@@ -300,7 +860,8 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     margin-bottom: var(--space-2);
 }
 
-.tl-title { margin: 0; font-size: 16px; }
+.tl-title { margin: 0; font-size: 16px; transition: transform .2s ease; }
+.tl-card:hover .tl-title { transform: translateX(3px); }
 
 .tl-time {
     margin-left: auto;
@@ -333,7 +894,13 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     justify-content: space-between;
 }
 
-.step-num { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+.step-num {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: color .2s ease;
+}
+.nav-step:hover .step-num { color: var(--accent); }
 
 /* icon chip */
 .chip {
@@ -346,12 +913,14 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    transition: background .2s ease, transform .2s ease;
 }
+.page-body .card:not(.no-tilt):hover .chip { background: var(--accent); color: var(--accent-ink); transform: scale(1.08); }
 .chip-sm { width: 32px; height: 32px; }
 .chip-sm .icon { width: 18px; height: 18px; }
 .chip-lg { width: 48px; height: 48px; }
 
-/* framed screenshot slot */
+/* framed screenshot slot — scroll parallax only, NO hover zoom */
 .peek {
     margin: var(--space-5) 0 0;
     border: 1px solid var(--line);
@@ -359,6 +928,12 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     overflow: hidden;
     background: var(--surface-2);
     box-shadow: var(--shadow);
+}
+
+.peek-frame {
+    overflow: hidden;
+    /* JS nudges this up/down slightly on scroll for parallax */
+    will-change: transform;
 }
 
 .peek-img {
@@ -396,7 +971,8 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
 .privacy-card h3 { font-size: 16px; margin: var(--space-3) 0 var(--space-2); }
 .privacy-card p  { margin: 0 0 var(--space-3); font-size: 14px; line-height: 1.5; }
 .privacy-card .alert { margin: var(--space-3) 0 0; font-size: 13px; }
-.privacy-card .alert .icon { color: var(--warning); margin-top: 2px; }
+.privacy-card .alert .icon { color: var(--warning); margin-top: 2px; transition: transform .25s ease; }
+.privacy-card .alert:hover .icon { transform: scale(1.2); }
 
 
 /* ==========================================================================
@@ -422,7 +998,14 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     border-bottom: 3px dashed var(--line);
 }
 
-.receipt-brand { font-family: var(--font-mono); letter-spacing: 0; }
+/* the label is a small mono eyebrow — not a title */
+.receipt-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--text-muted);
+}
 
 .receipt-row {
     display: flex;
@@ -430,8 +1013,6 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     justify-content: space-between;
     gap: var(--space-3);
     padding: var(--space-3) 0 var(--space-4);
-    font-size: 14px;
-    color: var(--text-muted);
 }
 
 .receipt-amount {
@@ -440,6 +1021,7 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     font-weight: 600;
     color: var(--text);
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
 .receipt-divider {
@@ -477,6 +1059,14 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
 }
 
 .idea-item p { margin: 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+
+/* idea cards fade up, staggered by JS */
+.idea-item { opacity: 0; transform: translateY(14px); }
+.idea-item.idea-in { animation: idea-in .5s cubic-bezier(.2, .7, .3, 1) forwards; }
+
+@keyframes idea-in {
+    to { opacity: 1; transform: none; }
+}
 
 
 /* ==========================================================================
@@ -516,19 +1106,33 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     overflow: hidden;
 }
 
-.form-success {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    flex-wrap: wrap;
-    padding-top: var(--space-4);
-    margin-top: var(--space-4);
-    border-top: 1px solid var(--line);
+/* success chip pops in */
+.form-success { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.form-success .chip-lg { animation: chip-pop .45s cubic-bezier(.34, 1.56, .64, 1) both; }
+.form-success .chip-lg .icon { animation: none; }
+
+@keyframes chip-pop {
+    from { transform: scale(0) rotate(-30deg); }
+    to   { transform: scale(1) rotate(0); }
 }
 
 .form-success-text { flex: 1; min-width: 220px; }
 .form-success-text h3 { font-size: 16px; margin: 0 0 2px; }
 .form-success-text p { margin: 0; font-size: 14px; color: var(--text-muted); }
+
+
+/* ==========================================================================
+   Modal — entrance animation
+   ========================================================================== */
+
+.modal-backdrop.open .modal {
+    animation: modal-in .28s cubic-bezier(.2, .7, .3, 1);
+}
+
+@keyframes modal-in {
+    from { opacity: 0; transform: translateY(18px) scale(.96); }
+    to   { opacity: 1; transform: none; }
+}
 
 
 /* ==========================================================================
@@ -546,7 +1150,9 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     font-family: var(--font-mono);
     font-size: 12px;
     color: var(--text-muted);
+    transition: color .2s ease;
 }
+.site-footer:hover .footer-version { color: var(--text); }
 
 .footer-mark {
     background: none;
@@ -554,10 +1160,20 @@ body.party .hero-glow { opacity: 1; animation-duration: 4s; }
     padding: 0;
     cursor: pointer;
     display: inline-flex;
-    transition: filter .15s ease;
+    transition: filter .2s ease, transform .3s cubic-bezier(.34, 1.56, .64, 1);
+    animation: mark-bob 4.5s ease-in-out infinite alternate;
 }
 .footer-mark img { height: 20px; display: block; }
-.footer-mark:hover { filter: drop-shadow(0 0 8px var(--brand-soft)); }
+.footer-mark:hover {
+    filter: drop-shadow(0 0 10px var(--brand-soft));
+    transform: scale(1.15) rotate(-4deg);
+    animation-play-state: paused;
+}
+
+@keyframes mark-bob {
+    from { transform: translateY(0); }
+    to   { transform: translateY(-4px); }
+}
 
 
 /* ==========================================================================
@@ -583,14 +1199,62 @@ body.is-admin .admin-only { display: inline-flex; }
 
 
 /* ==========================================================================
-   Motion preferences
+   Motion preferences — everything above politely turns itself off
    ========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    .hero-glow { animation: none; }
-    .hero-net line { animation: none; stroke-dashoffset: 0; }
+
+    .scroll-progress { transition: none; }
+    .cursor-glow { display: none; }
+    .float-nav { transition: none; }
+    .float-nav span { transition: none; }
+
+    .float-nav a { transition: none; }
+    .float-nav a:hover,
+    .float-nav a.active { translate: 0 0; }
+
+    body::before,
+    .aurora span,
+    .hero-glow,
+    .hero-net,
+    .hero-net line,
+    .hero-net circle,
+    .hero-bg,
+    .hero-inner,
+    .hero-icon-card,
+    .hero-scroll-cue span,
+    .footer-mark { animation: none !important; }
+
+    .hero-net line { stroke-dashoffset: 0; }
+    .hero-bg, .hero-inner { translate: 0 0; opacity: revert-layer; }
+    .hero-bg { opacity: .38; }
+    .hero-inner { opacity: 1; }
+
     .hero-badges, .hero-wordmark, .hero-tagline, .hero-actions, .jump { animation: none; }
-    .reveal { opacity: 1; transform: none; transition: none; }
-    .hero-icon-card { transition: none; }
+
+    .peek-frame,
+    .peek-img,
+    .page-body .card,
+    .jump-pill,
+    .chip,
+    .tl-item::before,
+    .footer-mark { transition: none; transform: none; }
+
+    .section-head h2::after { transition: none; transform: none; }
+
+    .reveal { opacity: 1; transform: none; transition: none; animation: none !important; }
+    .tl-item { opacity: 1; transform: none; animation: none; }
+    .idea-item { opacity: 1; transform: none; animation: none; }
+    .timeline::after { height: calc(100% - 12px); }
+    .form-success .chip-lg { animation: none; }
+    .modal-backdrop.open .modal { animation: none; }
+
+    .page-body .card::after,
+    .btn-primary::after { display: none; }
+
+    .back-dash,
+    .back-dash .icon,
+    .back-dash-label { animation: none; transition: none; }
+    .back-dash:hover { transform: none; }
 }

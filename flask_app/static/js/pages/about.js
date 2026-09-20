@@ -4,6 +4,18 @@
    NOTE: this page does not extend base.html, so the §14 settings
    fetch-and-apply logic is duplicated here (plus a pre-paint inline
    script in about.html). Keep in sync if the base implementation changes.
+
+   Motion systems in this file (all disabled for prefers-reduced-motion,
+   pointer-driven ones skipped on touch devices):
+   - scroll progress bar
+   - floating section nav with scrollspy
+   - timeline spine fill (scroll-linked)
+   - cursor spotlight
+   - card 3D tilt (display cards only — the suggestion form is .no-tilt)
+   - hero pointer parallax
+   - screenshot scroll parallax
+   - count-up fact numbers
+   - staggered reveals for timeline + idea cards
    ========================================================================== */
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -71,6 +83,13 @@ function paintSettings(c) {
     if (c.accent_color_ink)  root.style.setProperty('--accent-ink', c.accent_color_ink);
     document.body.classList.toggle('no-ambient', c.grid === false);
 }
+
+/* ============================== environment ============================= */
+
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FINE_POINTER   = matchMedia('(hover: hover) and (pointer: fine)').matches;
+/* pointer-driven motion only on real pointers, never for reduced motion */
+const MOTION_OK = !REDUCED_MOTION && FINE_POINTER;
 
 /* ============================== helpers ================================= */
 
@@ -167,6 +186,13 @@ function renderUpdates() {
         li.className = 'tl-item' + (i === 0 ? ' is-latest' : '');
         li.id = 'update-' + u.id;              // deep-linkable: /about#update-<id>
 
+        /* staggered slide-in — capped so a long list doesn't wait forever */
+        if (!REDUCED_MOTION) {
+            li.style.animationDelay = `${Math.min(i * 70, 700)}ms`;
+        } else {
+            li.classList.add('tl-in');
+        }
+
         const card = document.createElement('article');
         card.className = 'card tl-card';
 
@@ -183,7 +209,7 @@ function renderUpdates() {
 
         const timeWrap = document.createElement('span');
         timeWrap.className = 'tooltip-wrap';
-        
+
         const time = document.createElement('span');
         time.className = 'tl-time';
         time.textContent = formatDaysAgo(u.created_at); // Displays "today", "1 day ago", etc.
@@ -206,6 +232,11 @@ function renderUpdates() {
         card.append(head, body);
         li.append(card);
         list.append(li);
+
+        /* trigger the slide-in on the next frame so the animation sticks */
+        if (!REDUCED_MOTION) {
+            requestAnimationFrame(() => requestAnimationFrame(() => li.classList.add('tl-in')));
+        }
     });
 }
 
@@ -244,7 +275,31 @@ function renderFacts() {
         ? relTime(updates[updates.length - 1].created_at)
         : '—';
     $('#fact-last').textContent = updates.length ? relTime(updates[0].created_at) : '—';
-$('#site-version').textContent = MANUAL_VERSION;
+    $('#site-version').textContent = MANUAL_VERSION;
+
+    countUpFact($('#fact-tools'));
+    countUpFact($('#fact-updates'));
+}
+
+/* numeric fact values roll up from their previous value on every render */
+function countUpFact(el) {
+    const target = parseInt(el.textContent, 10);
+    if (!isFinite(target)) return;                        // "—" or relative time — leave it
+    if (REDUCED_MOTION) { el.dataset.val = target; return; }
+
+    const from = parseInt(el.dataset.val ?? '0', 10) || 0;
+    el.dataset.val = target;
+    if (from === target) return;
+
+    const dur = 900;
+    const t0 = performance.now();
+    const ease = x => 1 - Math.pow(1 - x, 3);             // easeOutCubic
+
+    (function step(now) {
+        const p = Math.min((now - t0) / dur, 1);
+        el.textContent = Math.round(from + (target - from) * ease(p));
+        if (p < 1) requestAnimationFrame(step);
+    })(t0);
 }
 
 /* ============================== admin mode ============================== */
@@ -348,9 +403,10 @@ function renderIdeas() {
     grid.replaceChildren();
     $('#ideas-empty').hidden = ideas.length > 0;
 
-    ideas.forEach(idea => {
+    ideas.forEach((idea, i) => {
         const card = document.createElement('article');
         card.className = 'card idea-item';
+        if (!REDUCED_MOTION) card.style.animationDelay = `${Math.min(i * 90, 720)}ms`;
 
         const title = document.createElement('h3');
         const name = document.createElement('span');
@@ -365,6 +421,12 @@ function renderIdeas() {
 
         card.append(title, body);
         grid.append(card);
+
+        if (!REDUCED_MOTION) {
+            requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('idea-in')));
+        } else {
+            card.classList.add('idea-in');
+        }
     });
 }
 
@@ -437,10 +499,157 @@ function observeReveals() {
     $$('.reveal:not(.in)').forEach(el => io.observe(el));
 }
 
-/* ============================== easter egg ============================== */
+/* ============================== motion systems ========================== */
+
+/* --- scroll progress bar + timeline spine fill -------------------------- */
+/* one passive scroll handler drives both, rAF-throttled */
+function initScrollFx() {
+    const bar = $('#scroll-progress');
+    const timeline = $('#timeline');
+    let ticking = false;
+
+    function update() {
+        /* progress bar */
+        const max = document.documentElement.scrollHeight - innerHeight;
+        if (bar) bar.style.transform = `scaleX(${max > 0 ? Math.min(scrollY / max, 1) : 0})`;
+
+        /* spine fill: how far the viewport center has traveled through the timeline */
+        if (timeline) {
+            const r = timeline.getBoundingClientRect();
+            const mid = innerHeight * .6;
+            const p = r.height > 0 ? (mid - r.top) / r.height : 0;
+            timeline.style.setProperty('--fill', Math.max(0, Math.min(p, 1)).toFixed(3));
+        }
+        ticking = false;
+    }
+
+    addEventListener('scroll', () => {
+        if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive: true });
+    addEventListener('resize', () => {
+        if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive: true });
+    update();
+}
+
+/* --- floating section nav + scrollspy ----------------------------------- */
+function initFloatNav() {
+    const nav = $('#float-nav');
+    const hero = $('.hero');
+    if (!nav || !hero) return;
+
+    /* appears once the hero has scrolled past */
+    let ticking = false;
+    addEventListener('scroll', () => {
+        if (!ticking) {
+            ticking = true;
+            requestAnimationFrame(() => {
+                nav.classList.toggle('is-visible', scrollY > hero.offsetHeight - 120);
+                ticking = false;
+            });
+        }
+    }, { passive: true });
+
+    /* scrollspy: highlight the section currently on screen */
+    const links = new Map($$('a', nav).map(a => [a.getAttribute('data-spy'), a]));
+    const spy = new IntersectionObserver(entries => {
+        entries.forEach(en => {
+            const link = links.get(en.target.id);
+            if (!link) return;
+            if (en.isIntersecting) {
+                links.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            }
+        });
+    }, { rootMargin: '-40% 0px -50% 0px' });   // "active" band around viewport center
+
+    ['about', 'updates', 'navigate', 'privacy', 'costs', 'ideas', 'feedback']
+        .forEach(id => { const s = document.getElementById(id); if (s) spy.observe(s); });
+}
+
+/* --- cursor spotlight --------------------------------------------------- */
+function initCursorGlow() {
+    const glow = $('#cursor-glow');
+    if (!glow || !MOTION_OK) return;
+
+    let raf = null, x = 0, y = 0;
+    addEventListener('pointermove', e => {
+        x = e.clientX; y = e.clientY;
+        glow.classList.add('is-on');
+        if (!raf) {
+            raf = requestAnimationFrame(() => {
+                glow.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+                raf = null;
+            });
+        }
+    }, { passive: true });
+
+    document.addEventListener('pointerleave', () => glow.classList.remove('is-on'));
+}
+
+/* --- card 3D tilt (display cards only — .no-tilt is excluded) ----------- */
+function initTilt() {
+    if (!MOTION_OK) return;
+    const cards = $$('.page-body .card:not(.no-tilt)');
+    const MAX = 3.5; // degrees — subtle, not seasick
+
+    cards.forEach(card => {
+        card.addEventListener('pointermove', e => {
+            const r = card.getBoundingClientRect();
+            const dx = (e.clientX - r.left) / r.width  - .5;
+            const dy = (e.clientY - r.top)  / r.height - .5;
+            card.style.transform =
+                `perspective(800px) rotateY(${dx * MAX}deg) rotateX(${-dy * MAX}deg) translateY(-4px)`;
+        });
+        card.addEventListener('pointerleave', () => { card.style.transform = ''; });
+    });
+}
+
+/* --- hero parallax (pointer) -------------------------------------------- */
+function initHeroParallax() {
+    if (!MOTION_OK) return;
+    const hero = $('.hero'), bg = $('#hero-bg');
+    if (!hero) return;
+
+    hero.addEventListener('pointermove', e => {
+        const r = hero.getBoundingClientRect();
+        const dx = (e.clientX - r.left) / r.width  - .5;   // -0.5 .. 0.5
+        const dy = (e.clientY - r.top)  / r.height - .5;
+        /* inline transform — the CSS scroll drift uses `translate`, so they coexist */
+        bg.style.transform = `scale(1.08) translate3d(${dx * -14}px, ${dy * -10}px, 0)`;
+    });
+    hero.addEventListener('pointerleave', () => { bg.style.transform = ''; });
+}
+
+/* --- screenshot parallax (scroll) ---------------------------------------- */
+function initPeekParallax() {
+    if (!MOTION_OK) return;
+    const peek = $('.peek');
+    if (!peek) return;
+    const frame = $('.peek-frame', peek);
+    let ticking = false;
+
+    function update() {
+        const r = peek.getBoundingClientRect();
+        const vh = innerHeight;
+        if (r.bottom > 0 && r.top < vh) {
+            // -1 (below viewport) .. 1 (above) — nudge the image a few px
+            const p = ((r.top + r.height / 2) / vh - .5) * 2;
+            frame.style.transform = `translateY(${p * -10}px)`;
+        }
+        ticking = false;
+    }
+    addEventListener('scroll', () => {
+        if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive: true });
+    update();
+}
+
+/* --- konami easter egg --------------------------------------------------- */
 
 /* konami code → the brand accent flashes through the whole page for a
-   moment. nice side effect: it proves the accent system re-skins live. */
+   moment (plus a full hue-cycle on the surface layer). nice side effect:
+   it proves the accent system re-skins live. */
 const BRAND = '#C77400', BRAND_SOFT = 'rgba(199,116,0,.22)';
 const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
 let ki = 0;
@@ -473,3 +682,11 @@ loadUpdates();
 loadIdeas();
 loadCost();
 observeReveals();
+
+/* motion systems */
+initScrollFx();
+initFloatNav();
+initCursorGlow();
+initTilt();
+initHeroParallax();
+initPeekParallax();

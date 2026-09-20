@@ -32,25 +32,53 @@
 </head>
 <body data-api-updates="{{ url_for('about.api_updates') }}">
 
+    <!-- back to the dashboard — this page has no side nav, so the arrow is the
+         one way home. fixed top-right (about.css), no JS required. -->
+    <a class="back-dash" href="/dashboard" aria-label="Back to the dashboard">
+        <span class="icon" style="--icon: url({{ url_for('static', filename='img/icons/tabler-arrow-left.svg') }});"></span>
+        <span class="back-dash-label">dashboard</span>
+    </a>
+
+    <!-- scroll progress bar (top edge) -->
+    <div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
+
+    <!-- cursor spotlight — follows the pointer, purely decorative -->
+    <div class="cursor-glow" id="cursor-glow" aria-hidden="true"></div>
+
     <!-- ambient background image layer — per-page opt-in (§4).
          Safe to delete this block if you don't have background_image.png. -->
     <div class="ambient-bg" aria-hidden="true">
         <div class="bg-image" style="--bg-image: url({{ url_for('static', filename='img/background_image.png') }});"></div>
+        <!-- single, very subtle aurora glow — top right only -->
+        <div class="aurora" aria-hidden="true"><span></span></div>
     </div>
+
+    <!-- floating section nav — appears after scrolling past the hero,
+         highlights the section currently on screen -->
+    <nav class="float-nav" id="float-nav" aria-label="page sections">
+        <a href="#about"     data-spy="about"><i></i><span>what is this</span></a>
+        <a href="#updates"   data-spy="updates"><i></i><span>updates</span></a>
+        <a href="#navigate"  data-spy="navigate"><i></i><span>getting around</span></a>
+        <a href="#privacy"   data-spy="privacy"><i></i><span>privacy</span></a>
+        <a href="#costs"     data-spy="costs"><i></i><span>costs</span></a>
+        <a href="#ideas"     data-spy="ideas"><i></i><span>ideas</span></a>
+        <a href="#feedback"  data-spy="feedback"><i></i><span>tell me</span></a>
+    </nav>
 
     <div class="surface-layer">
 
         <!-- ============================ hero ============================ -->
         <header class="hero">
-            <!-- big header image — optional asset, see asset list after the code.
-                 if the file doesn't exist yet, this div simply stays empty. -->
-            <div class="hero-bg" aria-hidden="true"
+            <!-- big header image — optional asset. if the file doesn't exist
+                 yet, this div simply stays empty. pointer parallax + scroll
+                 drift move it gently (JS + CSS). -->
+            <div class="hero-bg" id="hero-bg" aria-hidden="true"
                  style="background-image: url({{ url_for('static', filename='img/about/hero.png') }});"></div>
             <div class="hero-shade" aria-hidden="true"></div>
             <div class="hero-glow" aria-hidden="true"></div>
 
             <!-- custom inline svg: the "nedwork constellation" — stated deviation, see remarks -->
-            <svg class="hero-net" viewBox="0 0 520 400" fill="none" aria-hidden="true">
+            <svg class="hero-net" id="hero-net" viewBox="0 0 520 400" fill="none" aria-hidden="true">
                 <g stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
                     <line x1="70"  y1="330" x2="200" y2="240"/>
                     <line x1="200" y1="240" x2="130" y2="130"/>
@@ -111,13 +139,18 @@
                 <img src="{{ url_for('static', filename='img/nedwork.png') }}" alt="">
                 <span class="hero-icon-caption">nedwork · app icon</span>
             </aside>
+
+            <!-- scroll cue -->
+            <div class="hero-scroll-cue" aria-hidden="true">
+                <span></span><span></span>
+            </div>
         </header>
 
         <main class="container page-body">
 
             <!-- ============================ about ============================ -->
             <section class="section reveal" id="about" aria-labelledby="about-title">
-                <div class="card">
+                <div class="card about-card">
                     <h2 id="about-title">What is nedwork?</h2>
                     <p>
                         nedwork is a personal hobby website: a handful of small tools and utilities
@@ -130,7 +163,8 @@
                     </p>
                 </div>
 
-                <!-- stats: auto-filled by js, tools count is a manual constant -->
+                <!-- stats: auto-filled by js, tools count is a manual constant.
+                     numeric values count up on render. -->
                 <div class="facts">
                     <div class="card fact">
                         <span class="fact-value" id="fact-tools">–</span>
@@ -212,11 +246,13 @@
                     </div>
                 </div>
 
-                <!-- framed screenshot — the frame now adapts to the image, any ratio fits -->
+                <!-- framed screenshot — gentle scroll parallax, no zoom -->
                 <figure class="peek">
-                    <img class="peek-img"
-                         src="{{ url_for('static', filename='img/about/screenshot-home.png') }}"
-                         alt="screenshot of the nedwork home grid" loading="lazy">
+                    <div class="peek-frame">
+                        <img class="peek-img"
+                             src="{{ url_for('static', filename='img/about/screenshot-home.png') }}"
+                             alt="screenshot of the nedwork home grid" loading="lazy">
+                    </div>
                     <figcaption class="peek-cap">
                         <span>the home grid</span>
                         <span>every tool lives here</span>
@@ -319,7 +355,7 @@
 
                     <div class="card receipt">
                         <div class="receipt-row">
-                            <span>your cost so far</span>
+                            <span class="receipt-label">your cost so far</span>
                             <span class="receipt-amount">CHF <span id="cost-value">0.00</span></span>
                         </div>
                         <div class="receipt-divider" aria-hidden="true"></div>
@@ -352,7 +388,8 @@
                     <p class="sub">Reactions, suggestions, problems, errors — everything lands directly with me.</p>
                 </div>
 
-                <div class="card">
+                <!-- no-tilt: this is the one card you actually type in — keep it still -->
+                <div class="card no-tilt">
                     <form id="suggestion-form">
                         <div class="form-grid">
                             <div class="field">

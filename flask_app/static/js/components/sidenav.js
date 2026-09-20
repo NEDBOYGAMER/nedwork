@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "tasks-btn":    "/tasks",
         "apps-btn":     "/app_corner",
         "settings-btn": "/settings",
+        "about-btn":    "/about",
     };
 
     Object.entries(routes).forEach(([id, url]) => {
@@ -41,11 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
             closeMobileNav();
             window.location.href = url;
         });
-    });
-
-    document.getElementById("about-btn")?.addEventListener("click", () => {
-        closeMobileNav();
-        // window.location.href = "/about";
     });
 
     document.getElementById("account-btn")?.addEventListener("click", () => {
