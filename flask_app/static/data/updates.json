@@ -1,0 +1,23 @@
+[
+  {
+    "id": "seed-about-page",
+    "title": "The about page exists",
+    "tag": "feature",
+    "body": "Added this page (The outher two updates were created retroactively.",
+    "created_at": "2026-09-19T12:00:00+00:00"
+  },
+  {
+    "id": "seed-style-refresh",
+    "title": "nedwork got its look",
+    "tag": "improvement",
+    "body": "Defined the look of the page to bring it up to its contemporary state.",
+    "created_at": "2026-08-2T18:30:00+00:00"
+  },
+  {
+    "id": "seed-launch",
+    "title": "nedwork is online",
+    "tag": "note",
+    "body": "First version launched.",
+    "created_at": "2026-06-29T09:15:00+00:00"
+  }
+]

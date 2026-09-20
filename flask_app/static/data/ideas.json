@@ -1,0 +1,26 @@
+[
+  {
+    "id": "idea-1",
+    "title": "shared lists",
+    "status": "planned",
+    "body": "shopping & packing lists, shareable by link — no accounts, just a link you pass around."
+  },
+  {
+    "id": "idea-2",
+    "title": "date poll",
+    "status": "considering",
+    "body": "doodle-style \"when works for everyone?\" polls. game night scheduling, solved."
+  },
+  {
+    "id": "idea-3",
+    "title": "transport board",
+    "status": "considering",
+    "body": "live departure times for your station, straight on the dashboard."
+  },
+  {
+    "id": "idea-4",
+    "title": "tasks & events",
+    "status": "wip",
+    "body": "already being built — shared task lists and a small event calendar."
+  }
+]

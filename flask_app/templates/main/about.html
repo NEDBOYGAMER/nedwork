@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="nedwork — what's new, how to get around, privacy, costs, and a direct line to me.">
+    <title>About — nedwork</title>
+
+    <!-- pre-paint theme/accent/grid. base.html normally does this (§14); this page
+         doesn't extend base.html, so it's duplicated here on purpose. -->
+    <script>
+      (function () {
+        try {
+          var c = JSON.parse(localStorage.getItem('nedwork:config') || '{}');
+          var r = document.documentElement;
+          r.setAttribute('data-theme', c.dark_mode === false ? 'light' : 'dark');
+          if (c.accent_color)      r.style.setProperty('--accent', c.accent_color);
+          if (c.accent_color_soft) r.style.setProperty('--accent-soft', c.accent_color_soft);
+          if (c.accent_color_ink)  r.style.setProperty('--accent-ink', c.accent_color_ink);
+          if (c.grid === false)    r.setAttribute('data-ambient', 'none');
+        } catch (e) { /* defaults hold */ }
+      })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global/colors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global/ui-elements.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/about.css') }}">
+</head>
+<body data-api-updates="{{ url_for('about.api_updates') }}">
+
+    <!-- ambient background image layer — per-page opt-in (§4).
+         Safe to delete this block if you don't have background_image.png. -->
+    <div class="ambient-bg" aria-hidden="true">
+        <div class="bg-image" style="--bg-image: url({{ url_for('static', filename='img/background_image.png') }});"></div>
+    </div>
+
+    <div class="surface-layer">
+
+        <!-- ============================ hero ============================ -->
+        <header class="hero">
+            <!-- big header image — optional asset, see asset list after the code.
+                 if the file doesn't exist yet, this div simply stays empty. -->
+            <div class="hero-bg" aria-hidden="true"
+                 style="background-image: url({{ url_for('static', filename='img/about/hero.png') }});"></div>
+            <div class="hero-shade" aria-hidden="true"></div>
+            <div class="hero-glow" aria-hidden="true"></div>
+
+            <!-- custom inline svg: the "nedwork constellation" — stated deviation, see remarks -->
+            <svg class="hero-net" viewBox="0 0 520 400" fill="none" aria-hidden="true">
+                <g stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                    <line x1="70"  y1="330" x2="200" y2="240"/>
+                    <line x1="200" y1="240" x2="130" y2="130"/>
+                    <line x1="130" y1="130" x2="260" y2="85"/>
+                    <line x1="260" y1="85"  x2="395" y2="95"/>
+                    <line x1="395" y1="95"  x2="460" y2="200"/>
+                    <line x1="460" y1="200" x2="300" y2="180"/>
+                    <line x1="300" y1="180" x2="200" y2="240"/>
+                    <line x1="300" y1="180" x2="330" y2="290"/>
+                    <line x1="330" y1="290" x2="200" y2="240"/>
+                    <line x1="330" y1="290" x2="480" y2="320"/>
+                    <line x1="460" y1="200" x2="480" y2="320"/>
+                    <line x1="260" y1="85"  x2="300" y2="180"/>
+                </g>
+                <g fill="currentColor">
+                    <circle cx="70"  cy="330" r="3"/>
+                    <circle cx="200" cy="240" r="5"/>
+                    <circle cx="130" cy="130" r="3"/>
+                    <circle cx="260" cy="85"  r="3"/>
+                    <circle cx="395" cy="95"  r="3"/>
+                    <circle cx="460" cy="200" r="4"/>
+                    <circle cx="300" cy="180" r="5"/>
+                    <circle cx="330" cy="290" r="3"/>
+                    <circle cx="480" cy="320" r="3"/>
+                </g>
+            </svg>
+
+            <div class="hero-inner container">
+                <img class="hero-wordmark"
+                     src="{{ url_for('static', filename='img/banner_image_nedwork.png') }}"
+                     alt="nedwork">
+
+                <p class="hero-tagline">
+                    A loose collection of small tools, built for fun and used by friends —
+                    just useful things that live on the internet.
+                </p>
+
+                <div class="hero-actions">
+                    <a class="btn btn-primary btn-lg" href="#updates">
+                        <span class="icon icon-lg" style="--icon: url({{ url_for('static', filename='img/icons/tabler-arrow-down.svg') }});"></span>
+                        See what's new
+                    </a>
+                    <a class="btn btn-ghost btn-lg" href="#navigate">How to get around</a>
+                </div>
+
+                <nav class="jump" aria-label="page sections">
+                    <a class="jump-pill" href="#updates">updates</a>
+                    <a class="jump-pill" href="#navigate">getting around</a>
+                    <a class="jump-pill" href="#privacy">privacy &amp; data</a>
+                    <a class="jump-pill" href="#costs">costs</a>
+                    <a class="jump-pill" href="#ideas">ideas</a>
+                    <a class="jump-pill" href="#feedback">tell me</a>
+                </nav>
+            </div>
+
+            <!-- floating app-icon card -->
+            <aside class="hero-icon-card" aria-hidden="true">
+                <img src="{{ url_for('static', filename='img/nedwork.png') }}" alt="">
+                <span class="hero-icon-caption">nedwork · app icon</span>
+            </aside>
+        </header>
+
+        <main class="container page-body">
+
+            <!-- ============================ about ============================ -->
+            <section class="section reveal" id="about" aria-labelledby="about-title">
+                <div class="card">
+                    <h2 id="about-title">What is nedwork?</h2>
+                    <p>
+                        nedwork is a personal hobby website: a handful of small tools and utilities
+                        I built because I needed them, kept online so my friends can use them too.
+                        It is not a company, not a product, and nothing here costs money.
+                    </p>
+                    <p class="text-muted">
+                        This page is the notice board — every change to the site lands in the changelog
+                        below, and the guide further down explains how to find your way around.
+                    </p>
+                </div>
+
+                <!-- stats: auto-filled by js, tools count is a manual constant -->
+                <div class="facts">
+                    <div class="card fact">
+                        <span class="fact-value" id="fact-tools">–</span>
+                        <span class="fact-label">tools on board</span>
+                        <span class="fact-sub">and counting</span>
+                    </div>
+                    <div class="card fact">
+                        <span class="fact-value" id="fact-updates">–</span>
+                        <span class="fact-label">updates logged</span>
+                        <span class="fact-sub">newest first, below</span>
+                    </div>
+                    <div class="card fact">
+                        <span class="fact-value" id="fact-online">–</span>
+                        <span class="fact-label">online since</span>
+                        <span class="fact-sub">read from the changelog</span>
+                    </div>
+                    <div class="card fact">
+                        <span class="fact-value" id="fact-last">–</span>
+                        <span class="fact-label">last touched</span>
+                        <span class="fact-sub">automatically from the changelog</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================ updates ============================ -->
+            <section class="section reveal" id="updates" aria-labelledby="updates-title">
+                <div class="section-head-row">
+                    <div class="section-head">
+                        <h2 id="updates-title">Latest updates</h2>
+                        <p class="sub">Newest first — timestamps are added automatically when an update is published.</p>
+                    </div>
+                    <button type="button" class="btn btn-secondary admin-only" id="add-btn">
+                        <span class="icon" style="--icon: url({{ url_for('static', filename='img/icons/tabler-plus.svg') }});"></span>
+                        Add update
+                    </button>
+                </div>
+
+                <ol class="timeline" id="timeline"></ol>
+
+                <div class="empty-state" id="updates-empty" hidden>
+                    <span class="icon icon-lg" style="--icon: url({{ url_for('static', filename='img/icons/tabler-bell.svg') }});"></span>
+                    <h3>Nothing logged yet</h3>
+                    <p>Updates will show up here the moment the first one is published.</p>
+                </div>
+            </section>
+
+            <!-- ============================ navigation ============================ -->
+            <section class="section reveal" id="navigate" aria-labelledby="navigate-title">
+                <div class="section-head">
+                    <h2 id="navigate-title">Getting around</h2>
+                    <p class="sub">nedwork stays deliberately flat — here's all you need to know.</p>
+                </div>
+
+                <!-- EDIT ME: adjust the copy to your actual site -->
+                <div class="nav-steps">
+                    <div class="card nav-step">
+                        <div class="step-top">
+                            <span class="chip"><span class="icon icon-lg" style="--icon: url({{ url_for('static', filename='img/icons/tabler-grid-dots.svg') }});"></span></span>
+                            <span class="step-num">01</span>
+                        </div>
+                        <h3>Everything starts at the home grid</h3>
+                        <p>Every tool nedwork has lives on the home page as a tile. Click a tile, the tool opens — nothing buried in menus. Middle-click to open one in a new tab.</p>
+                    </div>
+                    <div class="card nav-step">
+                        <div class="step-top">
+                            <span class="chip"><span class="icon icon-lg" style="--icon: url({{ url_for('static', filename='img/icons/tabler-map-pin.svg') }});"></span></span>
+                            <span class="step-num">02</span>
+                        </div>
+                        <h3>Lost? Come back here</h3>
+                        <p>This page doubles as the map: the changelog lists every new tool and every change, so when something looks different, you'll read it here first.</p>
+                    </div>
+                    <div class="card nav-step">
+                        <div class="step-top">
+                            <span class="chip"><span class="icon icon-lg" style="--icon: url({{ url_for('static', filename='img/icons/tabler-settings.svg') }});"></span></span>
+                            <span class="step-num">03</span>
+                        </div>
+                        <h3>Make it yours</h3>
+                        <p>Open the settings to switch dark or light mode, pick any accent color you like, or turn the background grid off. Choices apply to the whole site, not just this page.</p>
+                    </div>
+                </div>
+
+                <!-- framed screenshot — the frame now adapts to the image, any ratio fits -->
+                <figure class="peek">
+                    <img class="peek-img"
+                         src="{{ url_for('static', filename='img/about/screenshot-home.png') }}"
+                         alt="screenshot of the nedwork home grid" loading="lazy">
+                    <figcaption class="peek-cap">
+                        <span>the home grid</span>
+                        <span>every tool lives here</span>
+                    </figcaption>
+                </figure>
+            </section>
+
+            <!-- ============================ privacy ============================ -->
+            <section class="section reveal" id="privacy" aria-labelledby="privacy-title">
+                <div class="section-head">
+                    <h2 id="privacy-title">Privacy &amp; data</h2>
+                    <p class="sub">No lawyer wrote this — I did. If something is unclear, ask me directly.</p>
+                </div>
+
+                <div class="privacy-grid">
+                    <div class="card privacy-card">
+                        <div class="step-top">
+                            <span class="chip"><span class="icon icon-lg" style="--icon: url({{ url_for('static', filename='img/icons/tabler-lock.svg') }});"></span></span>
+                            <span class="badge badge-neutral badge-mono">38 → 24</span>
+                        </div>
+                        <h3>Passwords</h3>
+                        <p>
+                            Let's say your password is 38. The hashing algorithm — in reality
+                            <em>far</em> more complex — simply multiplies it, so it becomes 24.
+                            That 24 is what gets saved on the server. When you log in again and type
+                            your password, the same happens again: 24 equals 24, so you're in.
+                            But whoever sees the 24 on the server has no way of knowing whether your
+                            password was 38, 46, 124 or 241 — they only ever see the result, never
+                            the input. And the better the hashing, the harder that gets.
+                            So nobody, not even I, can see the password you typed.
+                        </p>
+                        <p class="text-muted">
+                            It is of course a lot more complex than multiplying — curious?
+                            Read about
+                            <a href="https://en.wikipedia.org/wiki/Cryptographic_hash_function" target="_blank" rel="noopener">cryptographic hash functions on wikipedia</a>.
+                        </p>
+                        <div class="alert alert-warning">
+                            <span class="icon" style="--icon: url({{ url_for('static', filename='img/icons/tabler-shield.svg') }});"></span>
+                            <span>This is a hobby project and only maintained by me. So, for your own safety:
+                            use a password you didn't use anywhere else — but also not one that's too easy,
+                            because I don't want just anyone to be able to enter this website.</span>
+                        </div>
+                    </div>
+
+                    <div class="card privacy-card">
+                        <div class="step-top">
+                            <span class="chip"><span class="icon icon-lg" style="--icon: url({{ url_for('static', filename='img/icons/tabler-server.svg') }});"></span></span>
+                        </div>
+                        <h3>Your data</h3>
+                        <p>
+                            Your data is saved on my server — and nowhere else. No Google, no Amazon,
+                            no Microsoft, no ad networks, no analytics. Nobody else can get to it,
+                            and I don't send it anywhere.
+                        </p>
+                        <p class="text-muted">
+                            So as long as you use the website normally and as intended,
+                            there is nothing to worry about.
+                        </p>
+                    </div>
+
+                    <div class="card privacy-card">
+                        <div class="step-top">
+                            <span class="chip"><span class="icon icon-lg" style="--icon: url({{ url_for('static', filename='img/icons/tabler-database.svg') }});"></span></span>
+                        </div>
+                        <h3>Backups &amp; mistakes</h3>
+                        <p>
+                            Of course, since this is a personal project things can go wrong on my side.
+                            But I do have a backup server which will restore any data lost.
+                        </p>
+                        <p class="text-muted">
+                            If <em>you</em> delete something on your own though, I won't restore it by default —
+                            I could, but doing so would wipe the newer things other people saved in the meantime.
+                            Maybe I'll still revert or help out if you ask, but I don't promise:
+                            what you delete stays your responsibility.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================ costs ============================ -->
+            <section class="section reveal" id="costs" aria-labelledby="costs-title">
+                <div class="section-head">
+                    <h2 id="costs-title">Costs</h2>
+                </div>
+
+                <div class="money-grid">
+                    <div class="card">
+                        <h3>Free, and it stays free</h3>
+                        <p>
+                            I'm doing this as a hobby, so nedwork will not cost anything to use.
+                            There's no payment system and nothing to sign up for.
+                        </p>
+                        <p class="text-muted">
+                            I might add a monitoring for API calls to AI servers and similar things
+                            (like in the costs app). Those calls usually cost somewhere between
+                            0.00001 and 0.01 CHF each — so don't worry. The counter on the right
+                            keeps track of it, rounded to 0.01 CHF.
+                        </p>
+                    </div>
+
+                    <div class="card receipt">
+                        <div class="receipt-row">
+                            <span>your cost so far</span>
+                            <span class="receipt-amount">CHF <span id="cost-value">0.00</span></span>
+                        </div>
+                        <div class="receipt-divider" aria-hidden="true"></div>
+                        <p class="receipt-fine">this is not a bill, just curiosity.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================ ideas ============================ -->
+            <section class="section reveal" id="ideas" aria-labelledby="ideas-title">
+                <div class="section-head">
+                    <h2 id="ideas-title">Ideas</h2>
+                    <p class="sub">Things I'd like to build someday or have planned. But dont expect them to happen.</p>
+                </div>
+
+                <!-- fed from static/data/ideas.json — edit that file to change this list -->
+                <div class="ideas-grid" id="ideas-grid"></div>
+
+                <div class="empty-state" id="ideas-empty" hidden>
+                    <span class="icon icon-lg" style="--icon: url({{ url_for('static', filename='img/icons/tabler-star.svg') }});"></span>
+                    <h3>No ideas on the board</h3>
+                    <p>Or at least none I'm willing to admit to yet.</p>
+                </div>
+            </section>
+
+            <!-- ============================ feedback / suggestion form ============================ -->
+            <section class="section reveal" id="feedback" aria-labelledby="feedback-title">
+                <div class="section-head">
+                    <h2 id="feedback-title">Tell me</h2>
+                    <p class="sub">Reactions, suggestions, problems, errors — everything lands directly with me.</p>
+                </div>
+
+                <div class="card">
+                    <form id="suggestion-form">
+                        <div class="form-grid">
+                            <div class="field">
+                                <label for="s-type">What is it?</label>
+                                <select id="s-type">
+                                    <option value="reaction">reaction</option>
+                                    <option value="suggestion" selected>suggestion</option>
+                                    <option value="problem">problem</option>
+                                    <option value="error">error</option>
+                                    <option value="other">other</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="s-name">Name</label>
+                                <input id="s-name" type="text" maxlength="40" placeholder="anonymous" autocomplete="off">
+                                <span class="hint">optional — leave empty to stay anonymous</span>
+                            </div>
+                            <div class="field form-span">
+                                <label for="s-area">Where?</label>
+                                <input id="s-area" type="text" maxlength="60" list="area-list"
+                                       placeholder="dashboard, settings, a tool, this page…" autocomplete="off">
+                                <datalist id="area-list">
+                                    <option value="home"></option>
+                                    <option value="dashboard"></option>
+                                    <option value="settings"></option>
+                                    <option value="a specific tool"></option>
+                                    <option value="this page"></option>
+                                    <option value="somewhere else"></option>
+                                </datalist>
+                                <span class="hint">the part of nedwork it's about — roughly is fine</span>
+                            </div>
+                            <div class="field form-span">
+                                <label for="s-what">What?</label>
+                                <textarea id="s-what" required maxlength="2000"
+                                          placeholder="what happened, or what you'd like to see"></textarea>
+                            </div>
+                            <div class="field form-span">
+                                <label for="s-why">How &amp; why</label>
+                                <textarea id="s-why" maxlength="2000"
+                                          placeholder="how it should work, and why it matters to you — helps me decide what to build"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-foot">
+                            <span class="hint">i read everything myself, no promises on speed —
+                            please don't put passwords or anything sensitive in here.</span>
+                            <button class="btn btn-primary" type="submit">
+                                <span class="icon" style="--icon: url({{ url_for('static', filename='img/icons/tabler-upload.svg') }});"></span>
+                                Send
+                            </button>
+                        </div>
+
+                        <!-- honeypot: hidden from humans, bots happily fill it -->
+                        <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+                    </form>
+
+                    <div class="form-success" id="form-success" hidden>
+                        <span class="chip chip-lg"><span class="icon icon-lg" style="--icon: url({{ url_for('static', filename='img/icons/tabler-check.svg') }});"></span></span>
+                        <div class="form-success-text">
+                            <h3>Landed safely</h3>
+                            <p>Saved as <code id="success-id">…</code> — thanks, I read everything myself.</p>
+                        </div>
+                        <button type="button" class="btn btn-ghost" id="send-another">Send another</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer">
+            <div class="container site-footer-inner">
+                <!-- triple-click this mark to toggle admin mode (secret, not documented on the page) -->
+                <button type="button" class="footer-mark" id="footer-mark" aria-label="nedwork">
+                    <img src="{{ url_for('static', filename='img/banner_image_nw.png') }}" alt="nw">
+                </button>
+                <span class="footer-version" id="site-version">v0.1</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ============================ add-update modal (stopgap until /admin exists) ============================ -->
+    <div class="modal-backdrop" id="update-modal" role="dialog" aria-modal="true" aria-labelledby="update-modal-title">
+        <div class="modal modal-wide">
+            <h3 id="update-modal-title">Add an update</h3>
+            <p>What changed? Keep it short — this is a changelog, not a diary.</p>
+            <span class="auto-note">
+                <span class="icon icon-sm" style="--icon: url({{ url_for('static', filename='img/icons/tabler-calendar.svg') }});"></span>
+                date &amp; time are stamped automatically on publish — don't write them yourself
+            </span>
+            <form id="update-form">
+                <div class="field">
+                    <label for="f-title">Title</label>
+                    <input id="f-title" type="text" required maxlength="80" placeholder="search actually works now">
+                </div>
+                <div class="field">
+                    <label for="f-tag">Type</label>
+                    <select id="f-tag">
+                        <option value="feature">feature</option>
+                        <option value="improvement">improvement</option>
+                        <option value="fix">fix</option>
+                        <option value="heads-up">heads-up</option>
+                        <option value="note" selected>note</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="f-body">Details</label>
+                    <textarea id="f-body" required placeholder="one or two sentences — what happened and why it matters"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" id="cancel-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Publish</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toasts"></div>
+
+    <script type="module" src="{{ url_for('static', filename='js/pages/about.js') }}"></script>
+</body>
+</html>

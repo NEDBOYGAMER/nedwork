@@ -1,0 +1,596 @@
+/* ==========================================================================
+   about.css — the /about page
+   Depends on: css/global/colors.css + css/global/ui-elements.css
+
+   Stated deviations (per §11 of the style rules):
+   1. --brand / --brand-soft: the nedwork logo assets are a fixed orange
+      (#C77400). These variables are used ONLY for decorative elements
+      (hero glow, wordmark glow, constellation, footer mark) — never on
+      interactive elements, which stay on --accent.
+   2. Theme/accent/grid application (§14) is duplicated in js/pages/about.js
+      because this page does not extend base.html.
+   3. The hero backdrop (.hero-bg) is page content, not the §4 ambient
+      layer — it's the requested "big header image", dimmed by .hero-shade.
+   ========================================================================== */
+
+:root {
+    --brand: #C77400;                     /* brand asset orange — decorative only */
+    --brand-soft: rgba(199, 116, 0, .22);
+}
+
+html { scroll-behavior: smooth; }
+
+/* badge variant the global set doesn't have — follows the §8 system-color pattern */
+.badge-info { background: rgba(78, 161, 243, .14); color: var(--info); }
+
+.text-muted { color: var(--text-muted); }
+
+
+/* ==========================================================================
+   Hero
+   ========================================================================== */
+
+.hero {
+    position: relative;
+    min-height: clamp(520px, 66vh, 720px);
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+}
+
+/* big header image — optional asset, see asset list */
+.hero-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: .38;
+}
+
+/* dim the image so text stays readable in both themes */
+.hero-shade {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(90deg, var(--bg) 10%, transparent 60%),
+        linear-gradient(0deg, var(--bg) 4%, transparent 45%);
+}
+
+.hero-glow {
+    position: absolute;
+    inset: -20%;
+    pointer-events: none;
+    background:
+        radial-gradient(40% 45% at 22% 28%, var(--brand-soft), transparent 70%),
+        radial-gradient(35% 40% at 78% 72%, var(--accent-soft), transparent 70%);
+    filter: blur(48px);
+    opacity: .8;
+    animation: glow-drift 16s ease-in-out infinite alternate;
+}
+
+@keyframes glow-drift {
+    from { transform: translate3d(-2%, -1%, 0) scale(1); }
+    to   { transform: translate3d(2%, 2%, 0) scale(1.06); }
+}
+
+/* konami easter egg: the glow briefly wakes up */
+body.party .hero-glow { opacity: 1; animation-duration: 4s; }
+
+/* the nedwork constellation — custom inline svg, decorative */
+.hero-net {
+    position: absolute;
+    right: -60px;
+    bottom: -40px;
+    width: min(520px, 44vw);
+    color: var(--brand);
+    opacity: .18;
+    pointer-events: none;
+}
+
+.hero-net line {
+    stroke-dasharray: 500;
+    stroke-dashoffset: 500;
+    animation: net-draw 1.6s ease forwards;
+}
+.hero-net line:nth-child(2n) { animation-delay: .3s; }
+.hero-net line:nth-child(3n) { animation-delay: .6s; }
+
+@keyframes net-draw { to { stroke-dashoffset: 0; } }
+
+.hero-inner {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-5);
+    padding-top: var(--space-8);
+    padding-bottom: var(--space-8);
+}
+
+/* entrance */
+.hero-wordmark, .hero-tagline, .hero-actions, .jump {
+    animation: rise .6s ease backwards;
+}
+.hero-tagline  { animation-delay: .08s; }
+.hero-actions  { animation-delay: .16s; }
+.jump          { animation-delay: .24s; }
+
+.hero-wordmark {
+    width: min(620px, 88vw);
+    height: auto;
+    filter: drop-shadow(0 16px 48px var(--brand-soft));
+}
+
+.hero-tagline {
+    font-size: 16px;
+    color: var(--text-muted);
+    max-width: 54ch;
+    margin: 0;
+}
+
+.hero-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+
+/* section jump pills */
+.jump { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+
+.jump-pill {
+    font-size: 13px;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    padding: 4px 12px;
+    text-decoration: none;
+    transition: border-color .15s ease, color .15s ease;
+}
+.jump-pill:hover { border-color: var(--accent); color: var(--text); text-decoration: none; }
+
+/* entrance */
+.hero-badges, .hero-wordmark, .hero-tagline, .hero-actions, .jump {
+    animation: rise .6s ease backwards;
+}
+.hero-wordmark { animation-delay: .08s; }
+.hero-tagline  { animation-delay: .16s; }
+.hero-actions  { animation-delay: .24s; }
+.jump          { animation-delay: .32s; }
+
+@keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* floating app-icon "trading card" */
+.hero-icon-card {
+    position: absolute;
+    right: clamp(24px, 8vw, 96px);
+    top: 50%;
+    transform: translateY(-50%) rotate(-5deg);
+    width: 176px;
+    padding: var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--brand);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    transition: transform .25s ease;
+}
+.hero-icon-card:hover { transform: translateY(-50%) rotate(0deg) scale(1.02); }
+.hero-icon-card img { width: 100%; display: block; border-radius: var(--radius-sm); }
+.hero-icon-caption {
+    display: block;
+    text-align: center;
+    margin-top: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+@media (max-width: 1100px) {
+    .hero-icon-card { display: none; }
+}
+
+
+/* ==========================================================================
+   Page body / sections
+   ========================================================================== */
+
+.page-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding-top: var(--space-8);
+    padding-bottom: var(--space-8);
+}
+
+.section { scroll-margin-top: var(--space-6); }
+
+
+.section-head { margin-bottom: var(--space-5); }
+.section-head h2 { margin: 0 0 var(--space-2); }
+.section-head .sub { margin: 0; color: var(--text-muted); font-size: 14px; }
+
+.section-head-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
+}
+.section-head-row .section-head { margin-bottom: 0; }
+
+/* scroll reveal */
+.reveal { opacity: 0; transform: translateY(12px); transition: opacity .5s ease, transform .5s ease; }
+.reveal.in { opacity: 1; transform: none; }
+
+
+/* ==========================================================================
+   Facts row (auto-filled by js; tools count is manual)
+   ========================================================================== */
+
+.facts {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+}
+
+.fact { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4) var(--space-5); }
+.fact-value  { font-family: var(--font-display); font-size: 32px; font-weight: 600; line-height: 1.15; }
+.fact-label  { font-size: 13px; color: var(--text); }
+.fact-sub    { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+
+@media (max-width: 900px) { .facts { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .facts { grid-template-columns: 1fr; } }
+
+
+/* ==========================================================================
+   Updates timeline
+   ========================================================================== */
+
+.timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 32px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: var(--line);
+    border-radius: 1px;
+}
+
+.tl-item { position: relative; }
+
+.tl-item::before {
+    content: '';
+    position: absolute;
+    left: -32px;
+    top: 30px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--text-muted);
+}
+
+.tl-item.is-latest::before {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.tl-card { padding: var(--space-4) var(--space-5); }
+
+.tl-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
+.tl-title { margin: 0; font-size: 16px; }
+
+.tl-time {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.tl-body { margin: 0; font-size: 14px; color: var(--text); line-height: 1.5; }
+
+
+/* ==========================================================================
+   Navigation steps + framed screenshot
+   ========================================================================== */
+
+.nav-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+}
+
+@media (max-width: 860px) { .nav-steps { grid-template-columns: 1fr; } }
+
+.nav-step h3 { font-size: 16px; margin: var(--space-3) 0 var(--space-2); }
+.nav-step p  { margin: 0; font-size: 14px; color: var(--text-muted); }
+
+.step-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.step-num { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+
+/* icon chip */
+.chip {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.chip-sm { width: 32px; height: 32px; }
+.chip-sm .icon { width: 18px; height: 18px; }
+.chip-lg { width: 48px; height: 48px; }
+
+/* framed screenshot slot */
+.peek {
+    margin: var(--space-5) 0 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--surface-2);
+    box-shadow: var(--shadow);
+}
+
+.peek-img {
+    width: 100%;
+    height: auto;          /* frame adapts to the image's own ratio — no cropping */
+    display: block;
+    background: var(--surface-2);
+}
+
+.peek-cap {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    border-top: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+
+/* ==========================================================================
+   Privacy cards
+   ========================================================================== */
+
+.privacy-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+}
+
+@media (max-width: 960px) { .privacy-grid { grid-template-columns: 1fr; } }
+
+.privacy-card h3 { font-size: 16px; margin: var(--space-3) 0 var(--space-2); }
+.privacy-card p  { margin: 0 0 var(--space-3); font-size: 14px; line-height: 1.5; }
+.privacy-card .alert { margin: var(--space-3) 0 0; font-size: 13px; }
+.privacy-card .alert .icon { color: var(--warning); margin-top: 2px; }
+
+
+/* ==========================================================================
+   Costs — text card + receipt
+   ========================================================================== */
+
+.money-grid {
+    display: grid;
+    grid-template-columns: 1.2fr .8fr;
+    gap: var(--space-4);
+    align-items: start;
+}
+
+@media (max-width: 800px) { .money-grid { grid-template-columns: 1fr; } }
+
+.money-grid h3 { font-size: 16px; margin: 0 0 var(--space-2); }
+.money-grid p  { font-size: 14px; line-height: 1.5; }
+
+.receipt {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: 3px dashed var(--line);
+    border-bottom: 3px dashed var(--line);
+}
+
+.receipt-brand { font-family: var(--font-mono); letter-spacing: 0; }
+
+.receipt-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) 0 var(--space-4);
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.receipt-amount {
+    font-family: var(--font-mono);
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.receipt-divider {
+    border-top: 1px dashed var(--line);
+    margin: 0 0 var(--space-3);
+}
+
+.receipt-fine {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+
+/* ==========================================================================
+   Ideas (feature future) — fed from static/data/ideas.json
+   ========================================================================== */
+
+.ideas-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+}
+
+@media (max-width: 800px) { .ideas-grid { grid-template-columns: 1fr; } }
+
+.idea-item h3 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    font-size: 16px;
+    margin: 0 0 var(--space-2);
+}
+
+.idea-item p { margin: 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+
+
+/* ==========================================================================
+   Suggestion form
+   ========================================================================== */
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0 var(--space-4);
+}
+
+.form-span { grid-column: 1 / -1; }
+
+@media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+
+.form-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--line);
+}
+
+.form-foot .hint { max-width: 56ch; }
+
+/* honeypot — present in the dom, invisible to humans */
+.hp {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.form-success {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    padding-top: var(--space-4);
+    margin-top: var(--space-4);
+    border-top: 1px solid var(--line);
+}
+
+.form-success-text { flex: 1; min-width: 220px; }
+.form-success-text h3 { font-size: 16px; margin: 0 0 2px; }
+.form-success-text p { margin: 0; font-size: 14px; color: var(--text-muted); }
+
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+
+.site-footer { border-top: 1px solid var(--line); padding: var(--space-6) 0; }
+.site-footer-inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.footer-version {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.footer-mark {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: inline-flex;
+    transition: filter .15s ease;
+}
+.footer-mark img { height: 20px; display: block; }
+.footer-mark:hover { filter: drop-shadow(0 0 8px var(--brand-soft)); }
+
+
+/* ==========================================================================
+   Admin mode + modal additions
+   ========================================================================== */
+
+.admin-only { display: none; }
+body.is-admin .admin-only { display: inline-flex; }
+
+.modal-wide { width: 480px; }
+
+.auto-note {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0 0 var(--space-4);
+}
+
+.empty-state .icon { color: var(--text-muted); }
+
+
+/* ==========================================================================
+   Motion preferences
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .hero-glow { animation: none; }
+    .hero-net line { animation: none; stroke-dashoffset: 0; }
+    .hero-badges, .hero-wordmark, .hero-tagline, .hero-actions, .jump { animation: none; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .hero-icon-card { transition: none; }
+}
