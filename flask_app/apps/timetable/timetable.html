@@ -513,6 +513,13 @@
       <button class="btn" id="btnFileMenu" title="Export, import & print">⬇ Export ▾</button>
       <div class="menu" id="fileMenu">
         <button class="mi" data-act="ics">📅 Export .ics (calendar)</button>
+        <hr class="msep">
+        <button class="mi" data-act="pdf-l">📄 PDF — landscape</button>
+        <button class="mi" data-act="pdf-p">📄 PDF — portrait</button>
+        <hr class="msep">
+        <button class="mi" data-act="png-l">🖼 PNG — landscape</button>
+        <button class="mi" data-act="png-p">🖼 PNG — portrait</button>
+        <hr class="msep">
         <button class="mi" data-act="json">💾 Download JSON backup</button>
         <button class="mi" data-act="import">⭳ Import JSON backup</button>
         <hr class="msep">
@@ -780,7 +787,8 @@
         Also saved <b>per timetable</b>.</li>
       <li>⚙ <b>Stats</b>: choose which chips show (per type, custom groups, periods,
         avg sleep, total, count, busiest day).</li>
-      <li><b>⬇ Export</b>: .ics, JSON backup, import, print.</li>
+      <li><b>⬇ Export</b>: .ics, PDF (landscape &amp; portrait), PNG image (dark/light),
+        JSON backup, import, print.</li>
       <li><b>On mobile</b>: tap ✏️ to enter edit mode (nothing can be changed before that),
         the <b>red line</b> shows where you are in the day, swipe between days, ☰ holds
         everything else.</li>
@@ -1984,9 +1992,11 @@ $('#fileMenu').addEventListener('click', e => {
   document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open'));
   const act = b.dataset.act;
   if (act === 'ics') window.location.assign(API + '/export/ics');
+  else if (act === 'pdf-l') window.location.assign(API + '/export/pdf?o=landscape');
+  else if (act === 'pdf-p') window.location.assign(API + '/export/pdf?o=portrait');
+  else if (act === 'png-l') window.location.assign(API + '/export/png?o=landscape');
+  else if (act === 'png-p') window.location.assign(API + '/export/png?o=portrait');
   else if (act === 'json') window.location.assign(API + '/export/json');
-  else if (act === 'import') $('#importFile').click();
-  else if (act === 'print'){ if (isMobile()) renderBoardDesktop(); window.print(); }
 });
 $('#importFile').addEventListener('change', async e => {
   const f = e.target.files[0];
@@ -2086,7 +2096,11 @@ function renderMobileNav(){
        <button class="mrow" data-act="add">＋ Add block</button>
        <hr class="msep">
        <button class="mrow" data-act="settings">⚙ Settings</button>
-       <button class="mrow" data-act="ics">📅 Export .ics</button>
+        <button class="mrow" data-act="ics">📅 Export .ics</button>
+       <button class="mrow" data-act="pdf-l">📄 PDF — landscape</button>
+       <button class="mrow" data-act="pdf-p">📄 PDF — portrait</button>
+       <button class="mrow" data-act="png-l">🖼 PNG — landscape</button>
+       <button class="mrow" data-act="png-p">🖼 PNG — portrait</button>
        <button class="mrow" data-act="json">💾 JSON backup</button>
        <button class="mrow" data-act="import">⭳ Import backup</button>
        <button class="mrow" data-act="print">🖨 Print</button>
@@ -2121,6 +2135,10 @@ $('#mobileNav').addEventListener('click', e => {
   } else if (act === 'settings'){
     closeMnav(); openSettings('general');
   } else if (act === 'ics'){ closeMnav(); window.location.assign(API + '/export/ics');
+  } else if (act === 'pdf-l'){ closeMnav(); window.location.assign(API + '/export/pdf?o=landscape');
+  } else if (act === 'pdf-p'){ closeMnav(); window.location.assign(API + '/export/pdf?o=portrait');
+  } else if (act === 'png-l'){ closeMnav(); window.location.assign(API + '/export/png?o=landscape');
+  } else if (act === 'png-p'){ closeMnav(); window.location.assign(API + '/export/png?o=portrait');
   } else if (act === 'json'){ closeMnav(); window.location.assign(API + '/export/json');
   } else if (act === 'import'){ closeMnav(); $('#importFile').click();
   } else if (act === 'print'){ closeMnav(); renderBoardDesktop(); window.print();

@@ -100,7 +100,7 @@ def _is_valid_palette(palette):
 # you want to rotate the key/model without touching code.
 # ------------------------------------------------------------------
 AI_API_URL = "https://ai.nedwork.ch/api/chat/completions"
-AI_API_KEY = os.environ.get("COLORS_AI_API_KEY", "sk-a50ab4e057a64f229fd3f122db69b0db")
+AI_API_KEY = os.environ.get("COLORS_AI_API_KEY", "sk-2452123ed62b4ae9aee25ea442a3bafc")
 AI_MODEL = os.environ.get("COLORS_AI_MODEL", "colorpalette-generator")
 MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB
 

@@ -5,6 +5,7 @@ from datetime import date, datetime, time, timedelta
 from flask import Blueprint, Response, jsonify, redirect, request, url_for
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import text as sa_text
+from .pdf_png import render_pdf, render_png
 
 from ... import db
 from ...models import *  # noqa: F401,F403 — User, Session, AppsConfig (same pattern colors uses)
@@ -1192,4 +1193,91 @@ def export_ics():
     text = "\r\n".join(_ics_fold(l) for l in lines) + "\r\n"
     resp = Response(text, mimetype="text/calendar")
     resp.headers["Content-Disposition"] = 'attachment; filename="%s.ics"' % _slug(schedule.name)
+    return resp
+
+
+
+    # ------------------------------------------------------------------
+# exports — PDF (landscape & portrait, always white) + themed PNG
+# ------------------------------------------------------------------
+
+def _export_snapshot(config, schedule):
+    """Plain-data snapshot of one schedule for the PDF/PNG renderers."""
+    types = sorted(config.event_types, key=lambda t: (t.position or 0, t.id or 0))
+    return {
+        "name": schedule.name,
+        "settings": {
+            "dayStart": config.day_start,
+            "dayEnd": config.day_end,
+            "showSat": bool(config.show_saturday),
+            "showSun": bool(config.show_sunday),
+            "theme": config.theme or "dark",
+        },
+        "dayRanges": _day_ranges_of(config, schedule),
+        "types": {t.id: t for t in types},
+        "typesList": types,
+        "events": sorted(schedule.events,
+                         key=lambda e: (e.start_min, e.end_min, e.id or 0)),
+        "periods": sorted(schedule.periods,
+                          key=lambda p: (p.position or 0, p.id or 0)),
+    }
+
+
+def _schedule_for_export(config):
+    schedule = _get_schedule(config, request.args.get("schedule_id", type=int))
+    if schedule is None:
+        schedule = _get_schedule(config, config.active_schedule_id)
+    return schedule
+
+
+@timetable_bp.route("/export/pdf", methods=["GET"])
+def export_pdf():
+    user = _require_user()
+    if user is None:
+        return redirect(url_for("auth.login_page"))
+
+    config = _get_or_create_config(user)
+    schedule = _schedule_for_export(config)
+    if schedule is None:
+        return jsonify({"error": "No schedule to export"}), 400
+
+    orientation = request.args.get("o", "landscape")
+    if orientation not in ("landscape", "portrait"):
+        orientation = "landscape"
+
+    try:
+        data = render_pdf(_export_snapshot(config, schedule), orientation)
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 500
+
+    resp = Response(data, mimetype="application/pdf")
+    resp.headers["Content-Disposition"] = 'attachment; filename="%s-%s.pdf"' % (
+        _slug(schedule.name), orientation)
+    return resp
+
+
+@timetable_bp.route("/export/png", methods=["GET"])
+def export_png():
+    user = _require_user()
+    if user is None:
+        return redirect(url_for("auth.login_page"))
+
+    config = _get_or_create_config(user)
+    schedule = _schedule_for_export(config)
+    if schedule is None:
+        return jsonify({"error": "No schedule to export"}), 400
+
+    orientation = request.args.get("o", "landscape")
+    if orientation not in ("landscape", "portrait"):
+        orientation = "landscape"
+    theme = "light" if config.theme == "light" else "dark"
+
+    try:
+        data = render_png(_export_snapshot(config, schedule), orientation)
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 500
+
+    resp = Response(data, mimetype="image/png")
+    resp.headers["Content-Disposition"] = 'attachment; filename="%s-%s-%s.png"' % (
+        _slug(schedule.name), orientation, theme)
     return resp
