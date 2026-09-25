@@ -1,135 +1,65 @@
 [
-    {
-        "id": 0,
-        "name": "TierForge",
-        "image": "/tier_forge.png",
-        "permissions": ["tierforge", "admin"],
-        "url": "/tierforge",
-        "type": "Gaming",
-        "description": "TierForge is a fast and easy tier list maker that lets you rank anything."
-    },
-    {
-        "id": 1,
-        "name": "Colors",
-        "image": "/colors.svg",
-        "permissions": [],
-        "url": "/colors",
-        "type": "Tools",
-        "description": "A color picker and pallete maker"
-    },
-        {
-        "id": 2,
-        "name": "TownClaim",
-        "image": "/townclaim.png",
-        "permissions": [],
-        "url": "/townclaim",
-        "type": "Games",
-        "description": "A playful monopoly-style board game. Buy streets, build houses, own the town"
-    },
-    {
-        "id": 4,
-        "name": "Controller Tester",
-        "image": "/controller_tester.png",
-        "permissions": [],
-        "url": "/controller_tester",
-        "type": "Tools",
-        "description": "Test the inputs of your controller"
-    },
-    {
-        "id": 5,
-        "name": "Links",
-        "image": "/links.svg",
-        "permissions": [],
-        "url": "/links",
-        "type": "Tools",
-        "description": "Store all your weblinks here"
-    },
-    {
-        "id": 6,
-        "name": "Trivia",
-        "permissions": [],
-        "url": "/trivia",
-        "type": "Games",
-        "description": "Play a Trivia quiz"
-    },
-    {
-        "id": 7,
-        "name": "WeatherNow",
-        "permissions": [],
-        "url": "/placeholder",
-        "type": "Information",
-        "description": "View current weather conditions and forecasts in a clean interface."
-    },
-    {
-        "id": 8,
-        "name": "FitTrack",
-        "permissions": [],
-        "url": "/placeholder",
-        "type": "Health",
-        "description": "Track workouts, habits, and personal fitness goals with ease."
-    },
-    {
-        "id": 9,
-        "name": "QuizMaster",
-        "permissions": [],
-        "url": "/placeholder",
-        "type": "Education",
-        "description": "Create and play quizzes on any topic with friends or classmates."
-    },
-    {
-        "id": 10,
-        "name": "BudgetBuddy",
-        "permissions": [],
-        "url": "/placeholder",
-        "type": "Organizing",
-        "description": "Track expenses, budgets, and savings with simple visual reports."
-    },
-    {
-        "id": 11,
-        "name": "MediaVault",
-        "permissions": [],
-        "url": "/placeholder",
-        "type": "Media",
-        "description": "Organize your favorite photos, videos, and documents online."
-    },
-    {
-        "id": 12,
-        "name": "GameHub",
-        "permissions": [],
-        "url": "/placeholder",
-        "type": "Games",
-        "description": "Discover game recommendations, stats, and community rankings."
-    },
-    {
-        "id": 13,
-        "name": "RecipeBox",
-        "permissions": [],
-        "url": "/placeholder",
-        "type": "Information",
-        "description": "Save, organize, and share your favorite recipes with ease."
-    },
-    {
-        "id": 14,
-        "name": "TravelMap",
-        "permissions": [],
-        "url": "/placeholder",
-        "type": "Organizing",
-        "description": "Plan trips, bookmark destinations, and build travel itineraries."
-    },
-    {
-        "id": 15,
-        "name": "LinkShelf",
-        "permissions": [],
-        "url": "/placeholder",
-        "type": "Organizing",
-        "description": "Save, organize, and quickly access your favorite websites."
-    },
-    {
-        "id": 16,
-        "name": "Timetable",
-        "permissions": [],
-        "url": "/timetable",
-        "type": "Organizing",
-        "description": "Timetablemaker"
-    }
+  {
+    "id": 0,
+    "name": "TierForge",
+    "image": "/tier_forge.png",
+    "permissions": ["tierforge", "admin"],
+    "url": "/tierforge",
+    "type": "Gaming",
+    "description": "TierForge is a fast and easy tier list maker that lets you rank anything."
+  },
+  {
+    "id": 1,
+    "name": "Colors",
+    "image": "/colors.svg",
+    "permissions": [],
+    "url": "/colors",
+    "type": "Tools",
+    "description": "A color picker and pallete maker"
+  },
+  {
+    "id": 2,
+    "name": "TownClaim",
+    "image": "/townclaim.png",
+    "permissions": [],
+    "url": "/townclaim",
+    "type": "Games",
+    "description": "A playful monopoly-style board game. Buy streets, build houses, own the town"
+  },
+  {
+    "id": 4,
+    "name": "Controller Tester",
+    "image": "/controller_tester.png",
+    "permissions": [],
+    "url": "/controller_tester",
+    "type": "Tools",
+    "description": "Test the inputs of your controller"
+  },
+  {
+    "id": 5,
+    "name": "Links",
+    "image": "/links.svg",
+    "permissions": [],
+    "url": "/links",
+    "type": "Tools",
+    "description": "Store all your weblinks here"
+  },
+  {
+    "id": 6,
+    "name": "Trivia",
+    "image": "/trivia.svg",
+    "permissions": [],
+    "url": "/trivia",
+    "type": "Games",
+    "description": "Play a Trivia quiz"
+  },
+  {
+    "id": 16,
+    "name": "Timetable",
+    "image": "/placeholder",
+    "permissions": [],
+    "url": "/timetable",
+    "type": "Organizing",
+    "description": "Timetablemaker"
+  }
 ]

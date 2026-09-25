@@ -699,3 +699,8 @@ main{
   opacity:1;
   transform: translateX(-50%) translateY(0);
 }
+
+#extract-warning {
+  color: var(--text-muted);
+  font-size: 12px;
+}
