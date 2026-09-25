@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+
+<link rel="manifest" href="/static/manifest_timetable.json">
+<meta name="theme-color" content="#16161A">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js"))}</script>
+
+<title>Timetable</title>
+<link rel="stylesheet" href="/apps/{{ app_name }}/styles/default.css">
+<script>window.APP_BASE = "/apps/{{ app_name }}/";</script>
+<script src="/apps/{{ app_name }}/timetable.js" type="module" defer></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">🗓 Timetable</div>
+  <div class="tabs" id="scheduleTabs"></div>
+  <button class="btn" id="btnAddSchedule" title="Create a new timetable">＋ New</button>
+  <div class="actions">
+    <button class="btn primary" id="btnAddBlock">＋ Add block</button>
+    <button class="btn" id="btnSettings">⚙ Settings</button>
+    <span class="zoom-group">
+      <button class="btn" id="zoomOut" title="Smaller grid">−</button>
+      <button class="btn" id="zoomIn" title="Bigger grid">＋</button>
+    </span>
+    <button class="now-chip" id="nowChip" title="Jump to current time">…</button>
+    <div class="dd" id="fileMenuWrap">
+      <button class="btn" id="btnFileMenu" title="Export, import & print">⬇ Export ▾</button>
+      <div class="menu" id="fileMenu">
+        <button class="mi" data-act="ics">📅 Export .ics (calendar)</button>
+        <hr class="msep">
+        <button class="mi" data-act="pdf-l">📄 PDF — landscape</button>
+        <button class="mi" data-act="pdf-p">📄 PDF — portrait</button>
+        <hr class="msep">
+        <button class="mi" data-act="png-l">🖼 PNG — landscape</button>
+        <button class="mi" data-act="png-p">🖼 PNG — portrait</button>
+        <hr class="msep">
+        <button class="mi" data-act="json">💾 Download JSON backup</button>
+        <button class="mi" data-act="import">⭳ Import JSON backup</button>
+        <hr class="msep">
+        <button class="mi" data-act="print">🖨 Print</button>
+      </div>
+    </div>
+    <button class="btn" id="btnHelp" title="Tips & shortcuts (?)">?</button>
+    <button class="btn" id="btnMobileMenu" title="Menu">☰</button>
+  </div>
+</header>
+
+<div class="stats" id="statsBar"></div>
+
+<main class="board-wrap">
+  <div class="board" id="board" style="--hour:48px">
+    <div class="gutter" id="gutter"><div class="g-head"></div></div>
+    <div class="days" id="days"></div>
+  </div>
+  <div class="empty-note" id="loading">Loading your timetable…</div>
+  <div class="empty-note" id="emptyHint" style="display:none">
+    <b>This schedule is empty.</b><br>
+    Click anywhere on a day to add your first block — or use “＋ Add block”.
+  </div>
+
+  <div id="mobileWrap">
+    <div class="m-pills" id="mPills"></div>
+    <div class="m-dayhead" id="mDayHead"></div>
+    <div id="mList"></div>
+  </div>
+</main>
+
+<footer class="hintbar" id="hintbar" style="display:none">
+  Click an empty spot to add a block · drag blocks to move them (start &amp; day only — duration
+  stays), drag the bottom edge to resize · <b>right-click</b> a block to copy it to another day ·
+  <b>right-click</b> a timetable tab to rename / duplicate / copy from / delete · everything saves
+  to the server automatically.
+</footer>
+
+<div class="fabs">
+  <button class="fab sub" id="fabAdd" title="Add block">＋</button>
+  <button class="fab main" id="fabEdit" title="Edit schedule">✏️</button>
+</div>
+
+<nav class="mnav" id="mobileNav"></nav>
+
+<!-- event modal -->
+<div class="mb" id="eventModal">
+  <div class="modal">
+    <h3 id="evModalTitle">Add block</h3>
+    <form id="evForm">
+      <label>Title<input id="fTitle" maxlength="160" placeholder="e.g. Analysis I"></label>
+      <label>Type<select id="fType"></select></label>
+      <label style="margin-bottom:4px">Days <span style="font-weight:400">(a block can be on several days)</span></label>
+      <div class="day-chips" id="fDays"></div>
+      <div class="chip-presets">
+        <button type="button" class="mini2" data-preset="week">Mon–Fri</button>
+        <button type="button" class="mini2" data-preset="all">Every day</button>
+        <span class="muted" style="font-size:11.5px">the block appears on every selected day</span>
+      </div>
+      <div class="row2">
+        <label>Start
+          <div class="time-wrap">
+            <input type="time" id="fStart" step="60">
+            <span class="steppers">
+              <button type="button" class="mini" data-time="start" data-d="-15" title="−15 min">−</button>
+              <button type="button" class="mini" data-time="start" data-d="15" title="+15 min">＋</button>
+            </span>
+          </div>
+        </label>
+        <label>End
+          <div class="time-wrap">
+            <input type="time" id="fEnd" step="60">
+            <span class="steppers">
+              <button type="button" class="mini" data-time="end" data-d="-15" title="−15 min">−</button>
+              <button type="button" class="mini" data-time="end" data-d="15" title="+15 min">＋</button>
+            </span>
+          </div>
+        </label>
+      </div>
+      <div class="wake-warn" id="fWakeWarn"></div>
+      <div class="modal-actions" style="margin:0 0 10px">
+        <button type="button" class="btn" id="fFit"
+          title="Snap this block to the selected type's usual start minute and length">↺ Fit to type</button>
+      </div>
+      <div class="modal-actions" style="margin:0 0 10px;justify-content:flex-start">
+        <span style="font-size:12px;color:var(--muted);font-weight:600">Color</span>
+        <div class="tr-color" id="fColWrap" title="Click to pick a custom color" style="width:42px;height:30px">
+          <input type="color" id="fCol">
+          <span class="tr-cfill" id="fColFill"></span>
+        </div>
+        <button type="button" class="mini2" id="fColReset" title="Back to the type color">type</button>
+        <button type="button" class="mini2" id="fColFromSame"
+          title="Copy the color of the last block with the same name & type">⟲ from same</button>
+        <span class="muted" style="font-size:11.5px" id="fColHint">using type color</span>
+      </div>
+      <div class="row2">
+        <label><span id="fRoomLabelTxt">Room / place</span><input id="fRoom" maxlength="120" placeholder="e.g. HG F 5"></label>
+        <label>Teacher<input id="fTeacher" maxlength="120" placeholder="optional"></label>
+      </div>
+      <label>Notes<textarea id="fNote" rows="2" maxlength="2000" placeholder="optional"></textarea></label>
+      <div class="modal-actions foot">
+        <button type="button" class="btn danger" id="btnEvDelete">Delete</button>
+        <button type="button" class="btn" id="btnEvDuplicate">Duplicate</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- settings modal -->
+<div class="mb" id="settingsModal">
+  <div class="modal wide">
+    <div class="set-tabs">
+      <button type="button" class="set-tab active" data-stab="general">General</button>
+      <button type="button" class="set-tab" data-stab="types">Types</button>
+      <button type="button" class="set-tab" data-stab="periods">Periods</button>
+      <button type="button" class="set-tab" data-stab="stats">Stats</button>
+    </div>
+
+    <div class="set-page active" id="stab-general">
+      <h4>Appearance</h4>
+      <label>Theme
+        <div class="seg" id="thSeg">
+          <button type="button" data-th="dark">🌙 Dark</button>
+          <button type="button" data-th="light">☀️ Light</button>
+        </div>
+      </label>
+      <label>Style
+        <select id="sStyle"></select>
+      </label>
+      <p class="muted" style="margin-top:-4px">Every <b>.css</b> file in the <b>styles</b> folder
+        appears here — a style can change the entire look.</p>
+      <label>Grid size (hour height)
+        <select id="sZoom">
+          <option value="32">Compact (32 px)</option>
+          <option value="40">Cozy (40 px)</option>
+          <option value="48">Normal (48 px)</option>
+          <option value="60">Roomy (60 px)</option>
+          <option value="76">Huge (76 px)</option>
+        </select>
+      </label>
+      <h4>Week</h4>
+      <div class="row2">
+        <label>Day starts at<input type="time" id="sStart" step="60"></label>
+        <label>Day ends at<input type="time" id="sEnd" step="60"></label>
+      </div>
+      <label class="chk"><input type="checkbox" id="sSat"><span class="sw"></span> Show Saturday</label>
+      <label class="chk"><input type="checkbox" id="sSun"><span class="sw"></span> Show Sunday</label>
+      <h4>Wake &amp; sleep — this timetable</h4>
+      <p class="muted" style="margin-top:-6px">Sleep times are saved per timetable. A sleep time
+        <b>before</b> the wake time (e.g. 01:00 when you wake at 08:00) means <b>after midnight</b>.
+        Hours outside the wake window are hatched on the grid; blocks there get a 🌙 hint.</p>
+      <div class="wake-rows" id="wakeRows"></div>
+      <button type="button" class="btn" id="btnWakeAll" title="Copy Monday's times to every day">⧉ Copy Monday to all days</button>
+    </div>
+
+    <div class="set-page" id="stab-types">
+      <h4>Lecture types, colors &amp; rules</h4>
+      <p class="muted" style="margin-top:-6px">Each type: color (click the swatch), emoji,
+        <b>Start :MM</b> snap, default <b>Length</b>, <b>Opacity</b>, and its own
+        <b>Split</b> rhythm (long blocks become period/break segments, e.g. 45/15 for V &amp; U).
+        Single blocks can override their color in the block editor.</p>
+      <div class="type-head">
+        <span>Color</span><span>Icon</span><span>Name</span>
+        <span>Start · Length · Opacity · Split (min/break)</span>
+        <span>Blocks</span><span></span>
+      </div>
+      <div id="typeRows"></div>
+      <button type="button" class="btn" id="btnAddType">＋ Add type</button>
+    </div>
+
+    <div class="set-page" id="stab-periods">
+      <h4>Time periods — this timetable</h4>
+      <p class="muted" style="margin-top:-6px">Recurring daily windows (e.g. “At school”) hatched
+        onto the grid like the sleep shading, with your own color, emoji and opacity. Every block
+        inside a period carries the period's icon. Periods are saved per timetable.</p>
+      <div id="periodRows"></div>
+      <button type="button" class="btn" id="btnAddPeriod">＋ Add period</button>
+      <h4>Per-day times</h4>
+      <p class="muted" style="margin-top:-6px">Adjust or switch off each period per weekday. The
+        start/end in the rows above always follow the days — earliest start to latest end — and
+        editing them applies the change to every day at once.</p>
+      <div class="pd-scroll"><div id="pdMatrix"></div></div>
+    </div>
+
+    <div class="set-page" id="stab-stats">
+      <h4>Stat chips</h4>
+      <div class="st-grid">
+        <label class="chk"><input type="checkbox" id="stTypes"><span class="sw sw-sm"></span> Hours per type</label>
+        <label class="chk"><input type="checkbox" id="stTotal"><span class="sw sw-sm"></span> Total scheduled</label>
+        <label class="chk"><input type="checkbox" id="stCount"><span class="sw sw-sm"></span> Block count</label>
+        <label class="chk"><input type="checkbox" id="stBusiest"><span class="sw sw-sm"></span> Busiest day</label>
+        <label class="chk"><input type="checkbox" id="stSleep"><span class="sw sw-sm"></span> Average sleep</label>
+        <label class="chk"><input type="checkbox" id="stPeriods"><span class="sw sw-sm"></span> Time periods</label>
+      </div>
+      <h4>Custom groups</h4>
+      <p class="muted" style="margin-top:-6px">Sum the hours of selected types under a name of
+        your choice (e.g. “School time” = V + U).</p>
+      <div id="groupRows"></div>
+      <button type="button" class="btn" id="btnAddGroup">＋ Add group</button>
+    </div>
+
+    <div class="modal-actions foot">
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="button" class="btn primary" id="btnSettingsSave">Save settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- prompt modal -->
+<div class="mb" id="promptModal">
+  <div class="modal">
+    <h3 id="promptTitle">Name</h3>
+    <form id="promptForm">
+      <input id="promptInput" maxlength="120" autocomplete="off">
+      <div class="modal-actions foot">
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">OK</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- confirm modal -->
+<div class="mb" id="confirmModal">
+  <div class="modal">
+    <h3>Are you sure?</h3>
+    <p id="confirmMsg" style="font-size:14px"></p>
+    <div class="modal-actions foot">
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="btnConfirmCancel">Cancel</button>
+      <button type="button" class="btn danger" id="btnConfirmOk">Yes, do it</button>
+    </div>
+  </div>
+</div>
+
+<!-- help modal -->
+<div class="mb" id="helpModal">
+  <div class="modal">
+    <h3>Tips &amp; shortcuts</h3>
+    <ul class="tips">
+      <li><b>Click</b> an empty slot → new block. It uses the <b>last type you picked</b>,
+        snapped to that type's usual start minute and default length.</li>
+      <li><b>Drag</b> a block to move it (day + start — the duration stays), drag the
+        <b>bottom edge of the last segment</b> to resize.</li>
+      <li><b>Splitting is per type</b> (⚙ Types): long blocks are divided into a period/break
+        rhythm (e.g. V &amp; U: 45 min + 15 min pause). The pauses are filled in with the same
+        color, so the whole unit reads as one block; each segment shows its own time — on
+        <b>mobile</b> the segments and pauses are listed on the card.</li>
+      <li><b>Past midnight:</b> a sleep time <b>before</b> the wake time counts as the next day
+        (wake 08:00, sleep 01:00). The grid hatches only the hours inside the visible day.</li>
+      <li><b>Custom color:</b> every block can override its type color in the editor — and
+        <b>⟲ from same</b> copies the color of the last block with the same name &amp; type
+        (also in the right-click menu as “Color from same”).</li>
+      <li><b>Multi-day blocks:</b> click the day chips to put one block on any combination
+        of days (e.g. a commute Mon/Wed/Fri).</li>
+      <li><b>Right-click a block</b> → Edit · Color from same · Duplicate · <b>Copy to day…</b> ·
+        Delete. <b>Right-click a timetable tab</b> → Rename · Duplicate · Copy from · Delete.</li>
+      <li><b>⋯</b> in a day header: copy that day to another day, or clear it.</li>
+      <li>⚙ <b>General</b>: theme, style, grid size, week range and <b>wake &amp; sleep</b> —
+        sleep times are saved <b>per timetable</b>.</li>
+      <li>⚙ <b>Types</b>: color, emoji, start :MM, default length, opacity, split rhythm.</li>
+      <li>⚙ <b>Periods</b>: hatched daily windows (“At school”, “At home”) with color, emoji,
+        opacity and per-day overrides — the row's start/end mirror the days (earliest start →
+        latest end) and editing them sets every day. Blocks inside them carry the period icon.
+        Also saved <b>per timetable</b>.</li>
+      <li>⚙ <b>Stats</b>: choose which chips show (per type, custom groups, periods,
+        avg sleep, total, count, busiest day).</li>
+      <li><b>⬇ Export</b>: .ics, PDF (landscape &amp; portrait), PNG image (dark/light),
+        JSON backup, import, print.</li>
+      <li><b>On mobile</b>: tap ✏️ to enter edit mode (nothing can be changed before that),
+        the <b>red line</b> shows where you are in the day, swipe between days, ☰ holds
+        everything else.</li>
+      <li>The hint bar at the bottom only appears while this schedule has no blocks yet —
+        all of it lives here.</li>
+    </ul>
+    <table class="kbd-table">
+      <tr><td><kbd>N</kbd></td><td>New block</td></tr>
+      <tr><td><kbd>T</kbd></td><td>Settings → Types</td></tr>
+      <tr><td><kbd>S</kbd></td><td>Settings → General</td></tr>
+      <tr><td><kbd>P</kbd></td><td>Print</td></tr>
+      <tr><td><kbd>?</kbd></td><td>This help</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Close dialogs &amp; menus</td></tr>
+    </table>
+    <div class="modal-actions foot">
+      <span class="spacer"></span>
+      <button type="button" class="btn primary" data-close>Got it</button>
+    </div>
+  </div>
+</div>
+
+<div id="dragTip"></div>
+<div class="ctx" id="ctxMenu"></div>
+<div id="toasts"></div>
+<input type="file" id="importFile" accept=".json,application/json" style="display:none">
+
+</body>
+</html>

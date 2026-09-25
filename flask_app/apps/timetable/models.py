@@ -51,6 +51,9 @@ class TimetableConfig(db.Model):
         "TimetableEventType", backref="config", cascade="all, delete-orphan", lazy=True
     )
 
+    # name of a *.css file in timetable/styles/ ('default' = base only)
+    style = db.Column(db.String(40), nullable=False, default="default")
+
 
 class TimetableSchedule(db.Model):
     """A named week plan, e.g. 'Winter Semester', 'Week A', 'Week B'.

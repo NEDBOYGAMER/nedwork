@@ -1,11 +1,11 @@
 import json
+import os
 import re
 from datetime import date, datetime, time, timedelta
 
 from flask import Blueprint, Response, jsonify, redirect, request, url_for
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import text as sa_text
-from .pdf_png import render_pdf, render_png
 
 from ... import db
 from ...models import *  # noqa: F401,F403 — User, Session, AppsConfig (same pattern colors uses)
@@ -16,6 +16,7 @@ from .models import (
     TimetablePeriod,
     TimetableSchedule,
 )
+from .pdf_png import render_pdf, render_png
 
 timetable_bp = Blueprint("timetable", __name__)
 
@@ -24,9 +25,30 @@ timetable_bp = Blueprint("timetable", __name__)
 # constants / helpers
 # ------------------------------------------------------------------
 
+# The page itself is served by the dynamic app loader (apps.py → /apps/timetable),
+# and every file in this folder — including the style sheets in styles/ — is
+# served by its catch-all /<app_name>/<path:filename>. This blueprint therefore
+# only carries the JSON API + the exports, registered with
+# url_prefix="/apps/timetable".
+
 _tables_ready = False
 
 PARITIES = ("all", "odd", "even")
+
+# Styles: every *.css file in <this folder>/styles is one selectable style.
+STYLES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "styles")
+
+
+def _available_styles():
+    """Every *.css in the styles folder = one style users can pick.
+    Doubles as the save whitelist — a stored style can never point
+    outside that folder."""
+    try:
+        return [fn[:-4] for fn in sorted(os.listdir(STYLES_DIR))
+                if fn.endswith(".css") and not fn.startswith(".")]
+    except OSError:
+        return []
+
 
 # name, color, icon, start offset past the hour, default duration, split 45/15?
 DEFAULT_TYPES = [
@@ -59,6 +81,7 @@ def _migrate_schema():
     additions = {
         "timetable_configs": {
             "theme": "VARCHAR(8) DEFAULT 'dark'",
+            "style": "VARCHAR(40) DEFAULT 'default'",
             "hour_px": "INTEGER DEFAULT 48",
             "day_ranges": "JSON",
             "split_on": "BOOLEAN DEFAULT 1",
@@ -427,6 +450,8 @@ def _state(config):
             "showSunday": bool(config.show_sunday),
             "activeScheduleId": config.active_schedule_id,
             "theme": config.theme or "dark",
+            "style": config.style or "default",
+            "styles": _available_styles() or ["default"],
             "hourPx": config.hour_px or 48,
             "statConfig": _sanitize_stat_config(config.stat_config),
         },
@@ -504,6 +529,11 @@ def settings_save():
 
     theme = data.get("theme", config.theme or "dark")
     config.theme = theme if theme in ("dark", "light") else "dark"
+
+    # style: must be the name of a *.css file in the styles folder
+    style = _clean_str(data.get("style"), 40, config.style or "default")
+    config.style = style if style in _available_styles() else "default"
+
     config.hour_px = _clean_int(data.get("hourPx"), 24, 120, config.hour_px or 48)
 
     if "statConfig" in data:
@@ -1196,8 +1226,7 @@ def export_ics():
     return resp
 
 
-
-    # ------------------------------------------------------------------
+# ------------------------------------------------------------------
 # exports — PDF (landscape & portrait, always white) + themed PNG
 # ------------------------------------------------------------------
 

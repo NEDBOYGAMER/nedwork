@@ -1,825 +1,7 @@
-<!doctype html>
-<html lang="en" data-theme="dark">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark light">
-
-<link rel="manifest" href="/static/manifest_timetable.json">
-<meta name="color-scheme" content="dark light">
-<meta name="theme-color" content="#16161A">
-<link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-<script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("/sw.js"))}</script>
-
-<title>Timetable</title>
-<style>
-  :root{ /* dark — the default */
-    --bg:#0b1220; --panel:#121b30; --panel-2:#0f1930; --line:#2a3a61; --line-soft:#22325a;
-    --grid-hour:#25355c; --grid-half:#1b2848;
-    --text:#e5eaf3; --text-dim:#c3cede; --muted:#8aa0c0;
-    --accent:#3b82f6; --accent-soft:#1d3264; --danger:#f87171; --warn:#f59e0b;
-    --grid:#0f1930; --grid-hover:#142040; --grid-we:#0d1528; --grid-we-hover:#111c38;
-    --head:#0f1930; --ev-meta:#c7d2e4; --shadow:0 10px 30px rgba(0,0,0,.35);
-    --radius:14px;
-  }
-  html[data-theme="light"]{
-    --bg:#eef2f7; --panel:#ffffff; --panel-2:#f6f8fc; --line:#c3cedd; --line-soft:#dbe3ee;
-    --grid-hour:#c5d0e0; --grid-half:#e3eaf4;
-    --text:#0f172a; --text-dim:#273449; --muted:#5b6b84;
-    --accent:#2563eb; --accent-soft:#dbeafe; --danger:#dc2626; --warn:#b45309;
-    --grid:#ffffff; --grid-hover:#f2f6fd; --grid-we:#f0f4fa; --grid-we-hover:#e9eff8;
-    --head:#eef3fa; --ev-meta:#334155; --shadow:0 10px 30px rgba(15,23,42,.10);
-  }
-  html{color-scheme:dark}
-  html[data-theme="light"]{color-scheme:light}
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{margin:0;display:flex;flex-direction:column;font-family:ui-sans-serif,system-ui,-apple-system,
-    "Segoe UI",Roboto,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji",sans-serif;
-    background:var(--bg);color:var(--text);touch-action:manipulation}
-  body,.topbar,.stats,.board,.day-head,.day-body,.modal,.menu,.btn,.tab,.ctx,.mcard,.mnav{
-    transition:background-color .15s ease,border-color .15s ease,color .15s ease}
-  body.dragging-active{user-select:none;-webkit-user-select:none}
-
-  /* ---------- topbar ---------- */
-  .topbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px;
-    background:var(--panel);border-bottom:1px solid var(--line);z-index:30}
-  .brand{font-weight:800;font-size:18px;margin-right:6px;white-space:nowrap}
-  .tabs{display:flex;gap:6px;flex-wrap:wrap}
-  .tab{border:1px solid var(--line);background:var(--panel-2);border-radius:999px;padding:6px 14px;
-    font-size:13px;cursor:pointer;color:var(--text)}
-  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-  .tab:hover:not(.active){background:var(--grid-hover)}
-  .actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:auto}
-  .btn{border:1px solid var(--line);background:var(--panel-2);border-radius:9px;padding:7px 12px;
-    font-size:13px;cursor:pointer;color:var(--text)}
-  .btn:hover{background:var(--grid-hover)}
-  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-  .btn.primary:hover{filter:brightness(1.1)}
-  .btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
-  .btn.danger:hover{background:color-mix(in srgb,var(--danger) 12%,transparent)}
-  select.btn{padding:6px 8px}
-  .sep{width:1px;height:24px;background:var(--line);margin:0 2px}
-  .zoom-group{display:flex}
-  .zoom-group .btn{border-radius:0;margin-left:-1px}
-  .zoom-group .btn:first-child{border-radius:9px 0 0 9px;margin-left:0}
-  .zoom-group .btn:last-child{border-radius:0 9px 9px 0}
-  .now-chip{background:var(--accent);color:#fff;border:none;border-radius:999px;padding:7px 14px;
-    font-size:13px;max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    cursor:pointer;flex:0 1 auto;font-weight:600}
-  .now-chip:hover{filter:brightness(1.12)}
-
-  .dd{position:relative}
-  .dd .menu{display:none}
-  .dd.open .menu{display:flex}
-  .msep{border:none;border-top:1px solid var(--line);margin:4px 6px}
-
-  /* ---------- stats ---------- */
-  .stats{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);
-    border-bottom:1px solid var(--line);min-height:41px}
-  .chip{--tc:#8aa0c0;display:inline-flex;align-items:center;gap:6px;border-radius:8px;
-    padding:4px 10px;font-size:12.5px;color:var(--text-dim);
-    border:1px solid color-mix(in srgb,var(--tc) 55%,var(--panel));
-    background:color-mix(in srgb,var(--tc) 14%,var(--panel));
-    border-left:4px solid var(--tc)}
-  .chip b{color:var(--text);font-size:12.5px}
-  .chip.total{--tc:#64748b}
-  .muted{color:var(--muted);font-size:13px}
-
-  /* ---------- desktop board ----------
-     Corner ownership: gutter = top-left + bottom-left,
-     last day = top-right + bottom-right. NOTHING else is rounded, so the
-     inner elements can never poke through a corner. */
-  .board-wrap{flex:1;min-height:0;overflow:auto;padding:12px 14px}
-  .board{display:flex;width:100%;min-width:880px;background:var(--panel);
-    border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
-  .gutter{flex:0 0 56px;border-right:1px solid var(--line);background:var(--panel);
-    border-top-left-radius:var(--radius);border-bottom-left-radius:var(--radius)}
-  .g-head{height:44px;border-bottom:1px solid var(--line);border-top-left-radius:var(--radius)}
-  .g-label{font-size:11px;color:var(--muted);border-top:1px solid var(--grid-hour);
-    padding:2px 6px 0 0;text-align:right}
-  .days{display:flex;flex:1}
-  .day{flex:1;min-width:116px;border-left:1px solid var(--line);display:flex;flex-direction:column}
-  .day:first-child{border-left:none}
-  .day-head{height:44px;display:flex;align-items:center;gap:8px;padding:0 8px 0 10px;
-    border-bottom:1px solid var(--line);background:var(--head)}
-  .day:last-child .day-head{border-top-right-radius:var(--radius)}
-  .is-today .day-head{background:var(--accent-soft)}
-  .d-name{font-weight:700;font-size:13px}
-  .is-today .d-name{color:var(--accent)}
-  .d-total{font-size:11px;color:var(--muted)}
-  .day-menu{margin-left:auto;position:relative}
-  .day-menu summary{list-style:none;cursor:pointer;padding:2px 8px;border-radius:6px;
-    color:var(--muted);font-weight:700}
-  .day-menu summary::-webkit-details-marker{display:none}
-  .day-menu summary:hover{background:var(--grid-hover)}
-  .menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--panel);
-    border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;
-    min-width:190px;z-index:40;display:flex;flex-direction:column;gap:2px}
-  .m-title{font-size:11px;color:var(--muted);padding:2px 6px}
-  .mi{border:none;background:transparent;text-align:left;padding:6px 8px;border-radius:6px;
-    font-size:13px;cursor:pointer;color:var(--text);white-space:nowrap}
-  .mi:hover{background:var(--grid-hover)}
-  .mi.danger{color:var(--danger)}
-  .day-body{position:relative;flex:1;cursor:copy;background-color:var(--grid);
-    background-image:linear-gradient(var(--grid-hour) 1px,transparent 1px),
-      linear-gradient(var(--grid-half) 1px,transparent 1px);
-    background-size:100% var(--hour),100% calc(var(--hour)/2)}
-  .day:last-child .day-body{border-bottom-right-radius:var(--radius);overflow:hidden}
-  .day-body:hover{background-color:var(--grid-hover)}
-  .day.we .day-head{background:color-mix(in srgb,var(--head) 80%,var(--bg))}
-  .day.we .day-body{background-color:var(--grid-we)}
-  .day.we .day-body:hover{background-color:var(--grid-we-hover)}
-  .day-body.drop-hint{outline:2px dashed var(--accent);outline-offset:-2px}
-  /* asleep zone (hatched) + time-period zone (colored hatch) */
-  .zone{position:absolute;left:0;right:0;z-index:0;pointer-events:none;
-    background:repeating-linear-gradient(-45deg,
-      color-mix(in srgb,var(--muted) 30%,transparent) 0 6px,transparent 6px 12px)}
-  .pzone{position:absolute;left:0;right:0;z-index:0;pointer-events:none;
-    background:repeating-linear-gradient(-45deg,var(--zh) 0 6px,transparent 6px 12px);
-    border-top:1px solid var(--zbd);border-bottom:1px solid var(--zbd)}
-
-  /* ---------- events (desktop) ---------- */
-  .ev{position:absolute;border-radius:8px;padding:3px 7px;font-size:12px;line-height:1.25;
-    overflow:hidden;cursor:grab;z-index:2;
-    background:var(--evbg);
-    border:1px solid var(--evbd);
-    border-left:4px solid var(--tc);color:var(--evt);
-    transition:box-shadow .12s ease,background-color .15s ease,border-color .15s ease}
-  .ev:hover{box-shadow:0 4px 14px rgba(0,0,0,.28);z-index:8;cursor:pointer}
-  .ev.current{box-shadow:0 0 0 2px var(--accent),0 4px 14px color-mix(in srgb,var(--accent) 40%,transparent);z-index:9}
-  .ev.dragging{opacity:.88;z-index:20;box-shadow:0 14px 30px rgba(0,0,0,.4);
-    cursor:grabbing;pointer-events:none}
-  .ev.resizing{cursor:ns-resize;z-index:20;pointer-events:none}
-  /* filler behind the split segments: same fill, border & radius as the
-     blocks, so the pauses between periods are filled in and the whole
-     unit reads as one single block */
-  .ev-spine{position:absolute;z-index:1;pointer-events:none;border-radius:8px;opacity:.9;
-    background:var(--evbg);border:1px solid var(--evbd);border-left:4px solid var(--tc)}
-  .ev-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ev-meta{color:var(--evt);opacity:.82;white-space:nowrap;overflow:hidden;
-    text-overflow:ellipsis;margin-top:1px}
-  /* period badge on blocks inside a period */
-  .pib{font-size:11px;margin-left:5px;vertical-align:1px}
-  .pib-dot{display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:1px}
-  .ev-resize{position:absolute;left:0;right:0;bottom:0;height:8px;cursor:ns-resize;opacity:0;
-    transition:opacity .12s;border-radius:0 0 8px 8px;touch-action:none}
-  .ev:hover .ev-resize{opacity:1;
-    background:linear-gradient(transparent,color-mix(in srgb,var(--tc) 50%,transparent))}
-  .now-line{position:absolute;left:0;right:0;height:0;border-top:2px solid #ef4444;z-index:10;
-    pointer-events:none}
-  .now-line::before{content:"";position:absolute;left:-4px;top:-5px;width:8px;height:8px;
-    border-radius:50%;background:#ef4444}
-  #dragTip{position:fixed;display:none;z-index:300;pointer-events:none;background:var(--panel);
-    color:var(--text);border:1px solid var(--line);padding:5px 10px;border-radius:8px;
-    font-size:12px;box-shadow:var(--shadow);white-space:nowrap}
-
-  .ctx{position:fixed;z-index:250;display:none;min-width:210px;background:var(--panel);
-    border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;
-    flex-direction:column;gap:2px}
-  .ctx.open{display:flex}
-  .ctx-head{font-size:11px;color:var(--muted);padding:4px 8px 2px;max-width:260px;
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
-  .empty-note{margin:14px auto 0;max-width:560px;text-align:center;background:var(--panel);
-    border:1px dashed var(--line);border-radius:12px;padding:16px;color:var(--muted)}
-  .hintbar{padding:8px 14px;background:var(--panel);border-top:1px solid var(--line);
-    color:var(--muted);font-size:12.5px;text-align:center}
-
-  /* ---------- modals ---------- */
-  .mb{position:fixed;inset:0;background:rgba(2,6,18,.6);backdrop-filter:blur(2px);
-    display:none;align-items:flex-start;justify-content:center;padding:7vh 16px 16px;z-index:100}
-  .mb.open{display:flex}
-  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;
-    box-shadow:var(--shadow);padding:20px 20px 0;width:100%;max-width:520px;max-height:84vh;
-    overflow:auto}
-  .modal.wide{max-width:820px}
-  .modal h3{margin:0 0 12px;font-size:17px}
-  .modal label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);
-    font-weight:600;margin-bottom:10px;flex:1}
-  .modal input,.modal select,.modal textarea{border:1px solid var(--line);border-radius:8px;
-    padding:8px 10px;font-size:14px;font-family:inherit;color:var(--text);width:100%;
-    background:var(--panel-2)}
-  .modal textarea{resize:vertical}
-  .row2{display:flex;gap:10px}
-  .modal-actions{display:flex;gap:8px;margin-top:14px;align-items:center}
-  .spacer{flex:1}
-  /* sticky footer bar: Save/Cancel always reachable, even when the modal
-     content is taller than the screen */
-  .modal-actions.foot{position:sticky;bottom:0;margin:14px -20px 0;
-    padding:12px 20px 20px;background:var(--panel);
-    box-shadow:0 -10px 14px -12px rgba(0,0,0,.45)}
-
-  /* toggle switches */
-  .chk{flex-direction:row!important;align-items:center;gap:10px;font-size:13.5px;
-    color:var(--text);cursor:pointer;margin-bottom:10px;position:relative;user-select:none}
-  .chk input{position:absolute;opacity:0;width:0;height:0}
-  .chk .sw{flex:0 0 auto;width:42px;height:24px;border-radius:999px;background:var(--line);
-    position:relative;transition:background-color .15s ease}
-  .chk .sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;
-    border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);
-    transition:transform .15s ease}
-  .chk input:checked + .sw{background:var(--accent)}
-  .chk input:checked + .sw::after{transform:translateX(18px)}
-  .chk input:focus-visible + .sw{outline:2px solid var(--accent);outline-offset:2px}
-  .sw-sm{width:34px;height:20px}
-  .sw-sm::after{width:16px;height:16px}
-  .chk input:checked + .sw-sm::after{transform:translateX(14px)}
-
-  /* settings tabs + segmented controls */
-  .set-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
-  .set-tab{border:1px solid var(--line);background:var(--panel-2);border-radius:9px;
-    padding:7px 16px;cursor:pointer;color:var(--text);font-size:13px;font-family:inherit}
-  .set-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-  .set-page{display:none}
-  .set-page.active{display:block}
-  .set-page h4{margin:14px 0 10px;font-size:13px;color:var(--muted);text-transform:uppercase;
-    letter-spacing:.04em}
-  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;
-    background:var(--panel-2)}
-  .seg button{border:none;background:transparent;color:var(--muted);padding:9px 18px;
-    cursor:pointer;font-size:13px;font-family:inherit;font-weight:600;
-    transition:background-color .12s ease,color .12s ease}
-  .seg button + button{border-left:1px solid var(--line)}
-  .seg button:hover{color:var(--text);background:var(--grid-hover)}
-  .seg button.on{background:var(--accent);color:#fff}
-  #thSeg{display:flex;width:100%}
-  #thSeg button{flex:1;padding:10px 12px}
-
-  /* wake & sleep per day */
-  .wake-rows{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-  .wake-row{display:grid;grid-template-columns:84px 1fr 1fr 52px;gap:8px;align-items:center}
-  .wake-row .dname{font-weight:600;font-size:13px}
-  .wlab{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
-    font-weight:600;min-width:0}
-  .wlab input{flex:1;min-width:0;padding:6px 8px;font-size:14px}
-  .wslp{font-size:11.5px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
-
-  .time-wrap{display:flex;gap:5px;align-items:center}
-  .time-wrap input{flex:1;min-width:0}
-  .steppers{display:flex;gap:4px}
-  .mini{width:28px;height:34px;border:1px solid var(--line);background:var(--panel-2);
-    color:var(--text);border-radius:7px;cursor:pointer;font-size:14px;line-height:1}
-  .mini:hover{background:var(--grid-hover)}
-  .wake-warn{display:none;font-size:12px;color:var(--warn);margin:-2px 0 10px;
-    align-items:center;gap:6px}
-
-  .day-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
-  .dchip{border:1px solid var(--line);background:var(--panel-2);color:var(--text);
-    border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;user-select:none}
-  .dchip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-  .chip-presets{display:flex;gap:6px;align-items:center;margin-bottom:10px}
-  .mini2{border:1px solid var(--line);background:var(--panel-2);color:var(--text);
-    border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer}
-  .mini2:hover{background:var(--grid-hover)}
-
-  /* color swatch (shared) */
-  .tr-color{position:relative;width:42px;height:34px;flex:0 0 auto;border:1px solid var(--line);
-    border-radius:8px;overflow:hidden;background:var(--panel-2)}
-  .tr-color input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;
-    padding:0;border:0;cursor:pointer}
-  .tr-cfill{position:absolute;inset:0;pointer-events:none;
-    box-shadow:inset 0 0 0 1px rgba(127,127,127,.25)}
-
-  /* type rows (two-line rules cell: scheduling + per-type split) */
-  .type-head,.type-row{display:grid;
-    grid-template-columns:42px 52px minmax(120px,1fr) minmax(340px,auto) minmax(52px,auto) 30px;
-    gap:8px;align-items:center}
-  .type-head{font-size:11px;color:var(--muted);margin-bottom:4px}
-  .type-head span:nth-child(5){text-align:right}
-  .type-row{margin-bottom:0;padding-bottom:12px;border-bottom:1px solid var(--line-soft)}
-  #typeRows .type-row:last-child{margin-bottom:10px;border-bottom:none;padding-bottom:0}
-  .type-row input[type=number]{padding:6px 8px;min-width:0}
-  .tr-nums{display:flex;flex-direction:column;gap:5px}
-  .tr-line{display:flex;gap:6px;align-items:center}
-  .tr-line input[type=number]{flex:1;min-width:0}
-  .tr-line input[type=range]{flex:1.4;min-width:60px;accent-color:var(--accent);
-    padding:0;border:none;background:transparent;height:26px}
-  .tr-opv{flex:0 0 auto;min-width:34px;text-align:right;font-size:11.5px;color:var(--muted);
-    font-variant-numeric:tabular-nums}
-  .tr-slab{flex:0 0 auto;font-size:11px;color:var(--muted);font-weight:600}
-  .type-row:not(.sp-on) .tr-sp,.type-row:not(.sp-on) .tr-sb{opacity:.35}
-  .tr-count{font-size:11.5px;color:var(--muted);white-space:nowrap;text-align:right}
-  .icon-btn{border:1px solid var(--line);background:var(--panel-2);border-radius:8px;
-    width:30px;height:30px;cursor:pointer;color:var(--muted)}
-  .icon-btn:hover{background:color-mix(in srgb,var(--danger) 14%,transparent);
-    color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
-
-  /* period rows */
-  .p-row{display:grid;
-    grid-template-columns:42px 44px minmax(100px,1fr) minmax(290px,auto) 30px;
-    gap:8px;align-items:center;margin-bottom:10px}
-  .p-row input[type=number],.p-row input[type=time]{padding:6px 8px;min-width:0}
-  .p-nums{display:flex;gap:8px;align-items:center}
-  .p-nums input{flex:1;min-width:0}
-  .p-nums input[type=range]{flex:1.2;min-width:60px;accent-color:var(--accent);
-    padding:0;border:none;background:transparent;height:26px}
-  .pd-scroll{overflow-x:auto;margin-bottom:8px}
-  .pd{display:grid;grid-template-columns:70px repeat(var(--np,1),minmax(128px,1fr));
-    gap:6px;align-items:center;margin-bottom:6px;min-width:min-content}
-  .pd .dname{font-weight:600;font-size:12.5px}
-  .pd-cell{display:flex;gap:4px;align-items:center;min-width:0}
-  .pd-cell input[type=time]{padding:4px 6px;font-size:12.5px;min-width:0;flex:1}
-  .pd-chk{display:inline-flex;align-items:center;position:relative;flex:0 0 auto}
-
-  /* stats settings */
-  .g-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;
-    border:1px solid var(--line);border-radius:10px;padding:8px 10px}
-  .g-name{max-width:180px}
-  .g-chips{display:flex;gap:5px;flex-wrap:wrap;flex:1;min-width:160px}
-  .tchip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);
-    background:var(--panel-2);color:var(--text);border-radius:999px;padding:3px 9px;
-    font-size:11.5px;cursor:pointer;user-select:none}
-  .tchip .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
-  .tchip.on{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
-  .st-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 18px}
-  .st-grid .chk{margin-bottom:8px}
-
-  /* help */
-  .tips{margin:6px 0 4px;padding-left:18px;font-size:13.5px;line-height:1.6}
-  .kbd-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
-  .kbd-table td{padding:5px 8px;border-bottom:1px solid var(--line)}
-  kbd{background:var(--panel-2);border:1px solid var(--line);border-bottom-width:2px;
-    border-radius:6px;padding:1px 7px;font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px}
-
-  /* toasts */
-  #toasts{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;
-    flex-direction:column;gap:8px;z-index:400;align-items:center;pointer-events:none}
-  .toast{background:#334155;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;
-    box-shadow:var(--shadow);animation:pop .18s ease}
-  .toast.err{background:#b91c1c}
-  .toast.out{opacity:0;transition:opacity .3s}
-  @keyframes pop{from{transform:translateY(8px);opacity:0}}
-
-  /* ---------- mobile-only elements ---------- */
-  #btnMobileMenu{display:none}
-  #mobileWrap{display:none}
-  .fabs{display:none}
-  .mnav{display:none}
-
-  @media (max-width:760px){
-    #scheduleTabs,#btnAddSchedule,#btnAddBlock,#btnSettings,
-    .zoom-group,#fileMenuWrap,#btnHelp,.topbar .sep{display:none!important}
-    .topbar{padding:8px 10px}
-    .now-chip{max-width:38vw;font-size:12px;padding:7px 12px}
-    #btnMobileMenu{display:inline-flex;align-items:center;justify-content:center;
-      width:40px;height:38px;font-size:18px;flex:0 0 auto}
-
-    .board,.stats,.hintbar,#emptyHint,#dragTip{display:none!important}
-    #mobileWrap{display:block}
-    .board-wrap{padding:0 10px calc(96px + env(safe-area-inset-bottom));overflow-y:auto}
-
-    .m-pills{position:sticky;top:0;z-index:5;display:flex;gap:6px;overflow-x:auto;
-      margin:0 -10px;padding:10px 16px 8px;background:var(--bg);
-      -webkit-overflow-scrolling:touch;scrollbar-width:none}
-    .m-pills::-webkit-scrollbar{display:none}
-    .mpill{flex:0 0 auto;min-width:46px;text-align:center;border:1px solid var(--line);
-      background:var(--panel-2);color:var(--text);border-radius:999px;padding:8px 12px;
-      font-size:13px;cursor:pointer;user-select:none;-webkit-user-select:none;position:relative}
-    .mpill.today{border-color:var(--accent);color:var(--accent)}
-    .mpill.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
-    .mpill.on.today{color:#fff}
-    .mpill .dot{position:absolute;top:5px;right:7px;width:5px;height:5px;border-radius:50%;
-      background:var(--accent)}
-    .mpill.on .dot{background:#fff}
-
-    .m-dayhead{display:flex;align-items:center;gap:8px;padding:2px 2px 10px}
-    .mnav-arrow{width:38px;height:38px;border:1px solid var(--line);background:var(--panel-2);
-      color:var(--text);border-radius:10px;font-size:20px;cursor:pointer;flex:0 0 auto}
-    .mday-title{flex:1;font-weight:800;font-size:17px;display:flex;flex-direction:column;gap:2px;min-width:0}
-    .mday-sub{font-size:12px;color:var(--muted);font-weight:500}
-    .today-tag{display:inline-block;font-size:10px;font-weight:700;color:var(--accent);
-      border:1px solid var(--accent);border-radius:999px;padding:1px 8px;vertical-align:2px;margin-left:6px}
-
-    .mcard{display:flex;align-items:center;gap:10px;
-      background:var(--evbg);border:1px solid var(--evbd);
-      border-left:4px solid var(--tc,#8aa0c0);border-radius:12px;color:var(--evt);
-      padding:12px 12px 12px 10px;margin-bottom:8px;cursor:default;
-      user-select:none;-webkit-user-select:none}
-    body.mobile-edit .mcard{cursor:pointer}
-    .mcard.current{border-color:color-mix(in srgb,var(--accent) 60%,var(--line));
-      box-shadow:0 0 0 2px var(--accent)}
-    .mc-main{flex:1;min-width:0}
-    .mc-title{font-weight:700;font-size:14.5px;line-height:1.3}
-    .mc-sub{font-size:12.5px;color:var(--evt);opacity:.75;margin-top:2px;white-space:nowrap;
-      overflow:hidden;text-overflow:ellipsis}
-    .mc-time{font-size:12.5px;color:var(--evt);opacity:.85;
-      font-variant-numeric:tabular-nums;flex:0 0 auto}
-    /* split rhythm on mobile: segment times with the pauses between them */
-    .mc-segline{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:4px;
-      font-size:11.5px;font-variant-numeric:tabular-nums}
-    .mc-seg{color:var(--evt);opacity:.85}
-    .mc-pause{color:var(--evt);opacity:.55;font-size:10.5px}
-    /* red "you are here" line between the cards, like the desktop grid */
-    .m-now{display:flex;align-items:center;gap:8px;margin:2px 0 12px;color:#ef4444}
-    .m-now-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;flex:0 0 auto}
-    .m-now-time{font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
-    .m-now-line{flex:1;border-top:2px solid #ef4444;opacity:.85}
-    .mempty{background:var(--panel);border:1px dashed var(--line);border-radius:12px;
-      padding:26px 14px;text-align:center;color:var(--muted);font-size:14px}
-
-    .fabs{display:flex;flex-direction:column;gap:10px;position:fixed;right:16px;
-      bottom:calc(16px + env(safe-area-inset-bottom));z-index:92;transform:translateZ(0)}
-    .fab{width:56px;height:56px;border-radius:50%;border:none;font-size:22px;
-      box-shadow:0 8px 20px rgba(0,0,0,.35);cursor:pointer;
-      display:flex;align-items:center;justify-content:center}
-    .fab.main{background:var(--accent);color:#fff}
-    .fab.main.done{background:#16a34a}
-    .fab.sub{background:var(--panel);color:var(--text);border:1px solid var(--line);display:none}
-    body.mobile-edit .fab.sub{display:flex}
-
-    .mnav{display:none;position:fixed;left:10px;right:10px;top:58px;z-index:95;
-      background:var(--panel);border:1px solid var(--line);border-radius:14px;
-      box-shadow:var(--shadow);padding:8px;max-height:72vh;overflow:auto}
-    .mnav.open{display:block}
-    .mn-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;
-      padding:8px 8px 4px}
-    .mrow-wrap{display:flex;align-items:center;gap:6px;padding:1px 0}
-    .mrow{display:flex;align-items:center;gap:8px;width:100%;border:none;background:transparent;
-      color:var(--text);padding:11px 10px;border-radius:8px;font-size:14px;cursor:pointer;text-align:left}
-    .mrow:hover{background:var(--grid-hover)}
-    .mrow.danger{color:var(--danger)}
-    .mrow-main{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .mrow-main.on{color:var(--accent);font-weight:700}
-    .mrow-more{border:1px solid var(--line);background:var(--panel-2);color:var(--muted);
-      border-radius:8px;width:36px;height:36px;flex:0 0 auto;font-size:16px;cursor:pointer}
-
-    .mb{align-items:flex-end;padding:0}
-    .modal{max-width:680px;margin:0 auto;border-radius:18px 18px 0 0;border-bottom:none;
-      max-height:88vh;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
-    .modal::before{content:"";display:block;width:42px;height:4px;border-radius:2px;
-      background:var(--line);margin:-6px auto 14px}
-    .modal input,.modal select,.modal textarea{font-size:16px}
-    .modal-actions.foot{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
-
-    .type-head,.p-head{display:none}
-    .type-row{grid-template-columns:42px 52px 1fr 30px;
-      grid-template-areas:"c i n d" "r r r r"}
-    .tr-color{grid-area:c}.tr-icon{grid-area:i}.tr-name{grid-area:n}
-    .tr-nums{grid-area:r}.icon-btn{grid-area:d}
-    .tr-count{display:none}
-    .p-row{grid-template-columns:42px 44px 1fr 30px;
-      grid-template-areas:"c i n d" "r r r r"}
-    .p-nums{grid-area:r}
-
-    .wake-row{grid-template-columns:64px 1fr 1fr 44px}
-    .pd{grid-template-columns:56px repeat(var(--np,1),minmax(150px,1fr))}
-    .seg button{padding:10px 14px}
-    .st-grid{grid-template-columns:1fr}
-
-    /* iOS Safari keeps its bottom address bar expanded until the first
-       scroll, hiding anything pinned to the very bottom. Lift the FABs,
-       toasts & scroll padding above it on iOS only. */
-    @supports (-webkit-touch-callout:none){
-      .fabs{bottom:calc(62px + env(safe-area-inset-bottom))}
-      .board-wrap{padding-bottom:calc(180px + env(safe-area-inset-bottom))}
-      #toasts{bottom:calc(84px + env(safe-area-inset-bottom))}
-    }
-  }
-
-  @media print{
-    :root,html[data-theme="dark"]{
-      --bg:#fff;--panel:#fff;--panel-2:#fff;--line:#8a97ab;--line-soft:#c9d3e0;
-      --grid-hour:#aab6c8;--grid-half:#d5deeb;
-      --text:#000;--text-dim:#222;--muted:#555;--grid:#fff;--grid-we:#fafafa;
-      --head:#f4f4f4;--ev-meta:#333;--accent-soft:#e8f0fe;--shadow:none}
-    body{display:block;background:#fff}
-    .topbar,.stats,.hintbar,.mb,#toasts,.empty-note,#dragTip,.ctx,.dd,.fabs,.mnav,#mobileWrap,
-    .zone,.pzone{display:none !important}
-    .board{display:flex !important}
-    .board-wrap{overflow:visible;padding:0}
-    .board{min-width:0;width:100%;box-shadow:none;border:1px solid #94a3b8}
-    .ev,.day-head,.ev-spine{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .ev-resize,.now-line{display:none !important}
-  }
-</style>
-</head>
-<body>
-
-<header class="topbar">
-  <div class="brand">🗓 Timetable</div>
-  <div class="tabs" id="scheduleTabs"></div>
-  <button class="btn" id="btnAddSchedule" title="Create a new timetable">＋ New</button>
-  <div class="actions">
-    <button class="btn primary" id="btnAddBlock">＋ Add block</button>
-    <button class="btn" id="btnSettings">⚙ Settings</button>
-    <span class="zoom-group">
-      <button class="btn" id="zoomOut" title="Smaller grid">−</button>
-      <button class="btn" id="zoomIn" title="Bigger grid">＋</button>
-    </span>
-    <button class="now-chip" id="nowChip" title="Jump to current time">…</button>
-    <div class="dd" id="fileMenuWrap">
-      <button class="btn" id="btnFileMenu" title="Export, import & print">⬇ Export ▾</button>
-      <div class="menu" id="fileMenu">
-        <button class="mi" data-act="ics">📅 Export .ics (calendar)</button>
-        <hr class="msep">
-        <button class="mi" data-act="pdf-l">📄 PDF — landscape</button>
-        <button class="mi" data-act="pdf-p">📄 PDF — portrait</button>
-        <hr class="msep">
-        <button class="mi" data-act="png-l">🖼 PNG — landscape</button>
-        <button class="mi" data-act="png-p">🖼 PNG — portrait</button>
-        <hr class="msep">
-        <button class="mi" data-act="json">💾 Download JSON backup</button>
-        <button class="mi" data-act="import">⭳ Import JSON backup</button>
-        <hr class="msep">
-        <button class="mi" data-act="print">🖨 Print</button>
-      </div>
-    </div>
-    <button class="btn" id="btnHelp" title="Tips & shortcuts (?)">?</button>
-    <button class="btn" id="btnMobileMenu" title="Menu">☰</button>
-  </div>
-</header>
-
-<div class="stats" id="statsBar"></div>
-
-<main class="board-wrap">
-  <div class="board" id="board" style="--hour:48px">
-    <div class="gutter" id="gutter"><div class="g-head"></div></div>
-    <div class="days" id="days"></div>
-  </div>
-  <div class="empty-note" id="loading">Loading your timetable…</div>
-  <div class="empty-note" id="emptyHint" style="display:none">
-    <b>This schedule is empty.</b><br>
-    Click anywhere on a day to add your first block — or use “＋ Add block”.
-  </div>
-
-  <div id="mobileWrap">
-    <div class="m-pills" id="mPills"></div>
-    <div class="m-dayhead" id="mDayHead"></div>
-    <div id="mList"></div>
-  </div>
-</main>
-
-<footer class="hintbar" id="hintbar" style="display:none">
-  Click an empty spot to add a block · drag blocks to move them (start &amp; day only — duration
-  stays), drag the bottom edge to resize · <b>right-click</b> a block to copy it to another day ·
-  <b>right-click</b> a timetable tab to rename / duplicate / copy from / delete · everything saves
-  to the server automatically.
-</footer>
-
-<div class="fabs">
-  <button class="fab sub" id="fabAdd" title="Add block">＋</button>
-  <button class="fab main" id="fabEdit" title="Edit schedule">✏️</button>
-</div>
-
-<nav class="mnav" id="mobileNav"></nav>
-
-<!-- event modal -->
-<div class="mb" id="eventModal">
-  <div class="modal">
-    <h3 id="evModalTitle">Add block</h3>
-    <form id="evForm">
-      <label>Title<input id="fTitle" maxlength="160" placeholder="e.g. Analysis I"></label>
-      <label>Type<select id="fType"></select></label>
-      <label style="margin-bottom:4px">Days <span style="font-weight:400">(a block can be on several days)</span></label>
-      <div class="day-chips" id="fDays"></div>
-      <div class="chip-presets">
-        <button type="button" class="mini2" data-preset="week">Mon–Fri</button>
-        <button type="button" class="mini2" data-preset="all">Every day</button>
-        <span class="muted" style="font-size:11.5px">the block appears on every selected day</span>
-      </div>
-      <div class="row2">
-        <label>Start
-          <div class="time-wrap">
-            <input type="time" id="fStart" step="60">
-            <span class="steppers">
-              <button type="button" class="mini" data-time="start" data-d="-15" title="−15 min">−</button>
-              <button type="button" class="mini" data-time="start" data-d="15" title="+15 min">＋</button>
-            </span>
-          </div>
-        </label>
-        <label>End
-          <div class="time-wrap">
-            <input type="time" id="fEnd" step="60">
-            <span class="steppers">
-              <button type="button" class="mini" data-time="end" data-d="-15" title="−15 min">−</button>
-              <button type="button" class="mini" data-time="end" data-d="15" title="+15 min">＋</button>
-            </span>
-          </div>
-        </label>
-      </div>
-      <div class="wake-warn" id="fWakeWarn"></div>
-      <div class="modal-actions" style="margin:0 0 10px">
-        <button type="button" class="btn" id="fFit"
-          title="Snap this block to the selected type's usual start minute and length">↺ Fit to type</button>
-      </div>
-      <div class="modal-actions" style="margin:0 0 10px;justify-content:flex-start">
-        <span style="font-size:12px;color:var(--muted);font-weight:600">Color</span>
-        <div class="tr-color" id="fColWrap" title="Click to pick a custom color" style="width:42px;height:30px">
-          <input type="color" id="fCol">
-          <span class="tr-cfill" id="fColFill"></span>
-        </div>
-        <button type="button" class="mini2" id="fColReset" title="Back to the type color">type</button>
-        <button type="button" class="mini2" id="fColFromSame"
-          title="Copy the color of the last block with the same name & type">⟲ from same</button>
-        <span class="muted" style="font-size:11.5px" id="fColHint">using type color</span>
-      </div>
-      <div class="row2">
-        <label><span id="fRoomLabelTxt">Room / place</span><input id="fRoom" maxlength="120" placeholder="e.g. HG F 5"></label>
-        <label>Teacher<input id="fTeacher" maxlength="120" placeholder="optional"></label>
-      </div>
-      <label>Notes<textarea id="fNote" rows="2" maxlength="2000" placeholder="optional"></textarea></label>
-      <div class="modal-actions foot">
-        <button type="button" class="btn danger" id="btnEvDelete">Delete</button>
-        <button type="button" class="btn" id="btnEvDuplicate">Duplicate</button>
-        <span class="spacer"></span>
-        <button type="button" class="btn" data-close>Cancel</button>
-        <button type="submit" class="btn primary">Save</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- settings modal -->
-<div class="mb" id="settingsModal">
-  <div class="modal wide">
-    <div class="set-tabs">
-      <button type="button" class="set-tab active" data-stab="general">General</button>
-      <button type="button" class="set-tab" data-stab="types">Types</button>
-      <button type="button" class="set-tab" data-stab="periods">Periods</button>
-      <button type="button" class="set-tab" data-stab="stats">Stats</button>
-    </div>
-
-    <div class="set-page active" id="stab-general">
-      <h4>Appearance</h4>
-      <label>Theme
-        <div class="seg" id="thSeg">
-          <button type="button" data-th="dark">🌙 Dark</button>
-          <button type="button" data-th="light">☀️ Light</button>
-        </div>
-      </label>
-      <label>Grid size (hour height)
-        <select id="sZoom">
-          <option value="32">Compact (32 px)</option>
-          <option value="40">Cozy (40 px)</option>
-          <option value="48">Normal (48 px)</option>
-          <option value="60">Roomy (60 px)</option>
-          <option value="76">Huge (76 px)</option>
-        </select>
-      </label>
-      <h4>Week</h4>
-      <div class="row2">
-        <label>Day starts at<input type="time" id="sStart" step="60"></label>
-        <label>Day ends at<input type="time" id="sEnd" step="60"></label>
-      </div>
-      <label class="chk"><input type="checkbox" id="sSat"><span class="sw"></span> Show Saturday</label>
-      <label class="chk"><input type="checkbox" id="sSun"><span class="sw"></span> Show Sunday</label>
-      <h4>Wake &amp; sleep — this timetable</h4>
-      <p class="muted" style="margin-top:-6px">Sleep times are saved per timetable. A sleep time
-        <b>before</b> the wake time (e.g. 01:00 when you wake at 08:00) means <b>after midnight</b>.
-        Hours outside the wake window are hatched on the grid; blocks there get a 🌙 hint.</p>
-      <div class="wake-rows" id="wakeRows"></div>
-      <button type="button" class="btn" id="btnWakeAll" title="Copy Monday's times to every day">⧉ Copy Monday to all days</button>
-    </div>
-
-    <div class="set-page" id="stab-types">
-      <h4>Lecture types, colors &amp; rules</h4>
-      <p class="muted" style="margin-top:-6px">Each type: color (click the swatch), emoji,
-        <b>Start :MM</b> snap, default <b>Length</b>, <b>Opacity</b>, and its own
-        <b>Split</b> rhythm (long blocks become period/break segments, e.g. 45/15 for V &amp; U).
-        Single blocks can override their color in the block editor.</p>
-      <div class="type-head">
-        <span>Color</span><span>Icon</span><span>Name</span>
-        <span>Start · Length · Opacity · Split (min/break)</span>
-        <span>Blocks</span><span></span>
-      </div>
-      <div id="typeRows"></div>
-      <button type="button" class="btn" id="btnAddType">＋ Add type</button>
-    </div>
-
-    <div class="set-page" id="stab-periods">
-      <h4>Time periods — this timetable</h4>
-      <p class="muted" style="margin-top:-6px">Recurring daily windows (e.g. “At school”) hatched
-        onto the grid like the sleep shading, with your own color, emoji and opacity. Every block
-        inside a period carries the period's icon. Periods are saved per timetable.</p>
-      <div id="periodRows"></div>
-      <button type="button" class="btn" id="btnAddPeriod">＋ Add period</button>
-      <h4>Per-day times</h4>
-      <p class="muted" style="margin-top:-6px">Adjust or switch off each period per weekday. The
-        start/end in the rows above always follow the days — earliest start to latest end — and
-        editing them applies the change to every day at once.</p>
-      <div class="pd-scroll"><div id="pdMatrix"></div></div>
-    </div>
-
-    <div class="set-page" id="stab-stats">
-      <h4>Stat chips</h4>
-      <div class="st-grid">
-        <label class="chk"><input type="checkbox" id="stTypes"><span class="sw sw-sm"></span> Hours per type</label>
-        <label class="chk"><input type="checkbox" id="stTotal"><span class="sw sw-sm"></span> Total scheduled</label>
-        <label class="chk"><input type="checkbox" id="stCount"><span class="sw sw-sm"></span> Block count</label>
-        <label class="chk"><input type="checkbox" id="stBusiest"><span class="sw sw-sm"></span> Busiest day</label>
-        <label class="chk"><input type="checkbox" id="stSleep"><span class="sw sw-sm"></span> Average sleep</label>
-        <label class="chk"><input type="checkbox" id="stPeriods"><span class="sw sw-sm"></span> Time periods</label>
-      </div>
-      <h4>Custom groups</h4>
-      <p class="muted" style="margin-top:-6px">Sum the hours of selected types under a name of
-        your choice (e.g. “School time” = V + U).</p>
-      <div id="groupRows"></div>
-      <button type="button" class="btn" id="btnAddGroup">＋ Add group</button>
-    </div>
-
-    <div class="modal-actions foot">
-      <span class="spacer"></span>
-      <button type="button" class="btn" data-close>Cancel</button>
-      <button type="button" class="btn primary" id="btnSettingsSave">Save settings</button>
-    </div>
-  </div>
-</div>
-
-<!-- prompt modal -->
-<div class="mb" id="promptModal">
-  <div class="modal">
-    <h3 id="promptTitle">Name</h3>
-    <form id="promptForm">
-      <input id="promptInput" maxlength="120" autocomplete="off">
-      <div class="modal-actions foot">
-        <span class="spacer"></span>
-        <button type="button" class="btn" data-close>Cancel</button>
-        <button type="submit" class="btn primary">OK</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- confirm modal -->
-<div class="mb" id="confirmModal">
-  <div class="modal">
-    <h3>Are you sure?</h3>
-    <p id="confirmMsg" style="font-size:14px"></p>
-    <div class="modal-actions foot">
-      <span class="spacer"></span>
-      <button type="button" class="btn" id="btnConfirmCancel">Cancel</button>
-      <button type="button" class="btn danger" id="btnConfirmOk">Yes, do it</button>
-    </div>
-  </div>
-</div>
-
-<!-- help modal -->
-<div class="mb" id="helpModal">
-  <div class="modal">
-    <h3>Tips &amp; shortcuts</h3>
-    <ul class="tips">
-      <li><b>Click</b> an empty slot → new block. It uses the <b>last type you picked</b>,
-        snapped to that type's usual start minute and default length.</li>
-      <li><b>Drag</b> a block to move it (day + start — the duration stays), drag the
-        <b>bottom edge of the last segment</b> to resize.</li>
-      <li><b>Splitting is per type</b> (⚙ Types): long blocks are divided into a period/break
-        rhythm (e.g. V &amp; U: 45 min + 15 min pause). The pauses are filled in with the same
-        color, so the whole unit reads as one block; each segment shows its own time — on
-        <b>mobile</b> the segments and pauses are listed on the card.</li>
-      <li><b>Past midnight:</b> a sleep time <b>before</b> the wake time counts as the next day
-        (wake 08:00, sleep 01:00). The grid hatches only the hours inside the visible day.</li>
-      <li><b>Custom color:</b> every block can override its type color in the editor — and
-        <b>⟲ from same</b> copies the color of the last block with the same name &amp; type
-        (also in the right-click menu as “Color from same”).</li>
-      <li><b>Multi-day blocks:</b> click the day chips to put one block on any combination
-        of days (e.g. a commute Mon/Wed/Fri).</li>
-      <li><b>Right-click a block</b> → Edit · Color from same · Duplicate · <b>Copy to day…</b> ·
-        Delete. <b>Right-click a timetable tab</b> → Rename · Duplicate · Copy from · Delete.</li>
-      <li><b>⋯</b> in a day header: copy that day to another day, or clear it.</li>
-      <li>⚙ <b>General</b>: theme, grid size, week range and <b>wake &amp; sleep</b> —
-        sleep times are saved <b>per timetable</b>.</li>
-      <li>⚙ <b>Types</b>: color, emoji, start :MM, default length, opacity, split rhythm.</li>
-      <li>⚙ <b>Periods</b>: hatched daily windows (“At school”, “At home”) with color, emoji,
-        opacity and per-day overrides — the row's start/end mirror the days (earliest start →
-        latest end) and editing them sets every day. Blocks inside them carry the period icon.
-        Also saved <b>per timetable</b>.</li>
-      <li>⚙ <b>Stats</b>: choose which chips show (per type, custom groups, periods,
-        avg sleep, total, count, busiest day).</li>
-      <li><b>⬇ Export</b>: .ics, PDF (landscape &amp; portrait), PNG image (dark/light),
-        JSON backup, import, print.</li>
-      <li><b>On mobile</b>: tap ✏️ to enter edit mode (nothing can be changed before that),
-        the <b>red line</b> shows where you are in the day, swipe between days, ☰ holds
-        everything else.</li>
-      <li>The hint bar at the bottom only appears while this schedule has no blocks yet —
-        all of it lives here.</li>
-    </ul>
-    <table class="kbd-table">
-      <tr><td><kbd>N</kbd></td><td>New block</td></tr>
-      <tr><td><kbd>T</kbd></td><td>Settings → Types</td></tr>
-      <tr><td><kbd>S</kbd></td><td>Settings → General</td></tr>
-      <tr><td><kbd>P</kbd></td><td>Print</td></tr>
-      <tr><td><kbd>?</kbd></td><td>This help</td></tr>
-      <tr><td><kbd>Esc</kbd></td><td>Close dialogs &amp; menus</td></tr>
-    </table>
-    <div class="modal-actions foot">
-      <span class="spacer"></span>
-      <button type="button" class="btn primary" data-close>Got it</button>
-    </div>
-  </div>
-</div>
-
-<div id="dragTip"></div>
-<div class="ctx" id="ctxMenu"></div>
-<div id="toasts"></div>
-<input type="file" id="importFile" accept=".json,application/json" style="display:none">
-
-<script>
 'use strict';
 
 /* ================= constants & state ================= */
-const API = '/apps/timetable';
+const API = String(window.APP_BASE || '/apps/timetable/').replace(/\/+$/, '');
 const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const DAY_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const PASTELS = ['#2563EB','#0D9488','#7C3AED','#DB2777','#F59E0B','#65A30D',
@@ -998,6 +180,8 @@ function normState(st){
   const s = st.settings = st.settings || {};
   s.dayStart = s.dayStart ?? 420;
   s.dayEnd = s.dayEnd ?? 1320;
+  s.style = s.style || 'default';
+  s.styles = (Array.isArray(s.styles) && s.styles.length) ? s.styles : ['default'];
   const map = {};
   (Array.isArray(s.dayRanges) ? s.dayRanges : []).forEach(r => {
     if (r && r.day != null && !(r.day in map)) map[r.day] = r;
@@ -1056,15 +240,55 @@ async function call(path, body){
   return data;
 }
 
-/* ================= theme ================= */
+/* ================= theme & style ================= */
 function applyTheme(){
   document.documentElement.dataset.theme = state.settings.theme === 'light' ? 'light' : 'dark';
+}
+
+/* Extra styles: styles/default.css is always loaded as the base (the HTML
+   links it); any other *.css in the styles folder can be layered on top of
+   it — a later stylesheet wins, so a style can override ANYTHING. */
+let previewStyle = null;   // live preview while the settings modal is open
+
+function applyStyle(){
+  if (!state) return;
+  const st = previewStyle ?? (state.settings.style || 'default');
+  let link = document.getElementById('styleLink');
+  if (!st || st === 'default' || !/^[A-Za-z0-9_-]+$/.test(st)){
+    if (link) link.remove();
+    return;
+  }
+  const href = API + '/styles/' + st + '.css';
+  if (!link){
+    link = document.createElement('link');
+    link.id = 'styleLink';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);   // after default.css → wins the cascade
+  }
+  link.href = href;
+}
+function styleLabel(n){
+  return n === 'default' ? 'Default'
+    : n.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+function renderStyleOptions(){
+  const list = (state.settings.styles && state.settings.styles.length)
+    ? state.settings.styles : ['default'];
+  $('#sStyle').innerHTML = list.map(n =>
+    `<option value="${esc(n)}">${esc(styleLabel(n))}</option>`).join('');
+}
+/* revert a live preview when the settings modal is closed without saving */
+function closeSettingsPreview(){
+  if (previewStyle == null) return;
+  previewStyle = null;
+  applyStyle();
 }
 
 /* ================= rendering ================= */
 function renderAll(){
   if (!state) return;
   applyTheme();
+  applyStyle();
   renderTabs();
   renderBoard();
   renderStats();
@@ -1806,6 +1030,9 @@ function openSettings(tab){
   $('#sZoom').value = String(hourPx());
   const th = s.theme === 'light' ? 'light' : 'dark';
   document.querySelectorAll('#thSeg button').forEach(b => b.classList.toggle('on', b.dataset.th === th));
+  previewStyle = null;
+  renderStyleOptions();
+  $('#sStyle').value = s.style || 'default';
   renderWakeRows();
   editingTypes = state.eventTypes.map(t => ({...t, opacity: t.opacity == null ? 100 : t.opacity,
     splitOn: !!t.splitOn, splitMin: t.splitMin || 45, splitBreak: t.splitBreak ?? 15}));
@@ -1830,6 +1057,12 @@ document.querySelectorAll('.set-tab').forEach(b =>
 $('#thSeg').addEventListener('click', e => {
   const b = e.target.closest('button[data-th]'); if (!b) return;
   document.querySelectorAll('#thSeg button').forEach(x => x.classList.toggle('on', x === b));
+});
+/* live preview: switching the dropdown restyles the whole page immediately;
+   closing the modal without saving reverts it */
+$('#sStyle').addEventListener('change', () => {
+  previewStyle = $('#sStyle').value || 'default';
+  applyStyle();
 });
 $('#btnWakeAll').addEventListener('click', () => {
   const first = document.querySelector('#wakeRows .wake-row');
@@ -1888,11 +1121,13 @@ $('#btnSettingsSave').addEventListener('click', async () => {
       dayStart: ds, dayEnd: de, dayRanges,
       showSaturday: $('#sSat').checked, showSunday: $('#sSun').checked,
       theme: thBtn ? thBtn.dataset.th : 'dark',
+      style: $('#sStyle').value || 'default',
       hourPx: parseInt($('#sZoom').value, 10) || 48,
       statConfig,
     });
     await call('types/save', {types});
     await call('periods/save', {periods, scheduleId: activeId()});
+    previewStyle = null;
     closeModal('#settingsModal');
     toast('Settings saved ✓');
   } catch (err){ toast(err.message, 'err'); }
@@ -1997,6 +1232,8 @@ $('#fileMenu').addEventListener('click', e => {
   else if (act === 'png-l') window.location.assign(API + '/export/png?o=landscape');
   else if (act === 'png-p') window.location.assign(API + '/export/png?o=portrait');
   else if (act === 'json') window.location.assign(API + '/export/json');
+  else if (act === 'import') $('#importFile').click();
+  else if (act === 'print'){ if (isMobile()) renderBoardDesktop(); window.print(); }
 });
 $('#importFile').addEventListener('change', async e => {
   const f = e.target.files[0];
@@ -2096,7 +1333,7 @@ function renderMobileNav(){
        <button class="mrow" data-act="add">＋ Add block</button>
        <hr class="msep">
        <button class="mrow" data-act="settings">⚙ Settings</button>
-        <button class="mrow" data-act="ics">📅 Export .ics</button>
+       <button class="mrow" data-act="ics">📅 Export .ics</button>
        <button class="mrow" data-act="pdf-l">📄 PDF — landscape</button>
        <button class="mrow" data-act="pdf-p">📄 PDF — portrait</button>
        <button class="mrow" data-act="png-l">🖼 PNG — landscape</button>
@@ -2477,14 +1714,22 @@ $('#zoomIn').addEventListener('click', () => zoomStep(1));
 
 /* modal plumbing */
 document.querySelectorAll('[data-close]').forEach(b =>
-  b.addEventListener('click', () => b.closest('.mb').classList.remove('open')));
+  b.addEventListener('click', () => {
+    b.closest('.mb').classList.remove('open');
+    if (b.closest('#settingsModal')) closeSettingsPreview();
+  }));
 document.querySelectorAll('.mb').forEach(m =>
-  m.addEventListener('mousedown', e => { if (e.target === m) m.classList.remove('open'); }));
+  m.addEventListener('mousedown', e => {
+    if (e.target === m){
+      m.classList.remove('open');
+      if (m.id === 'settingsModal') closeSettingsPreview();
+    }
+  }));
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape'){
     document.querySelectorAll('.mb.open').forEach(m => m.classList.remove('open'));
     document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open'));
-    closeCtx(); closeMnav();
+    closeCtx(); closeMnav(); closeSettingsPreview();
     return;
   }
   if (isMobile()) return;
@@ -2534,6 +1779,3 @@ $('#btnConfirmCancel').addEventListener('click', () => {
 })();
 setInterval(() => { if (state && !(drag && drag.moved)) updateNow(); }, 30000);
 setInterval(() => { if (state && !(drag && drag.moved)) renderBoard(); }, 60000);
-</script>
-</body>
-</html>

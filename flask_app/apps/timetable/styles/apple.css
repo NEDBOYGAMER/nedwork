@@ -1,0 +1,254 @@
+/* ============================================================
+   Apple — full-look style for Timetable (v2)
+   ------------------------------------------------------------
+   Layered on default.css (loads after it → wins every tie).
+
+   Calendar-grade refinement:
+   • Events: soft tinted fills (16%) + solid left accent bar,
+     soft tinted border, 10px continuous-feel radii
+   • Surfaces: layered grays (#111113 base → #1C1C1E panels →
+     #2C2C2E elevated) — no pitch-black viewport
+   • Grid: hour lines at 8% white, half-hours at 4.5% — recede
+   • Text: titles at full strength, times/meta at 60%
+   • Sleep zones: uniform dim fill (no diagonal hatching);
+     period zones: uniform color tint
+   • Bars: vibrancy — rgba(30,30,30,.75) + saturate(180%) blur(20px)
+   • Controls: SF capsules with rgba(255,255,255,.1) fills,
+     iOS segmented tabs, exact 51×31 green switch
+   ============================================================ */
+
+/* ---------- tokens: dark ---------- */
+:root{
+  --font-apple:system-ui,-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",
+    "Helvetica Neue","Segoe UI",Roboto,Arial,sans-serif;
+  --font-mono:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.25,.1,.25,1);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+
+  --bg:#111113; --panel:#1C1C1E; --panel-2:#2C2C2E;
+  --line:rgba(255,255,255,.09); --line-soft:rgba(255,255,255,.05);
+  --fill:rgba(255,255,255,.1); --fill-strong:rgba(255,255,255,.16);
+  --bar:rgba(30,30,30,.75);
+  --seg-track:rgba(118,118,128,.24); --seg-on:#636366;
+  --sw-track:rgba(120,120,128,.32); --sw-on:#30D158;
+  --grid:#161618; --grid-hover:#1E1E21; --grid-we:#131315; --grid-we-hover:#1A1A1D;
+  --grid-hour:rgba(255,255,255,.08); --grid-half:rgba(255,255,255,.045);
+  --zone-dim:rgba(0,0,0,.42);
+  --text:#F5F5F7; --text-dim:rgba(235,235,245,.72); --muted:rgba(235,235,245,.5);
+  --ev-title:#FFFFFF; --ev-meta:rgba(255,255,255,.6);
+  --accent:#0A84FF; --accent-soft:rgba(10,132,255,.14);
+  --danger:#FF453A; --warn:#FF9F0A;
+  --head:#1C1C1E;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 10px 28px rgba(0,0,0,.4);
+  --shadow-xl:0 8px 24px rgba(0,0,0,.4),0 30px 80px rgba(0,0,0,.55);
+  --radius:16px;
+}
+
+/* ---------- tokens: light ---------- */
+html[data-theme="light"]{
+  --bg:#F2F2F7; --panel:#FFFFFF; --panel-2:#FFFFFF;
+  --line:rgba(60,60,67,.14); --line-soft:rgba(60,60,67,.08);
+  --fill:rgba(120,120,128,.12); --fill-strong:rgba(120,120,128,.2);
+  --bar:rgba(255,255,255,.72);
+  --seg-track:rgba(118,118,128,.12); --seg-on:#FFFFFF;
+  --sw-track:rgba(120,120,128,.16); --sw-on:#34C759;
+  --grid:#FFFFFF; --grid-hover:#F3F3F7; --grid-we:#FAFAFC; --grid-we-hover:#F0F0F5;
+  --grid-hour:rgba(60,60,67,.11); --grid-half:rgba(60,60,67,.06);
+  --zone-dim:rgba(60,60,67,.07);
+  --text:#1D1D1F; --text-dim:rgba(60,60,67,.72); --muted:rgba(60,60,67,.5);
+  --ev-title:#1D1D1F; --ev-meta:rgba(60,60,67,.62);
+  --accent:#007AFF; --accent-soft:rgba(0,122,255,.1);
+  --danger:#FF3B30; --warn:#FF9500;
+  --head:#F2F2F7;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 10px 26px rgba(0,0,0,.07);
+  --shadow-xl:0 4px 12px rgba(0,0,0,.08),0 24px 70px rgba(0,0,0,.16);
+  --radius:16px;
+}
+
+html{color-scheme:dark}
+html[data-theme="light"]{color-scheme:light}
+
+/* ---------- base: SF type, selection, focus, overlay scrollbars ---------- */
+body{
+  font-family:var(--font-apple);
+  letter-spacing:-.01em;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale}
+::selection{background:color-mix(in srgb,var(--accent) 30%,transparent)}
+:focus-visible{outline:none;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 35%,transparent)}
+
+*{scrollbar-width:thin;scrollbar-color:rgba(120,120,128,.45) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{border-radius:999px;border:3px solid transparent;
+  background-color:rgba(120,120,128,.45);background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background-color:rgba(120,120,128,.7)}
+
+kbd{font-family:var(--font-mono);background:var(--fill);border-color:var(--line-soft)}
+
+/* ---------- bars: frosted glass ---------- */
+.topbar,.stats,.m-pills{
+  background:var(--bar);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  backdrop-filter:saturate(180%) blur(20px)}
+.topbar,.stats{border-bottom-color:var(--line-soft)}
+.brand{font-weight:600;letter-spacing:-.02em}
+
+/* menus, sheets, tips: vibrancy + deep soft shadow */
+.menu,.ctx,.mnav{
+  background:color-mix(in srgb,var(--panel-2) 85%,transparent);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  backdrop-filter:saturate(180%) blur(20px);
+  border-color:var(--line-soft);
+  box-shadow:var(--shadow-xl)}
+.mnav{border-radius:16px}
+.mrow{border-radius:10px}
+.mi{border-radius:8px}
+.mi:hover,.mrow:hover{background:var(--fill)}
+.msep{border-top-color:var(--line-soft)}
+#dragTip{border-radius:10px;
+  background:color-mix(in srgb,var(--panel-2) 85%,transparent);
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+
+/* ---------- controls: SF capsules ---------- */
+.btn{background:var(--fill);border-color:transparent;color:var(--text);
+  border-radius:999px;font-weight:500;letter-spacing:-.01em;
+  transition:background-color .2s var(--ease),color .2s var(--ease),
+    transform .12s var(--ease)}
+.btn:hover{background:var(--fill-strong)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);color:#fff;font-weight:600}
+.btn.primary:hover{background:color-mix(in srgb,var(--accent) 90%,#fff)}
+.btn.danger{color:var(--danger);
+  background:color-mix(in srgb,var(--danger) 14%,transparent)}
+.btn.danger:hover{background:color-mix(in srgb,var(--danger) 22%,transparent)}
+.now-chip{font-weight:600;letter-spacing:-.01em;
+  transition:filter .2s var(--ease),transform .12s var(--ease)}
+.now-chip:active{transform:scale(.97)}
+
+/* schedule tabs: iOS segmented control */
+.tabs{gap:2px;padding:2px;background:var(--seg-track);border-radius:10px}
+.tab{background:transparent;border-color:transparent;border-radius:8px;
+  color:var(--text-dim);font-weight:500}
+.tab:hover:not(.active){background:var(--fill);color:var(--text)}
+.tab.active{background:var(--seg-on);color:var(--text);font-weight:600;
+  box-shadow:0 1px 2.5px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.04)}
+
+/* settings tabs & day chips: tinted pills */
+.set-tab{border-radius:999px;background:transparent;border-color:transparent;
+  color:var(--text-dim);font-weight:500}
+.set-tab:hover{background:var(--fill);color:var(--text)}
+.set-tab.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.dchip{background:var(--fill);border-color:transparent;font-weight:500}
+.dchip:hover{background:var(--fill-strong)}
+.dchip.on{background:var(--accent-soft);border-color:transparent;
+  color:var(--accent);font-weight:600}
+.tchip,.mini,.mini2,.icon-btn,.tr-color{background:var(--fill);border-color:transparent}
+.mini:hover,.mini2:hover{background:var(--fill-strong)}
+
+/* segmented control (theme toggle etc.) */
+.seg{background:var(--seg-track);border:0;border-radius:9px;padding:2px}
+.seg button{background:transparent;border-radius:7px;color:var(--text-dim);font-weight:400}
+.seg button:hover{background:transparent;color:var(--text)}
+.seg button.on{background:var(--seg-on);color:var(--text);font-weight:600;
+  box-shadow:0 1px 2.5px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.04)}
+.seg button.on:hover{background:var(--seg-on)}
+
+/* switch — exact iOS geometry, system green when on */
+.chk .sw{width:51px;height:31px;background:var(--sw-track)}
+.chk .sw::after{width:27px;height:27px;top:2px;left:2px;
+  box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16);
+  transition:transform .25s var(--ease-spring)}
+.chk input:checked + .sw{background:var(--sw-on)}
+.chk input:checked + .sw::after{transform:translateX(20px)}
+.sw-sm{width:34px;height:20px}
+.sw-sm::after{width:16px;height:16px}
+.chk input:checked + .sw-sm::after{transform:translateX(14px)}
+
+/* ---------- stat chips: tinted capsules ---------- */
+.chip{border-radius:999px}
+.chip b{font-weight:600}
+
+/* ---------- board: recessed grid, tinted events ---------- */
+.board{border-color:var(--line-soft)}
+.g-label,.d-total,.ev-meta,.mc-time{font-variant-numeric:tabular-nums}
+.d-name{font-weight:600}
+
+/* events: soft tinted fill, solid accent bar, soft tinted border */
+.ev,.ev-spine{border-radius:10px;
+  background:color-mix(in srgb,var(--tc) 16%,transparent);
+  border-color:color-mix(in srgb,var(--tc) 26%,transparent);
+  border-left:4px solid var(--tc);
+  color:var(--ev-title)}
+.ev-title{font-weight:590}
+.ev-meta{color:var(--ev-meta);opacity:1}
+
+/* non-working hours & periods: uniform fills, no stripes */
+.zone{background:var(--zone-dim)}
+.pzone{background:var(--zh)}
+
+.now-line{border-top-color:var(--danger)}
+.now-line::before{background:var(--danger)}
+
+/* ---------- modals: vibrancy sheets, inset fields ---------- */
+.mb{background:rgba(0,0,0,.5)}
+.modal{border-color:var(--line-soft);border-radius:20px;
+  background:color-mix(in srgb,var(--panel-2) 88%,transparent);
+  -webkit-backdrop-filter:saturate(180%) blur(30px);
+  backdrop-filter:saturate(180%) blur(30px);
+  box-shadow:var(--shadow-xl)}
+.modal h3{font-weight:600;letter-spacing:-.02em}
+.modal input,.modal select,.modal textarea{
+  background:var(--fill);border-color:transparent;border-radius:12px;padding:9px 13px;
+  transition:background-color .2s var(--ease),box-shadow .2s var(--ease)}
+.modal input:hover,.modal select:hover,.modal textarea:hover{background:var(--fill-strong)}
+.modal input:focus,.modal select:focus,.modal textarea:focus{
+  outline:none;background:var(--panel-2);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 30%,transparent)}
+.modal-actions.foot{background:color-mix(in srgb,var(--panel-2) 92%,transparent)}
+
+/* ---------- toasts: vibrancy pill ---------- */
+.toast{
+  background:color-mix(in srgb,var(--panel-2) 88%,transparent);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  backdrop-filter:saturate(180%) blur(20px);
+  color:var(--text);border-radius:999px;padding:10px 18px;font-weight:500;
+  box-shadow:var(--shadow-xl)}
+.toast.err{background:color-mix(in srgb,var(--danger) 92%,transparent);color:#fff}
+
+/* ---------- mobile ---------- */
+.mcard{border-radius:12px;color:var(--ev-title);
+  background:color-mix(in srgb,var(--tc) 16%,transparent);
+  border-color:color-mix(in srgb,var(--tc) 26%,transparent);
+  border-left:4px solid var(--tc,#8aa0c0)}
+.mc-title{font-weight:600}
+.mc-sub,.mc-time,.mc-seg{color:var(--ev-meta);opacity:1}
+.mc-pause{color:var(--muted)}
+.mday-title{font-weight:600;letter-spacing:-.02em}
+.mpill{background:var(--fill);border-color:transparent;font-weight:500}
+.mpill.on{background:var(--accent-soft);
+  border-color:color-mix(in srgb,var(--accent) 40%,transparent);
+  color:var(--accent);font-weight:600}
+.mpill.on .dot{background:var(--accent)}
+.m-now,.m-now-dot,.m-now-line{color:var(--danger)}
+.m-now-dot{background:var(--danger)}
+.m-now-line{border-top-color:var(--danger)}
+.mempty{border-radius:16px}
+.fab{box-shadow:0 10px 26px rgba(0,0,0,.28);
+  transition:transform .15s var(--ease),background-color .2s var(--ease)}
+.fab:active{transform:scale(.93)}
+.fab.main.done{background:var(--sw-on)}
+
+/* ---------- print: force the white palette for every theme ---------- */
+@media print{
+  :root,html[data-theme="dark"],html[data-theme="light"]{
+    --bg:#fff;--panel:#fff;--panel-2:#fff;--bar:#fff;
+    --line:#8a97ab;--line-soft:#c9d3e0;--fill:#eef1f5;--fill-strong:#e2e7ee;
+    --grid-hour:#aab6c8;--grid-half:#d5deeb;
+    --text:#000;--text-dim:#222;--muted:#555;
+    --ev-title:#000;--ev-meta:#444;
+    --grid:#fff;--grid-hover:#f2f2f2;--grid-we:#fafafa;--grid-we-hover:#f2f2f2;
+    --head:#f4f4f4;--accent-soft:#e8f0fe;
+    --shadow:none;--shadow-xl:none;--zone-dim:rgba(0,0,0,.05)}
+}
