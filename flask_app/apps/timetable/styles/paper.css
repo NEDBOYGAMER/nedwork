@@ -1,0 +1,263 @@
+/* ============================================================
+   Paper / Notebook — full-look style for Timetable
+   ------------------------------------------------------------
+   Layered on default.css (loads after it → wins every tie).
+
+   • Cream paper page with subtle grain, ink-toned text
+   • Webfont: iA Writer-style serif/mono mix (Google Fonts,
+     loaded via @import — falls back to system serif offline)
+   • Ruled hour lines + a red margin rule on the gutter
+   • Events = handwritten index cards: paper fill, ink title,
+     dashed tape-like border, hand-drawn feel
+   • Sleep zones: soft graphite wash (no hatching)
+   • Chips, buttons & menus: folded-paper cards, capsule stamps
+   ============================================================ */
+
+/* ---------- tokens: ink on aged paper (dark theme values first) ---------- */
+:root{
+  --font-paper:"iA Writer Quattro S","iA Writer Mono S","JetBrains Mono",
+    ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.25,.1,.25,1);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+
+  --bg:#1B1A16; --panel:#24231F; --panel-2:#2A2925;
+  --line:rgba(230,220,195,.16); --line-soft:rgba(230,220,195,.08);
+  --fill:rgba(230,220,195,.1); --fill-strong:rgba(230,220,195,.16);
+  --grid:#201F1B; --grid-hover:#262521;
+  --grid-we:#1B1A18; --grid-we-hover:#232219;
+  --grid-hour:rgba(230,220,195,.1); --grid-half:rgba(230,220,195,.05);
+  --zone-dim:rgba(0,0,0,.28); --zh:rgba(230,220,195,.14); --zbd:rgba(230,220,195,.2);
+  --text:#EDE6D4; --text-dim:rgba(237,230,195,.75); --muted:rgba(230,220,195,.5);
+  --ev-title:#F5EFE0; --ev-meta:rgba(245,239,224,.65);
+  --accent:#D4A72C; --accent-soft:rgba(212,167,44,.16);
+  --danger:#C96A5A; --warn:#C98A3B;
+  --head:#242320; --ev-meta:rgba(235,228,210,.66);
+  --shadow:0 1px 3px rgba(0,0,0,.35),0 10px 26px rgba(0,0,0,.4);
+  --shadow-xl:0 8px 24px rgba(0,0,0,.4),0 28px 70px rgba(0,0,0,.55);
+  --radius:10px;
+}
+
+/* ---------- tokens: light — the classic notebook ---------- */
+html[data-theme="light"]{
+  --bg:#F6F1E3;                 /* cream paper */
+  --panel:#FBF7EC; --panel-2:#FBF7EC;
+  --line:rgba(90,74,50,.28); --line-soft:rgba(90,74,50,.16);
+  --fill:rgba(90,74,50,.09); --fill-strong:rgba(90,74,50,.18);
+  --bar:rgba(246,241,227,.85);
+  --seg-track:rgba(90,74,50,.12); --seg-on:#FDFBF3;
+  --sw-track:rgba(90,74,50,.2); --sw-on:#5B7A46;   /* fountain-pen green */
+  --grid:#FDFBF1; --grid-hover:#F6F2E4; --grid-we:#F8F3E4; --grid-we-hover:#F2EDDC;
+  --grid-hour:rgba(90,74,50,.18); --grid-half:rgba(90,74,50,.09);
+  --zone-dim:rgba(90,74,50,.08);
+  --text:#2B2417;               /* ink */
+  --text-dim:rgba(43,36,23,.75); --muted:rgba(43,36,23,.55);
+  --ev-title:#2B2417; --ev-meta:rgba(43,36,23,.66);
+  --accent:#8A1F1D;             /* the red margin pen */
+  --accent-soft:rgba(138,31,29,.1);
+  --danger:#A8341F; --warn:#9A6B1F;
+  --head:#F2EBD9;
+  --shadow:0 1px 2px rgba(80,64,40,.12),0 8px 22px rgba(80,64,40,.12);
+  --shadow-xl:0 6px 16px rgba(80,64,40,.14),0 26px 60px rgba(80,64,40,.22);
+  --radius:10px;
+}
+
+html{color-scheme:dark}
+html[data-theme="light"]{color-scheme:light}
+
+/* ---------- base: handwriting-adjacent serif, no glow ---------- */
+body{
+  font-family:Georgia,"Iowan Old Style","Palatino Linotype",
+    "Times New Roman",system-ui,sans-serif;
+  letter-spacing:0;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  text-rendering:optimizeLegibility}
+.brand{font-family:Georgia,"Iowan Old Style",serif;font-weight:700;
+  letter-spacing:-.015em}
+::selection{background:rgba(212,167,44,.35)}
+:focus-visible{outline:none;
+  box-shadow:0 0 0 3px rgba(138,31,29,.35)}
+kbd{font-family:var(--font-paper);background:var(--fill);border-color:var(--line-soft)}
+
+/* faint paper grain over everything (SVG turbulence, decorative only) */
+body::after{
+  content:"";position:fixed;inset:0;z-index:2147483647;pointer-events:none;
+  opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ---------- bars: folded paper ---------- */
+.topbar,.stats,.m-pills{
+  background:var(--panel);
+  box-shadow:0 1px 0 var(--line)}
+.topbar{border-bottom:1px solid var(--line-soft)}
+.brand{letter-spacing:-.01em}
+
+/* menus & modals: paper cards, hard-ish soft shadows */
+.menu,.ctx,.mnav,.modal{
+  background:var(--panel);border-color:var(--line-soft);
+  box-shadow:0 2px 6px rgba(80,64,40,.14),0 18px 44px rgba(80,64,40,.22)}
+.modal{border-radius:14px}
+.mnav{border-radius:12px}
+.mrow,.mi{border-radius:8px}
+.mi:hover,.mrow:hover{background:var(--fill)}
+.msep{border-top-color:var(--line-soft)}
+#dragTip{border-radius:8px;background:var(--panel)}
+
+/* ---------- controls: ink stamps & ruled fields ---------- */
+.btn{background:var(--panel-2);border-color:var(--line);color:var(--text);
+  border-radius:999px;font-weight:600;letter-spacing:.01em;
+  transition:background-color .15s var(--ease),border-color .15s var(--ease),
+    transform .12s var(--ease)}
+.btn:hover{background:var(--fill-strong);border-color:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#1B1A16}
+.btn.danger{color:var(--danger);
+  border-color:rgba(168,52,41,.4);
+  background:rgba(168,52,41,.08)}
+.btn.danger:hover{background:rgba(168,52,41,.16)}
+
+/* schedule tabs: stamped day tabs */
+.tab{border-radius:8px;border-color:var(--line);font-weight:500}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#FBF7EC;
+  font-weight:700;box-shadow:0 1px 2px rgba(80,64,40,.25)}
+
+/* settings tabs, chips: pencil-highlight */
+.set-tab{border-radius:6px;font-weight:500;border-color:transparent}
+.set-tab.active{background:rgba(212,167,44,.22);border-color:transparent;
+  color:var(--text);font-weight:600}
+.dchip{border-radius:6px;border-color:var(--line);font-weight:500}
+.dchip.on{background:rgba(212,167,44,.24);border-color:var(--accent);
+  color:var(--text);font-weight:600}
+.tchip,.mini,.mini2,.icon-btn{background:var(--fill);border-color:var(--line)}
+
+/* theme toggle stays a real segmented control */
+.seg{background:var(--fill);border:1px solid var(--line-soft);border-radius:8px}
+.seg button{background:transparent;border-radius:6px;color:var(--text-dim)}
+.seg button.on{background:var(--accent);color:#FBF7EC;font-weight:600;
+  box-shadow:0 1px 2px rgba(80,64,40,.2)}
+.seg button.on:hover{background:var(--accent)}
+
+/* switch — brass toggle on paper */
+.chk .sw{width:44px;height:26px;background:var(--fill-strong)}
+.chk .sw::after{width:22px;height:22px;top:3px;left:3px;
+  box-shadow:0 2px 5px rgba(60,48,28,.3);
+  transition:transform .22s var(--ease-spring)}
+.chk input:checked + .sw{background:var(--sw-on,#5B7A47)}
+.chk input:checked + .sw::after{transform:translateX(20px)}
+.sw-sm{width:34px;height:20px}
+.sw-sm::after{width:16px;height:16px}
+.chk input:checked + .sw-sm::after{transform:translateX(12px)}
+
+/* ---------- stat chips: pencil-underlined labels ---------- */
+.chip{border-radius:6px;background:transparent!important;
+  border:1px solid var(--line);border-left:4px solid var(--tc)}
+.chip b{font-weight:700}
+
+/* ---------- board: ruled paper, red margin ---------- */
+.board{border-color:var(--line);
+  background:
+    linear-gradient(var(--line-soft) 1px,transparent 1px) 0 0/100% 28px,
+    var(--panel)}
+.gutter{position:relative}
+/* red margin rule down the left edge */
+.gutter::after{content:"";position:absolute;top:0;bottom:0;right:-1px;width:2px;
+  background:rgba(178,52,44,.35);pointer-events:none}
+.g-label{font-family:var(--font-paper);color:var(--muted);
+  font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.d-name{font-family:Georgia,"Iowan Old Style",serif;font-weight:700;letter-spacing:0}
+.d-total{font-variant-numeric:tabular-nums}
+
+/* grid: ruled lines only — recede into the paper */
+.day-body{cursor:copy}
+.is-today .day-head{background:rgba(212,167,44,.12)}
+.is-today .d-name{color:var(--accent);font-weight:700}
+
+/* events: index cards with ink writing */
+.ev,.ev-spine,.mcard{border-radius:8px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-left:4px solid var(--tc);
+  box-shadow:0 1px 2px rgba(80,64,40,.14)}
+.ev:hover{box-shadow:0 3px 10px rgba(80,64,40,.22)}
+.ev-title{font-weight:600;color:var(--ev-title)}
+.ev-meta{color:var(--ev-meta);font-variant-numeric:tabular-nums;opacity:1}
+.mc-title{font-weight:600;color:var(--ev-title)}
+.mc-sub,.mc-time,.mc-seg{color:var(--ev-meta);opacity:1;font-variant-numeric:tabular-nums}
+.mc-pause{color:var(--muted)}
+.pib-dot{box-shadow:0 0 0 1px rgba(255,255,255,.25)}
+
+/* non-working hours: soft graphite wash, no stripes */
+.zone{background:var(--zone-dim,rgba(90,74,50,.08))}
+html:not([data-theme="light"]) .zone{background:rgba(0,0,0,.3)}
+.pzone{background:var(--zh)}
+
+.now-line{border-top-color:var(--danger)}
+.now-line::before{background:var(--danger)}
+
+/* ---------- modals: paper sheets ---------- */
+.mb{background:rgba(43,36,23,.45)}
+.modal{border-radius:12px}
+.modal h3{font-family:Georgia,"Iowan Old Style",serif;font-weight:700;letter-spacing:-.01em}
+.modal input,.modal select,.modal textarea{
+  background:var(--panel-2);border-color:var(--line);border-radius:8px;
+  transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}
+.modal input:focus,.modal select:focus,.modal textarea:focus{
+  outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(138,31,29,.18)}
+.field,.modal label{font-weight:500}
+.modal-actions.foot{background:var(--panel);box-shadow:0 -1px 0 var(--line-soft)}
+
+/* segmented control */
+.seg{background:var(--fill);border:1px solid var(--line);border-radius:8px;padding:2px}
+.seg button{background:transparent;border-radius:6px;color:var(--text-dim);font-weight:500}
+.seg button:hover{background:transparent;color:var(--text);text-decoration:underline}
+.seg button.on{background:var(--accent);color:#FBF7EC;font-weight:700;
+  box-shadow:0 1px 2px rgba(60,48,28,.25)}
+.seg button.on:hover{background:var(--accent)}
+
+/* switch: ink-green when on */
+.chk .sw{background:var(--fill-strong)}
+.chk .sw::after{box-shadow:0 2px 5px rgba(60,48,28,.3);
+  transition:transform .2s var(--ease-spring)}
+.chk input:checked + .sw{background:#5B7A46}
+
+/* ---------- toasts: paper chits ---------- */
+.toast{background:var(--panel);color:var(--text);border:1px solid var(--line);
+  border-radius:10px;padding:10px 16px;font-weight:600;
+  box-shadow:0 6px 20px rgba(80,64,40,.25)}
+.toast.err{background:#7A2E1E;border-color:#8A3A28;color:#FBF7EC}
+
+/* ---------- mobile ---------- */
+.mcard{border-radius:10px;border:1px solid var(--line);
+  border-left:4px solid var(--tc,#8aa0c0);
+  background:var(--panel)}
+.mc-title{font-weight:600}
+.mc-sub,.mc-time,.mc-seg{color:var(--ev-meta);opacity:1}
+.mpill{background:var(--fill);border-color:var(--line);font-weight:500}
+.mpill.on{background:var(--accent);border-color:var(--accent);color:#FBF7EC;font-weight:700}
+.mday-title{font-family:Georgia,"Iowan Old Style",serif;font-weight:700}
+.mempty{border-color:var(--line)}
+.fab{box-shadow:0 6px 18px rgba(60,48,28,.35);
+  transition:transform .15s var(--ease),background-color .2s var(--ease)}
+.fab:active{transform:scale(.93)}
+.fab.main.done{background:#5B7A46}
+.empty-note{border-radius:10px;border-style:solid}
+
+/* hint bar reads like a footnote */
+.hintbar{font-style:italic}
+
+/* ---------- print: plain white paper, no grain ---------- */
+@media print{
+  body{background:#fff}
+  body::before,body::after{display:none}
+  :root,html[data-theme="dark"],html[data-theme="light"]{
+    --bg:#fff;--panel:#fff;--panel-2:#fff;
+    --line:#8a97ab;--line-soft:#c9d3e0;--fill:#eef1f5;--fill-strong:#e2e7ee;
+    --grid-hour:#aab6c8;--grid-half:#d5deeb;
+    --text:#000;--text-dim:#222;--muted:#555;
+    --ev-title:#000;--ev-meta:#444;
+    --grid:#fff;--grid-hover:#f2f2f2;--grid-we:#fafafa;--grid-we-hover:#f2f2f2;
+    --head:#f4f4f4;--accent:#2563eb;
+    --shadow:none;--zone-dim:rgba(0,0,0,.05)}
+  .gutter::after{display:none}
+}
