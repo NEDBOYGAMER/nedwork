@@ -3,83 +3,301 @@
 {% block title %}nedwork — Tasks{% endblock %}
 
 {% block extra_head %}
-    <meta name="description" content="Private Dashboard Site">
-    <meta property="og:image" content="{{ url_for('static', filename='img/about/header_img.png') }}">
+    <meta name="description" content="Personal task manager">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/tasks.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/context_menu.css') }}">
 {% endblock %}
+
+{% macro icon(name, cls='icon') -%}
+    <span class="{{ cls }}" style="--icon: url('{{ url_for('static', filename='img/icons/tabler-' ~ name ~ '.svg') }}')"></span>
+{%- endmacro %}
 
 {% block content %}
 
-    <main class="Tasks">
+<main class="tasks-page">
 
-        <header id="tasks-header">
-            <h1 id="tasks-title">Tasks</h1>
+    <header id="tasks-header">
+        <h1 id="tasks-title">Tasks</h1>
+        <div class="tasks-toolbar">
+            <div class="input-group has-icon task-search">
+                {{ icon('search', 'icon input-group-icon') }}
+                <input id="taskSearch" type="search" placeholder="Search tasks" autocomplete="off">
+            </div>
+
+            <button type="button" class="btn btn-secondary btn-icon" id="exportBtn" title="Export tasks as JSON backup">
+                {{ icon('download') }}
+            </button>
+
+            <button type="button" class="btn btn-primary" id="newTaskBtn">
+                {{ icon('plus') }}
+                New task
+            </button>
+        </div>
+    </header>
+
+    <nav class="tabs" id="tasks-nav" role="tablist" aria-label="Task views">
+        <button type="button" class="tab active" role="tab" aria-selected="true" data-view="overview">Overview</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-view="priority">Priority</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-view="urgency">Urgency</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-view="importance">Importance</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-view="all">All</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-view="done">Done</button>
+        <!-- one pill tab per tag on an active task is appended here by tasks.js -->
+
+        <div class="tabs-controls">
+            <button type="button" class="btn-ghost-icon" id="lockBtn" title="Lock private tasks" hidden>
+                {{ icon('lock') }}
+            </button>
+        </div>
+    </nav>
+
+    <p class="drag-hint" id="dragHint" hidden>Drop on a tag to add it to the task</p>
+
+    <div id="container"></div>
+
+    <!-- create / edit modal -->
+    <div class="modal-backdrop" id="taskModalBackdrop">
+        <div class="task-modal" role="dialog" aria-modal="true" aria-labelledby="taskModalTitle">
+            <form id="taskForm" novalidate>
+                <header class="task-modal-head">
+                    <h2 id="taskModalTitle">New task</h2>
+                    <button type="button" class="btn-ghost-icon" data-action="close-modal" title="Close">
+                        {{ icon('x') }}
+                    </button>
+                </header>
+
+                <div class="task-modal-body">
+                    <div class="field">
+                        <label for="taskName">Name</label>
+                        <input id="taskName" name="name" type="text" maxlength="80" required>
+                        <p class="field-error" id="taskNameError" hidden>Name is required</p>
+                    </div>
+
+                    <div class="field">
+                        <label for="taskDeadline">Deadline</label>
+                        <div class="deadline-row">
+                            <input id="taskDeadline" name="deadline" type="datetime-local">
+                            <button type="button" class="btn btn-secondary btn-sm" data-quick="today">Today</button>
+                            <button type="button" class="btn btn-secondary btn-sm" data-quick="tomorrow">Tomorrow</button>
+                            <button type="button" class="btn btn-secondary btn-sm" data-quick="week">Next week</button>
+                        </div>
+                        <p class="hint">Local time — leave empty for none</p>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="taskImportance">Importance</label>
+                            <select id="taskImportance" name="importance">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                                <option value="very high">Very high</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="taskRecurrence">Repeats</label>
+                            <select id="taskRecurrence" name="recurrence">
+                                <option value="" selected>Never</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                            <p class="hint">Completing it spawns the next instance.</p>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="taskTags">Tags</label>
+                        <input id="taskTags" type="text" placeholder="comma, separated, tags" autocomplete="off">
+                        <p class="hint">Every tag on an active task gets its own tab.</p>
+                    </div>
+
+                    <div class="field">
+                        <label for="taskText">Notes</label>
+                        <textarea id="taskText" rows="3" placeholder="Details, links, context…"></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label>Subtasks</label>
+                        <ul class="subtask-editor" id="subtaskList"></ul>
+                        <div class="subtask-add">
+                            <input id="subtaskInput" type="text" placeholder="Add a subtask" autocomplete="off">
+                            <button type="button" class="btn btn-secondary btn-sm" id="addSubtaskBtn">
+                                {{ icon('plus') }}
+                                Add
+                            </button>
+                        </div>
+                    </div>
+
+                    <label class="switch-row">
+                        <span class="switch">
+                            <input type="checkbox" id="taskPrivate">
+                            <span class="switch-track"></span>
+                        </span>
+                        <span class="switch-label">Private — name, notes, subtasks and tags are encrypted in your browser</span>
+                    </label>
+
+                    <div class="field" id="taskPassWrap" hidden>
+                        <label for="taskPassphrase">Private passphrase</label>
+                        <input id="taskPassphrase" type="password" autocomplete="new-password">
+                        <p class="field-error" id="taskPassError" hidden></p>
+                        <p class="hint">Needed because your private tasks are currently locked. The passphrase never leaves this device — if these are your first private tasks, remember it well, it can't be recovered.</p>
+                    </div>
+                </div>
+
+                <footer class="task-modal-foot">
+                    <button type="button" class="btn btn-ghost" data-action="close-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="taskSaveBtn">Save task</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    <!-- unlock private tasks -->
+    <div class="modal-backdrop" id="unlockBackdrop">
+        <div class="task-modal task-modal-sm" role="dialog" aria-modal="true" aria-labelledby="unlockTitle">
+            <form id="unlockForm" novalidate>
+                <div class="task-modal-body">
+                    <h2 class="task-modal-title" id="unlockTitle">Unlock private tasks</h2>
+                    <p class="task-modal-text">Enter your private passphrase. It unlocks all private tasks, never leaves this device, and they lock again when you reload.</p>
+                    <div class="field">
+                        <label for="unlockPassphrase">Passphrase</label>
+                        <input id="unlockPassphrase" type="password" autocomplete="off">
+                        <p class="field-error" id="unlockError" hidden>Wrong passphrase</p>
+                    </div>
+                </div>
+                <footer class="task-modal-foot">
+                    <button type="button" class="btn btn-ghost" data-action="close-unlock">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="unlockBtn">Unlock</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    <!-- confirmation (private wipe / discard changes) -->
+    <div class="modal-backdrop" id="confirmBackdrop">
+        <div class="task-modal task-modal-sm" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+            <form id="confirmForm" novalidate>
+                <div class="task-modal-body">
+                    <h2 class="task-modal-title" id="confirmTitle">Are you sure?</h2>
+                    <p class="task-modal-text" id="confirmText"></p>
+                </div>
+                <footer class="task-modal-foot">
+                    <button type="button" class="btn btn-ghost" data-action="close-confirm">Cancel</button>
+                    <button type="submit" class="btn btn-danger" id="confirmDeleteBtn">Confirm</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    <!-- right-click menu -->
+    <ul class="context-menu" id="taskContextMenu" hidden>
+        <li class="context-option" data-cmd="unlock" hidden>{{ icon('lock-open') }}Unlock</li>
+        <li class="context-option" data-cmd="toggle-done">{{ icon('check') }}<span data-cmd-label>Mark done</span></li>
+        <li class="context-option" data-cmd="edit">{{ icon('edit') }}Edit</li>
+        <li class="context-option" data-cmd="duplicate">{{ icon('copy') }}Duplicate</li>
+        <li class="context-option context-danger" data-cmd="delete">{{ icon('trash') }}Delete</li>
+    </ul>
+
+</main>
+
+<!-- overview rows use these compact cards; rows share the viewport height -->
+<template id="overview-card-template">
+    <article class="overview-card" data-task-id="" tabindex="0" role="button">
+        <div class="overview-card-top">
+            <h4 class="overview-card-title" data-field="name"></h4>
+            <span class="icon overview-lock" data-field="lock" style="--icon: url('{{ url_for('static', filename='img/icons/tabler-lock.svg') }}')" hidden></span>
+        </div>
+        <p class="overview-card-text" data-field="text" hidden></p>
+        <div class="overview-card-meta">
+            <span class="badge badge-neutral" data-field="urgency">{{ icon('calendar') }}<span data-field-text></span></span>
+            <span class="badge badge-neutral" data-field="importance">{{ icon('alert-circle') }}<span data-field-text></span></span>
+            <span class="overview-card-due" data-field="due"></span>
+        </div>
+    </article>
+</template>
+
+<!-- shelf (full lists in the tabs) -->
+<template id="shelf-template">
+    <section class="task-shelf">
+        <header class="task-shelf-head">
+            <h3 class="task-shelf-title" data-field="title"></h3>
+            <span class="badge badge-neutral badge-mono" data-field="count">0</span>
+        </header>
+        <p class="task-shelf-hint" data-field="hint" hidden></p>
+        <div class="task-shelf-grid"></div>
+    </section>
+</template>
+
+<!-- task card -->
+<template id="task-template">
+    <article class="task-card card" data-task-id="" tabindex="0" role="button">
+        <header class="task-card-head">
+            <h4 class="task-card-title" data-field="name"></h4>
+            <span class="badge badge-success" data-field="working-flag" hidden>Working</span>
+            <span class="badge badge-success" data-field="done-flag" hidden>
+                {{ icon('check') }}Done
+            </span>
         </header>
 
-        <nav>
-            <div id="navrow">
-                <div><span>Overwiev</span></div>
-                <div><span>Soon</span></div>
-                <div><span>All</span></div>
-            </div>
-        </nav>
+        <div class="task-card-meta">
+            <span class="badge badge-neutral" data-field="urgency">
+                {{ icon('calendar') }}
+                <span data-field-text></span>
+            </span>
+            <span class="badge badge-neutral" data-field="importance">
+                {{ icon('alert-circle') }}
+                <span data-field-text></span>
+            </span>
+            <span class="badge badge-neutral" data-field="recurrence" hidden>
+                {{ icon('calendar') }}<span data-field-text></span>
+            </span>
+            <span class="badge badge-neutral" data-field="private" hidden>
+                {{ icon('lock') }}Private
+            </span>
+        </div>
 
-        <div id="container"></div>
+        <p class="task-card-text" data-field="text"></p>
 
-    </main>
+        <div class="task-card-subtasks" data-field="subtasks-wrap">
+            <p class="task-card-label">Subtasks <span class="task-card-count" data-field="subtasks-count"></span></p>
+            <div class="progress task-progress"><div class="progress-fill" data-field="subtasks-progress"></div></div>
+            <ul class="subtask-list" data-field="subtasks"></ul>
+        </div>
 
-    <template id="shelf-template">
-        <article>
-            <h3 data-field="title">Title</h3><span>extra info</span><span>long streak</span><a>expand</a>
-            <div class="shelf"></div>
-        </article>
-    </template>
+        <div class="task-card-tags" data-field="tags"></div>
 
-    <template id="task-template">
-        <article class="task-card" data-task-id="">
-            <h2 class="task-card-title" data-field="name">Placeholder</h2>
-
-            <div class="task-card-meta">
-                <span class="task-card-meta-tags task-urgency" data-field="urgency">
-                    <svg class="urgency-icon" viewBox="0 0 24 24" aria-hidden="true">
-                        <circle cx="12" cy="12" r="9"></circle>
-                        <path d="M12 7v5l3 2"></path>
-                    </svg>
-                    <span data-field-text>Urgency</span>
-                </span>
-                <span class="task-card-meta-tags task-importance" data-field="importance">
-                    <svg class="importance-icon" viewBox="0 0 24 24" aria-hidden="true">
-                        <circle cx="12" cy="12" r="9"></circle>
-                        <path d="M12 7v6"></path>
-                        <circle cx="12" cy="16.5" r="0.5" fill="currentColor"></circle>
-                    </svg>
-                    <span data-field-text>Importance</span>
-                </span>
-                <span class="task-private" data-field="private" hidden>private</span>
-            </div>
-
-            <div class="task-card-text">
-                <p data-field="text">This is test text</p>
-            </div>
-
-            <p class="task-subtasks-label">Subtasks</p>
-            <ul class="task-card-subtasks" data-field="subtasks"></ul>
-
-            <div class="task-card-tags" data-field="tags"></div>
-
-            <p class="task-deadline">Due at: <span data-field="deadline">—</span></p>
-
+        <footer class="task-card-foot">
+            <span class="task-card-due" data-field="due"></span>
             <div class="task-card-actions">
-                <span><button data-action="delete">delete</button></span>
-                <span><button data-action="toggle-done">finished</button></span>
+                <button type="button" class="btn-ghost-icon" data-action="toggle-done" title="Mark done">
+                    <span class="icon task-toggle-icon" style="--icon: url('{{ url_for('static', filename='img/icons/tabler-check.svg') }}')"></span>
+                </button>
+                <button type="button" class="btn-ghost-icon" data-action="edit" title="Edit">
+                    {{ icon('edit') }}
+                </button>
+                <button type="button" class="btn-ghost-icon btn-ghost-danger" data-action="delete" title="Delete">
+                    {{ icon('trash') }}
+                </button>
             </div>
-        </article>
-    </template>
+        </footer>
+    </article>
+</template>
+
+<!-- empty state -->
+<template id="empty-template">
+    <div class="empty-state">
+        {{ icon('check', 'icon icon-lg task-empty-icon') }}
+        <h3 data-field="title"></h3>
+        <p data-field="hint"></p>
+    </div>
+</template>
 
 {% endblock %}
 
 {% block extra_scripts %}
     <script>window.STATIC_URL = "{{ url_for('static', filename='') }}";</script>
-    <script>window.TASKS_API_URL = "{{ url_for('tasks.list_owned_dashboards') }}";</script>
+    <script>window.TASKS_API_URL = "{{ url_for('tasks.list_owned_tasks') }}";</script>
+    <script>window.LOGIN_URL = "{{ url_for('auth.login_page') }}";</script>
     <script type="module" src="{{ url_for('static', filename='js/pages/tasks.js') }}"></script>
 {% endblock %}

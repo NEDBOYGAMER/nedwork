@@ -388,4 +388,8 @@ class Task(db.Model):
     last_updated_at = db.Column(db.DateTime, nullable=False)
     completed_at = db.Column(db.DateTime)
 
+    working = db.Column(db.Boolean, nullable=False, default=False)
+    recurrence = db.Column(db.String(20))      # None | "daily" | "weekly" | "monthly"
+    position = db.Column(db.Integer)           # manual order in the All tab
+
     user = db.relationship("User", back_populates="tasks")
