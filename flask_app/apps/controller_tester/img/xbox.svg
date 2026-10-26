@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+  <g class="gp-controller" style="pointer-events:none">
+    <!-- grips (decorative, drawn behind the body) -->
+    <rect x="245" y="380" width="110" height="280" rx="55" transform="rotate(18 300 520)" style="fill:var(--surface-2);stroke:var(--line);stroke-width:3"/>
+    <rect x="845" y="380" width="110" height="280" rx="55" transform="rotate(-18 900 520)" style="fill:var(--surface-2);stroke:var(--line);stroke-width:3"/>
+
+    <!-- body -->
+    <rect x="280" y="150" width="640" height="420" rx="210" style="fill:var(--surface-2);stroke:var(--line);stroke-width:3"/>
+
+    <!-- triggers + bumpers -->
+    <g class="gp-btn" data-gp="LT">
+      <rect x="355" y="127" width="130" height="32" rx="16" style="fill:var(--surface);stroke:var(--line);stroke-width:2.5"/>
+      <rect class="gp-trigger-fill" data-max="118" x="361" y="133" width="0" height="20" rx="10" style="fill:var(--accent);opacity:.6"/>
+      <rect class="gp-glow" x="355" y="127" width="130" height="32" rx="16" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:2"/>
+    </g>
+    <g class="gp-btn" data-gp="RT">
+      <rect x="715" y="127" width="130" height="32" rx="16" style="fill:var(--surface);stroke:var(--line);stroke-width:2.5"/>
+      <rect class="gp-trigger-fill" data-max="118" x="721" y="133" width="0" height="20" rx="10" style="fill:var(--accent);opacity:.6"/>
+      <rect class="gp-glow" x="715" y="127" width="130" height="32" rx="16" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:2"/>
+    </g>
+    <g class="gp-btn" data-gp="LB">
+      <rect x="340" y="173" width="160" height="34" rx="17" style="fill:var(--surface);stroke:var(--line);stroke-width:2.5"/>
+      <rect class="gp-glow" x="340" y="173" width="160" height="34" rx="17" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:2"/>
+    </g>
+    <g class="gp-btn" data-gp="RB">
+      <rect x="700" y="173" width="160" height="34" rx="17" style="fill:var(--surface);stroke:var(--line);stroke-width:2.5"/>
+      <rect class="gp-glow" x="700" y="173" width="160" height="34" rx="17" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:2"/>
+    </g>
+
+    <!-- guide button -->
+    <g class="gp-btn" data-gp="Home">
+      <circle class="gp-glow" cx="600" cy="195" r="36" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:2"/>
+      <circle cx="600" cy="195" r="34" style="fill:#F2F2F2"/>
+      <path d="M 600 179 C 605 187 609 191 615 195 C 609 199 605 203 600 211 C 595 203 591 199 585 195 C 591 191 595 187 600 179 Z" style="fill:#16161A"/>
+    </g>
+
+    <!-- view / menu / share -->
+    <g class="gp-btn" data-gp="View" style="color:var(--text-muted)">
+      <circle class="gp-glow" cx="543" cy="216" r="14" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:2"/>
+      <circle cx="543" cy="216" r="14" style="fill:var(--bg);stroke:var(--line);stroke-width:2"/>
+      <rect x="536" y="210" width="7" height="9" rx="1" style="fill:none;stroke:currentColor;stroke-width:1.5"/>
+      <rect x="540.5" y="213" width="7" height="9" rx="1" style="fill:var(--surface-2);stroke:currentColor;stroke-width:1.5"/>
+    </g>
+    <g class="gp-btn" data-gp="Menu" style="color:var(--text-muted)">
+      <circle class="gp-glow" cx="657" cy="216" r="14" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:2"/>
+      <circle cx="657" cy="216" r="14" style="fill:var(--bg);stroke:var(--line);stroke-width:2"/>
+      <path d="M 650 210 H 664 M 650 216 H 664 M 650 222 H 664" style="fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round"/>
+    </g>
+    <g style="color:var(--text-muted)">
+      <circle cx="600" cy="258" r="12" style="fill:var(--bg);stroke:var(--line);stroke-width:2"/>
+      <path d="M 600 254 V 263 M 597 256.5 L 600 253.5 L 603 256.5" style="fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"/>
+    </g>
+
+    <!-- left stick -->
+    <g class="gp-btn" data-gp="LS">
+      <circle cx="440" cy="262" r="47" style="fill:var(--bg);stroke:var(--line);stroke-width:2.5"/>
+      <circle class="gp-glow" cx="440" cy="262" r="44" style="fill:var(--accent-soft)"/>
+      <g class="gp-cap">
+        <circle cx="440" cy="262" r="36" style="fill:var(--surface);stroke:var(--line);stroke-width:2.5"/>
+        <circle cx="440" cy="262" r="27" style="fill:none;stroke:var(--line);stroke-width:1.5;opacity:.8"/>
+      </g>
+    </g>
+
+    <!-- right stick -->
+    <g class="gp-btn" data-gp="RS">
+      <circle cx="775" cy="480" r="47" style="fill:var(--bg);stroke:var(--line);stroke-width:2.5"/>
+      <circle class="gp-glow" cx="775" cy="480" r="44" style="fill:var(--accent-soft)"/>
+      <g class="gp-cap">
+        <circle cx="775" cy="480" r="36" style="fill:var(--surface);stroke:var(--line);stroke-width:2.5"/>
+        <circle cx="775" cy="480" r="27" style="fill:none;stroke:var(--line);stroke-width:1.5;opacity:.8"/>
+      </g>
+    </g>
+
+    <!-- d-pad -->
+    <path d="M 501 346 H 539 V 379 H 572 V 417 H 539 V 450 H 501 V 417 H 468 V 379 H 501 Z" style="fill:var(--surface);stroke:var(--line);stroke-width:2.5;stroke-linejoin:round"/>
+    <circle cx="520" cy="398" r="4" style="fill:var(--line)"/>
+    <g class="gp-btn" data-gp="DPadUp">
+      <circle class="gp-glow" cx="520" cy="363" r="15" style="fill:var(--accent)"/>
+    </g>
+    <g class="gp-btn" data-gp="DPadDown">
+      <circle class="gp-glow" cx="520" cy="433" r="15" style="fill:var(--accent)"/>
+    </g>
+    <g class="gp-btn" data-gp="DPadLeft">
+      <circle class="gp-glow" cx="485" cy="398" r="15" style="fill:var(--accent)"/>
+    </g>
+    <g class="gp-btn" data-gp="DPadRight">
+      <circle class="gp-glow" cx="555" cy="398" r="15" style="fill:var(--accent)"/>
+    </g>
+
+    <!-- face buttons: A bottom, B right, X left, Y top -->
+    <g class="gp-btn" data-gp="Y" style="color:#EFC12A">
+      <circle class="gp-glow" cx="705" cy="327" r="29" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:2"/>
+      <circle cx="705" cy="327" r="27" style="fill:var(--surface);stroke:var(--line);stroke-width:2.5"/>
+      <text class="gp-glyph" x="705" y="329" style="fill:currentColor">Y</text>
+    </g>
+    <g class="gp-btn" data-gp="B" style="color:#E5534B">
+      <circle class="gp-glow" cx="763" cy="385" r="29" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:2"/>
+      <circle cx="763" cy="385" r="27" style="fill:var(--surface);stroke:var(--line);stroke-width:2.5"/>
+      <text class="gp-glyph" x="763" y="387" style="fill:currentColor">B</text>
+    </g>
+    <g class="gp-btn" data-gp="X" style="color:#3B9DE5">
+      <circle class="gp-glow" cx="647" cy="385" r="29" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:2"/>
+      <circle cx="647" cy="385" r="27" style="fill:var(--surface);stroke:var(--line);stroke-width:2.5"/>
+      <text class="gp-glyph" x="647" y="387" style="fill:currentColor">X</text>
+    </g>
+    <g class="gp-btn" data-gp="A" style="color:#4CAF50">
+      <circle class="gp-glow" cx="705" cy="443" r="29" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:2"/>
+      <circle cx="705" cy="443" r="27" style="fill:var(--surface);stroke:var(--line);stroke-width:2.5"/>
+      <text class="gp-glyph" x="705" y="445" style="fill:currentColor">A</text>
+    </g>
+  </g>
+</svg>

@@ -4,8 +4,10 @@ import json
 import os
 import re
 
-from flask import Blueprint, request, jsonify, redirect, url_for
+from flask import Blueprint, request, jsonify
 from sqlalchemy.orm.attributes import flag_modified
+
+from ...auth.decorators import permission_required, REDIRECT
 
 try:
     import requests
@@ -27,14 +29,6 @@ colors_bp = Blueprint('colors', __name__)
 # ------------------------------------------------------------------
 # helpers
 # ------------------------------------------------------------------
-
-def _require_user():
-    """Returns the logged-in User, or None if the session is invalid."""
-    valid, user = Session.check(request.cookies.get("session_id"))
-    if not valid:
-        return None
-    return user
-
 
 def _get_or_create_colors_config(user):
     """Every user gets exactly one AppsConfig + ColorsConfig row, created lazily.
@@ -99,7 +93,7 @@ def _is_valid_palette(palette):
 # the API key never has to live in the browser. Override via env vars if
 # you want to rotate the key/model without touching code.
 # ------------------------------------------------------------------
-AI_API_URL = "https://ai.nedwork.ch/api/chat/completions"
+AI_API_URL = "https://chat.nedwork.ch/api/chat/completions"
 AI_API_KEY = os.environ.get("COLORS_AI_API_KEY", "sk-2452123ed62b4ae9aee25ea442a3bafc")
 AI_MODEL = os.environ.get("COLORS_AI_MODEL", "colorpalette-generator")
 MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -275,11 +269,8 @@ def _generate_palette_from_image(image_bytes, mime_type, number):
 # ------------------------------------------------------------------
 
 @colors_bp.route("/list", methods=["GET"])
-def list_palettes():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for('auth.login_page'))
-
+@permission_required("core", REDIRECT)
+def list_palettes(user):
     colors_config = _get_or_create_colors_config(user)
     db.session.commit()
 
@@ -287,11 +278,8 @@ def list_palettes():
 
 
 @colors_bp.route("/save", methods=["POST"])
-def save_colors():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for('auth.login_page'))
-
+@permission_required("core", REDIRECT)
+def save_colors(user):
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "No data provided"}), 400
@@ -322,11 +310,8 @@ def save_colors():
 
 
 @colors_bp.route("/delete", methods=["POST"])
-def delete_colors():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for('auth.login_page'))
-
+@permission_required("core", REDIRECT)
+def delete_colors(user):
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "No data provided"}), 400
@@ -363,11 +348,12 @@ def delete_colors():
 
 
 @colors_bp.route("/palette-from-image", methods=["POST"])
-def palette_from_image():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for('auth.login_page'))
-
+# the AI call is billed/rate-limited on the server → gated separately from
+# the rest of Colors; a user must have BOTH core (general site access)
+# and colors_ai, so the two checks stack instead of any-of
+@permission_required("core", REDIRECT)
+@permission_required("colors_ai", REDIRECT)
+def palette_from_image(user):
     file = request.files.get("image")
     if file is None or not file.filename:
         return jsonify({"error": "No image uploaded"}), 400

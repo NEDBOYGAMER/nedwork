@@ -42,6 +42,20 @@ function el(tag, cls, text) {
   return n;
 }
 
+/* escape user-reachable strings before they end up inside innerHTML templates */
+function esc(text) {
+  return String(text === undefined || text === null ? "" : text)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/* colors come from the data files — allow only plain color syntax */
+function safeColor(value) {
+  const s = String(value || "");
+  return /^#[0-9a-fA-F]{3,8}$/.test(s) ? s : "#cccccc";
+}
+
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
   $(id).classList.add("active");
@@ -348,7 +362,7 @@ function buildBoard(state) {
       const icon = art
         ? `<img class="corner-art" src="${API_BASE}${art}" alt="" onerror="this.src='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='">`
         : `<div class="tile-icon">${CORNER_ICON[tile.kind] || "•"}</div>`;
-      div.innerHTML = `${icon}<div class="tile-name">${tile.name}</div><div class="tile-tokens"></div>`;
+      div.innerHTML = `${icon}<div class="tile-name">${esc(tile.name)}</div><div class="tile-tokens"></div>`;
     } else if (tile.type === "chance") {
       div.classList.add("chance");
       div.innerHTML = `<div class="tile-icon">${CHANCE_ICON}</div><div class="tile-name">CHANCE</div><div class="tile-tokens"></div>`;
@@ -357,14 +371,14 @@ function buildBoard(state) {
       div.innerHTML = `<div class="tile-icon">${COMMUNITY_ICON}</div><div class="tile-name">COMMUNITY</div><div class="tile-tokens"></div>`;
     } else if (tile.type === "tax") {
       div.classList.add("tax");
-      div.innerHTML = `<div class="tile-icon">${TAX_ICON}</div><div class="tile-name">${tile.name || "TAX"}</div><div class="tile-tokens"></div>`;
+      div.innerHTML = `<div class="tile-icon">${TAX_ICON}</div><div class="tile-name">${esc(tile.name || "TAX")}</div><div class="tile-tokens"></div>`;
     } else {
       div.classList.add("property", tile.type);
       const railPrefix = tile.type === "railway" ? RAIL_ICON + " " : "";
       const band = tile.type === "street" || tile.type === "railway"
-        ? `<div class="tile-band" style="background:${tile.color}"></div>` : "";
+        ? `<div class="tile-band" style="background:${safeColor(tile.color)}"></div>` : "";
       div.innerHTML = band + `
-        <div class="tile-name">${railPrefix}${tile.name}</div>
+        <div class="tile-name">${railPrefix}${esc(tile.name)}</div>
         <div class="tile-price">${money(tile.price)}</div>
         <div class="tile-houses"></div>
         <div class="tile-tokens"></div>`;

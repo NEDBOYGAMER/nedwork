@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "apps-btn":     "/app_corner",
         "settings-btn": "/settings",
         "about-btn":    "/about",
+        "login-btn":    "/auth/login",
     };
 
     Object.entries(routes).forEach(([id, url]) => {
@@ -49,13 +50,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // window.location.href = "/account";
     });
 
-    document.getElementById("logout-btn")?.addEventListener("click", async () => {
-        closeMobileNav();
-        const response = await fetch("/auth/api/logout", { method: "POST" });
-        if (response.redirected) {
-            window.location.href = response.url;
-        }
-    });
+    /* Logout is a plain <a href="/auth/logout"> in the markup on purpose:
+       native navigation cannot be broken by a stale cached copy of this
+       script, and the server clears the cookies in that same chain. */
 
     /* ── Mobile drawer ─────────────────────────────────────────────── */
 

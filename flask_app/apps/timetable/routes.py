@@ -3,12 +3,13 @@ import os
 import re
 from datetime import date, datetime, time, timedelta
 
-from flask import Blueprint, Response, jsonify, redirect, request, url_for
+from flask import Blueprint, Response, jsonify, request
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import text as sa_text
 
 from ... import db
 from ...models import *  # noqa: F401,F403 — User, Session, AppsConfig (same pattern colors uses)
+from ...auth.decorators import permission_required, REDIRECT
 from .models import (
     TimetableConfig,
     TimetableEvent,
@@ -65,13 +66,6 @@ _DEFAULT_RENAMES = {
     "Exercise": ("U (Exercise)",   15, 45, True),
     "Learning": ("L (Self-study)", 0, 60, False),
 }
-
-
-def _require_user():
-    valid, user = Session.check(request.cookies.get("session_id"))
-    if not valid:
-        return None
-    return user
 
 
 def _migrate_schema():
@@ -485,22 +479,16 @@ def _state(config):
 # ------------------------------------------------------------------
 
 @timetable_bp.route("/api/state", methods=["GET"])
-def api_state():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def api_state(user):
     config = _get_or_create_config(user)
     db.session.commit()
     return jsonify(_state(config))
 
 
 @timetable_bp.route("/settings/save", methods=["POST"])
-def settings_save():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def settings_save(user):
     config = _get_or_create_config(user)
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
@@ -548,11 +536,8 @@ def settings_save():
 # ------------------------------------------------------------------
 
 @timetable_bp.route("/schedules/create", methods=["POST"])
-def schedule_create():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def schedule_create(user):
     data = request.get_json(silent=True) or {}
     config = _get_or_create_config(user)
 
@@ -569,11 +554,8 @@ def schedule_create():
 
 
 @timetable_bp.route("/schedules/rename", methods=["POST"])
-def schedule_rename():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def schedule_rename(user):
     data = request.get_json(silent=True) or {}
     config = _get_or_create_config(user)
     sched = _get_schedule(config, data.get("id"))
@@ -586,11 +568,8 @@ def schedule_rename():
 
 
 @timetable_bp.route("/schedules/activate", methods=["POST"])
-def schedule_activate():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def schedule_activate(user):
     data = request.get_json(silent=True) or {}
     config = _get_or_create_config(user)
     sched = _get_schedule(config, data.get("id"))
@@ -603,11 +582,8 @@ def schedule_activate():
 
 
 @timetable_bp.route("/schedules/duplicate", methods=["POST"])
-def schedule_duplicate():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def schedule_duplicate(user):
     data = request.get_json(silent=True) or {}
     config = _get_or_create_config(user)
     src = _get_schedule(config, data.get("id"))
@@ -648,11 +624,8 @@ def schedule_duplicate():
 
 
 @timetable_bp.route("/schedules/delete", methods=["POST"])
-def schedule_delete():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def schedule_delete(user):
     data = request.get_json(silent=True) or {}
     config = _get_or_create_config(user)
     sched = _get_schedule(config, data.get("id"))
@@ -676,11 +649,8 @@ def schedule_delete():
 
 
 @timetable_bp.route("/schedules/copy-from", methods=["POST"])
-def schedules_copy_from():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def schedules_copy_from(user):
     data = request.get_json(silent=True) or {}
     config = _get_or_create_config(user)
     src = _get_schedule(config, data.get("sourceId"))
@@ -705,11 +675,8 @@ def schedules_copy_from():
 
 
 @timetable_bp.route("/schedules/import-json", methods=["POST"])
-def schedules_import_json():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def schedules_import_json(user):
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "No JSON payload — send the contents of a JSON backup"}), 400
@@ -837,11 +804,8 @@ def schedules_import_json():
 # ------------------------------------------------------------------
 
 @timetable_bp.route("/types/save", methods=["POST"])
-def types_save():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def types_save(user):
     config = _get_or_create_config(user)
     data = request.get_json(silent=True) or {}
     items = data.get("types")
@@ -902,11 +866,8 @@ def types_save():
 # ------------------------------------------------------------------
 
 @timetable_bp.route("/periods/save", methods=["POST"])
-def periods_save():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def periods_save(user):
     config = _get_or_create_config(user)
     data = request.get_json(silent=True) or {}
     items = data.get("periods")
@@ -969,11 +930,8 @@ def periods_save():
 # ------------------------------------------------------------------
 
 @timetable_bp.route("/events/save", methods=["POST"])
-def events_save():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def events_save(user):
     config = _get_or_create_config(user)
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
@@ -1043,11 +1001,8 @@ def events_save():
 
 
 @timetable_bp.route("/events/delete", methods=["POST"])
-def events_delete():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def events_delete(user):
     data = request.get_json(silent=True) or {}
     config = _get_or_create_config(user)
     ev = _get_event(config, data.get("id"))
@@ -1060,11 +1015,8 @@ def events_delete():
 
 
 @timetable_bp.route("/events/copy-day", methods=["POST"])
-def events_copy_day():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def events_copy_day(user):
     config = _get_or_create_config(user)
     data = request.get_json(silent=True) or {}
     schedule = _get_schedule(config, data.get("scheduleId"))
@@ -1088,11 +1040,8 @@ def events_copy_day():
 
 
 @timetable_bp.route("/events/clear-day", methods=["POST"])
-def events_clear_day():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def events_clear_day(user):
     config = _get_or_create_config(user)
     data = request.get_json(silent=True) or {}
     schedule = _get_schedule(config, data.get("scheduleId"))
@@ -1120,11 +1069,8 @@ def events_clear_day():
 # ------------------------------------------------------------------
 
 @timetable_bp.route("/export/json", methods=["GET"])
-def export_json():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def export_json(user):
     config = _get_or_create_config(user)
     payload = _state(config)
     payload["exportedAt"] = datetime.utcnow().isoformat()
@@ -1196,11 +1142,8 @@ def _vevent_lines(e, day, first_date, stamp):
 
 
 @timetable_bp.route("/export/ics", methods=["GET"])
-def export_ics():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def export_ics(user):
     config = _get_or_create_config(user)
     schedule = _get_schedule(config, request.args.get("schedule_id", type=int))
     if schedule is None:
@@ -1260,11 +1203,8 @@ def _schedule_for_export(config):
 
 
 @timetable_bp.route("/export/pdf", methods=["GET"])
-def export_pdf():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def export_pdf(user):
     config = _get_or_create_config(user)
     schedule = _schedule_for_export(config)
     if schedule is None:
@@ -1286,11 +1226,8 @@ def export_pdf():
 
 
 @timetable_bp.route("/export/png", methods=["GET"])
-def export_png():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for("auth.login_page"))
-
+@permission_required("core", REDIRECT)
+def export_png(user):
     config = _get_or_create_config(user)
     schedule = _schedule_for_export(config)
     if schedule is None:

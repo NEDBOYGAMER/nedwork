@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app, json
 import os
 from ..models import *
+from ..auth.decorators import permission_required, PAGE, REDIRECT
+from ..permissions import catalog_for
 
 app_corner_bp = Blueprint('app_corner', __name__, static_folder='../static')
 
@@ -37,43 +39,28 @@ def _get_or_create_config(user):
 
 
 @app_corner_bp.route('/')
-def app_corner_page():
-    valid, user = Session.check(request.cookies.get("session_id"))
-
-    if not valid:
-        return redirect(url_for('auth.login_page'))
-
+@permission_required("core", PAGE)
+def app_corner_page(user):
     return render_template('main/app_corner.html')
 
 
 @app_corner_bp.route('/api/apps-data')
-def get_apps_data():
-    json_path = os.path.join(current_app.root_path, 'data', 'apps.json')
-    try:
-        with open(json_path, 'r', encoding='utf-8') as f:
-            return jsonify(json.load(f))
-    except Exception:
-        return jsonify({"error": "Apps data not found"}), 404
+@permission_required("core", REDIRECT)
+def get_apps_data(user):
+    """Catalog annotated with per-user "locked" flags."""
+    return jsonify(catalog_for(user))
 
 
 @app_corner_bp.route('/api/user_preferences')
-def get_user_preferences():
-    valid, user = Session.check(request.cookies.get("session_id"))
-
-    if not valid:
-        return redirect(url_for('auth.login_page'))
-
+@permission_required("core", REDIRECT)
+def get_user_preferences(user):
     config = _get_or_create_config(user)
     return jsonify(_config_to_dict(config))
 
 
 @app_corner_bp.route('/api/update_user_preferences', methods=["POST"])
-def update_user_preferences():
-    valid, user = Session.check(request.cookies.get("session_id"))
-
-    if not valid:
-        return redirect(url_for('auth.login_page'))
-
+@permission_required("core", REDIRECT)
+def update_user_preferences(user):
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid or missing JSON body"}), 400

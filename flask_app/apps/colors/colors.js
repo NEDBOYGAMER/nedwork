@@ -1224,7 +1224,27 @@ function setSelectedImage(file){
   }
 }
 
-document.getElementById('upload-btn').addEventListener('click', openImageModal);
+const uploadBtn = document.getElementById('upload-btn');
+uploadBtn.addEventListener('click', openImageModal);
+
+/* colors_ai function permission (the same gate the server enforces on
+   palette-from-image): conceal the extract-from-image entry point for
+   users who do not hold it. /auth/api/who reports the logged-in user's
+   held permissions; the server stays the authority, this only removes
+   the dead-end button (missing users would otherwise hit a failing
+   fetch inside the modal). */
+(async () => {
+  const conceal = () => { uploadBtn.style.display = 'none'; };   // .btn is display:flex, so the hidden attribute alone would lose
+  try {
+    const who = await fetch('/auth/api/who', { credentials: 'same-origin' });
+    if (!who.ok) { conceal(); return; }   // 401: not logged in
+    const data = await who.json();
+    const perms = (data && data.permissions) || [];
+    if (!perms.includes('colors_ai')) conceal();
+  } catch (e) {
+    conceal();   // cannot confirm access -> conceal
+  }
+})();
 
 function openImageModal(){
   // default = current palette length, clamped to the 1–12 slider range

@@ -19,8 +19,12 @@
     <div class="nav-section" id="bottom-nav">
         <button class="nav-item" id="about-btn" title="About">About</button>
         <button class="nav-item" id="settings-btn" title="Settings">Settings</button>
-        <button class="nav-item" id="account-btn" title="Account">Account</button>
-        <button class="nav-item danger" id="logout-btn">Logout</button>
+        {% if nav_logged_in %}
+        <button class="nav-item" id="account-btn" title="Account{% if nav_username %}: {{ nav_username }}{% endif %}">Account</button>
+        <a class="nav-item danger" href="/auth/logout">Logout</a>
+        {% else %}
+        <button class="nav-item" id="login-btn">Login</button>
+        {% endif %}
     </div>
 
     <script type="module" src="{{ url_for('static', filename='js/components/sidenav.js') }}"></script>

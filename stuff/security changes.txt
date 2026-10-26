@@ -1,0 +1,16 @@
+What changed
+Auth decorators — new flask_app/auth/decorators.py with @login_required(mode), injected as user=user into every view:
+- pages (/dashboard, /settings, /events/, /tasks, /app_corner) → redirect to login
+- APIs → exactly the response shape each frontend already handles: tasks/tierforge 401-JSON, timetable/colors/links follow-redirect, dashboard APIs render login HTML
+- /about/api/updates POST+DELETE and /api/suggestions GET were wide open — now gated (changelog GET stays public so anonymous visitors keep seeing the changelog)
+CSRF — double-submit pattern, zero frontend route changes: the app factory issues a csrf_token cookie to every browser and rejects POST/PUT/PATCH/DELETE without a matching X-CSRF-Token header (login/register exempt). New static/js/global/csrf.js (auto-injected into every HTML page, even ones not extending base.html) attaches the header to all same-origin fetch()/XHR — so all existing JS keeps working untouched.
+XSS / traversal (townclaim) — station names sanitized server-side + escaped client-side (esc()/safeColor()), game codes strictly validated A-Z0-9{5} before touching the filesystem.
+Formatting
+- registration: dup-check before hashing, username charset/length rules, min 8-char password, duplicate now 409; login page shows the error visibly
+- session cookies: explicit samesite="Lax"
+- settings save: no more 500 for users without a config (lazy-created); SettingsConfig.to_var mass-assignment hardened; friend key now uses secrets
+- create_all() kept as-is; .gitignore now covers *.db/-shm/-wal and the two secret ops docs (server_cheat-sheet.md, structure.md) so a stray git add . can't leak them
+Suggestions leak — suggestions moved out of static/ (world-readable) to instance/data/; the legacy file is deleted from git, and a one-time startup migration auto-moves any leftover file on the server.
+Two notes
+- Users with a tab open during deploy hit one 403 on the first stale request, then it's fine after any page reload.
+- Still not done (didn't want to change behavior without asking): login brute-force rate limiting, apps.json permissions enforced server-side (admin-flagged apps), and debug=True still on per your request — worth checking what command the Docker container runs.

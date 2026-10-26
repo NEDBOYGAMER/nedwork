@@ -625,6 +625,14 @@
     transform: none;
 }
 
+/* Locked (no permission) cards share the disabled look, plus a label */
+.shelf--disabled .app-card--locked .app-card-name::after {
+    content: " · no permission";
+    font-weight: 400;
+    font-size: 11px;
+    opacity: .85;
+}
+
 /* ── Collapsible disabled section ────────────────────────────────── */
 #disabled-section {
     margin-top: var(--space-2);

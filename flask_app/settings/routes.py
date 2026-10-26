@@ -1,24 +1,22 @@
 from flask import Blueprint, render_template, jsonify, request
 from ..models import *
+from ..auth.decorators import permission_required, PAGE, RENDER
 
 settings_bp = Blueprint('settings', __name__, static_folder='../static')
 
 @settings_bp.route('/')
-def settings():
+@permission_required("core", PAGE)
+def settings(user):
     return render_template('main/settings.html')
-
-from sqlalchemy.inspection import inspect
-
 
 
 @settings_bp.route('/api/save', methods=["POST"])
-def save_settings():
-    valid, user = Session.check(request.cookies.get("session_id"))
-
-    if not valid:
-        return render_template('auth/login.html')
-
+@permission_required("core", RENDER)
+def save_settings(user):
     data = request.get_json()
+
+    if user.settings_config is None:
+        user.settings_config = SettingsConfig(user_id=user.id)
 
     user.settings_config.to_var(data)
     db.session.commit()
@@ -26,12 +24,8 @@ def save_settings():
     return jsonify({"success": True}), 200
 
 @settings_bp.route('/api/load')
-def load_settings():
-    valid, user = Session.check(request.cookies.get("session_id"))
-
-    if not valid:
-        return render_template('auth/login.html')
-
+@permission_required("core", RENDER)
+def load_settings(user):
     if not user.settings_config:
         user.settings_config = SettingsConfig()
         db.session.commit()

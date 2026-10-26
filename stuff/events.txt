@@ -1,0 +1,281 @@
+# 📋 Events Site — Master Plan (Reference Document)
+
+*Everything we discussed, consolidated. Last updated: 2026-10-20.*
+
+---
+
+## 1. Context: Where Events Fits in Your Platform
+
+Your platform has two layers:
+
+| | **Sites** | **Apps** |
+|---|---|---|
+| Scope | Run across the whole website | Self-contained |
+| Examples | Tasks, Dashboard, Settings | Timetable, Controller Tester, Games, Tierlist |
+| Access | Interconnected, always present | Only via the **App Store** (library of apps) |
+| Dashboard | Shows info about them | Shows info about them |
+
+**Events will be a SITE, not an app** — because it needs the friends list, the site-wide notification system, and dashboard integration. A self-contained app couldn't do that cleanly.
+
+## 2. Vision & Scope
+
+> A coordination layer for **small closed groups** (2–10 people — explicitly *not* 20+, definitely not 40+). The point is to replace the "everyone writes each other in the group chat" chaos with one structured, modular event page per gathering.
+
+Key scope facts:
+- Small groups only. No scaling pressure, no discovery, no public events.
+- Events are **member-only**. Access via invitation (link or being added).
+- Non-friends *can* be added, but realistically won't happen much — the app is for your circle.
+- Not a general event planner. It's Doodle + shared bring-list + carpool board + chat, assembled per event. **The modularity is the product.**
+
+---
+
+## 3. ✅ Locked-In Decisions
+
+| # | Decision | Details |
+|---|---|---|
+| 1 | **Events is a site** | Needs friends, notifications, dashboard integration |
+| 2 | **Blueprint vs. live state separation** | Host configures modules at creation; members *fill* them afterwards |
+| 3 | **Draft → Published lifecycle** | Host builds privately; on publish it appears in members' events tab + notifications fire |
+| 4 | **RSVP states** | Attending / Maybe / Can't — softer than just "leaving" |
+| 5 | **Canonical event date** | Derived from doodle finalization or set manually; drives countdown + reminders |
+| 6 | **Realtime = short polling, ~60s** | Client polls an aggregated endpoint (`/api/events/{id}/data`); no websockets for now |
+| 7 | **Host-only structural changes** | Host adds/removes/configures modules, finalizes doodle, posts announcements |
+| 8 | **Members fill content** | Vote, claim items, add items, request/offer rides, chat, RSVP |
+| 9 | **Member-only events** | No public browsing/discovery |
+| 10 | **Non-friends addable** | Allowed but rare; invitation via link |
+| 11 | **"Order" = just an item on the bring list** | Not a separate shopping/purchase feature |
+| 12 | **Bring items addable by any member** | Your story: the friend added chips himself |
+
+> ⚠️ **Clarification on decision 7 vs 8:** "Only host can change stuff" means *structure* (which modules exist, their configuration, removal). It does **not** mean members can't vote/claim/chat — your own example has friends voting dates, claiming popcorn, adding chips, adding rides. Host = structure. Members = content within the structure.
+
+---
+
+## 4. Module Catalog
+
+### Obligatory (always present)
+| Module | Notes |
+|---|---|
+| **Title + Subtitle** | The event header |
+| **Notes / Text** | Free text block; spacing adjustable |
+
+### Optional functional modules (host enables/configures)
+| Module | Notes |
+|---|---|
+| **Location** | Address + integrated map |
+| **Members** | Added from friends list; members can RSVP attending/maybe/can't or leave |
+| **Doodle** | Date voting; ~20 options; anonymous/public toggle (show who voted where or just counts); deadline; host finalizes winner |
+| **Announcements** | Recent updates, host-only posts, pinnable |
+| **To bring / I bring** | Wishlist + claim board; any member can add items ("chips"); target quantities + progress ("popcorn 2/3 claimed"); an "order" is just an item here |
+| **Car share** | Two parts: *offers* ("I drive, 3 seats, leaving 18:30") and *requests* ("I need a ride"); drivers can pull passengers in, or passengers claim open seats |
+| **To do** | Task list for the event |
+| **Chat** | Basic — questions and misc |
+
+### Decorators (added differently, no interactivity)
+Separator · Image (e.g., movie poster) · Space/spacing · "you get the drill"
+
+### Extended module ideas (from our discussion — optional future)
+| Module | What it does | Why it fits |
+|---|---|---|
+| **Poll** | Vote on anything with options + images ("which movie?") | Doodle only covers *when* — movie night also needs *what*; posters as options |
+| **Costs / split** | Who paid what, auto-split, "Tim owes you €4.50" | Popcorn isn't free; kills the "send me €3" chaos; pairs with `bring` |
+| **Agenda / timeline** | 19:00 arrive · 19:30 movie · 22:00 snacks | Structure for longer events (LAN party, day trip) |
+| **Waitlist / capacity** | Member cap + overflow list | Couch fits 6, you're 10 |
+| **Photos** | Shared album after the event | Closes the loop; gives events an afterlife |
+| **Playlist** | Shared Spotify/YouTube links | Pregame music |
+| **Check-in** | Host (or QR) marks who actually came | Feeds archive stats later |
+| **Weather** | Auto widget from location + fixed date | BBQ / outdoor events |
+| **Plus-ones** | "bringing a +1" flag on RSVP | Capacity awareness |
+
+---
+
+## 5. Module Behavior Details
+
+**Doodle**
+- Options list (can be ~20 dates), voting deadline
+- Privacy toggle: public (see who voted where) vs anonymous (counts only)
+- Optional "none of these work" vote with comment
+- **Finalization:** host picks the winning date → becomes the canonical event date → RSVPs reset/re-confirm → notification "you in?"
+
+**Bring**
+- Any member can add an item; host sets target quantities
+- Progress display: "Popcorn ×3 — 2/3 claimed"
+- Claims are personal; leaving the event auto-releases your claims
+- Race condition at your scale: last-write-wins + revalidate on focus is fine
+
+**Car share**
+- **Offer:** driver creates ride with seats, departure time, pickup note
+- **Request:** member clicks "I need a ride" → appears on request board → driver picks them up, or they write themselves into an open seat
+
+**Members / RSVP**
+- Person added to an event can RSVP or leave entirely
+- Leaving releases their bring claims and ride seats; doodle votes stay visible (as "left")
+- Host cannot leave without transferring host
+
+---
+
+## 6. Example Walkthrough — Movie Night (your original scenario, refined)
+
+1. **Host (you):** creates event → draft state → title "Movie Night", notes text, movie poster as image decorator, location with integrated map, adds 8 friends from the friends list → enables doodle (20 dates, public voting), bring module, car share → skips announcements and todo → clicks **Publish**
+2. **Friend A:** logs into the whole website → sees the event in the events tab → reads everything → votes his dates in the doodle → claims popcorn, adds an amount → clicks "I need a ride"
+3. **Friend B:** clicks the link you sent → already logged in → lands directly on the event → sees popcorn is already being brought → adds chips himself → joins/adds a ride and pulls Friend A in → votes in the doodle
+4. **Others:** do their version of the same
+5. **Later:** doodle deadline passes → host finalizes the date → everyone gets "you in?" → car share fills up → dashboard shows "3/8 confirmed, chips 0/1, ride available"
+
+---
+
+## 7. UX Design
+
+**Layout principles**
+- Vertical block stack (Notion-style), modules in host-defined order
+- Module palette + drag-to-reorder (host)
+- **Mobile-first** — 90% of your friends will open this on a phone
+- "New since your last visit" badges per module
+- Updates via 60-second polling
+
+**Event view structure**
+| Zone | Content |
+|---|---|
+| Header | Title / Subtitle + live status widget (countdown, RSVP count) |
+| Main | The module stack, in order |
+| Sidebar/Footer | "My tasks for this event" — a rollup of your open duties (vote pending, chips to bring, ride status) |
+
+**Module interaction summary**
+| Module | Member interaction | Host control |
+|---|---|---|
+| Doodle | Cast vote, see aggregate | Options, deadline, visibility, finalize |
+| Bring | Add items, claim with qty | Set target quantities, remove items |
+| Car share | Request ride / offer ride / join seat | Config (e.g., max drivers) |
+| Chat | Send messages | Pin, moderate |
+| Announcements | Read | Post, pin |
+| Decorators | (none) | Add, arrange |
+
+**Frictionless entry flow**
+1. Friend clicks link (or opens events tab)
+2. Logged in? → land directly on the event page
+3. Not logged in? → soft prompt: "Join to participate" → quick login/register → back to event
+
+---
+
+## 8. Technical Blueprint
+
+<details>
+<summary><strong>Polling architecture (60s)</strong></summary>
+
+- Client-side JS polls `/api/events/{event_id}/data` every 60 seconds
+- Endpoint aggregates all module state (doodle votes, bring claims, rides, chat) into one JSON payload
+- Small groups + limited per-event data = low overhead, trivial to implement now
+- Future upgrade path: WebSockets/SSE if ever needed — polling keeps it simple for now
+- Also revalidate on window focus (catches the "two people claim the last bag at once" case cheaply)
+</details>
+
+<details>
+<summary><strong>Permissions model</strong></summary>
+
+| Action | Role |
+|---|---|
+| Add/remove/configure modules | Host only |
+| Finalize doodle, post announcements | Host only |
+| Publish event, change canonical date | Host only |
+| Vote, claim items, add items, rides, chat, RSVP | Members |
+| Read everything | Members |
+| Optional co-host role | Future consideration |
+</details>
+
+<details>
+<summary><strong>Data model sketch</strong></summary>
+
+```sql
+Event(id, host_id, title, subtitle,
+      status /* draft | published | completed | archived */,
+      visibility,           -- member-only
+      event_date,           -- null until doodle final or manual
+      created_at)
+
+EventMember(event_id, user_id, role /* host | cohost | member */,
+            rsvp /* attending | maybe | declined | pending */, joined_at)
+-- user_id may be a non-friend in theory; practically always a friend
+
+-- one polymorphic block per enabled module
+EventModule(id, event_id, type, position, config_json)
+-- config_json per type, e.g. doodle: { anonymous, deadline, show_counts }
+-- decorators (separator, image, space) are modules with no state tables
+
+-- state tables per interactive type
+DoodleOption(module_id, id, starts_at)
+DoodleVote(module_id, user_id, option_id)
+BringItem(module_id, id, label, target_qty, added_by)   -- added_by may be host or member
+BringClaim(item_id, user_id, qty)                        -- "an order" = an item here
+Ride(module_id, id, driver_id, seats, departure, pickup_note)
+RidePassenger(ride_id, user_id)
+TodoItem(module_id, id, text, assignee_id, done)
+ChatMessage(module_id, user_id, text, created_at)
+Announcement(module_id, user_id, text, pinned, created_at)
+```
+
+The dashboard widget is then a simple query over `Event` + member duties.
+</details>
+
+<details>
+<summary><strong>Edge cases worth planning for</strong></summary>
+
+- Member leaves → auto-release their bring claims and ride seats; keep their doodle votes (show as "left")
+- Driver removes a ride → notify passengers
+- Host can't leave without transferring host
+- Doodle deadline passes → auto-flag the leading option, remind the host to finalize
+- Removing a module that already has data → confirm; offer "hide" instead of delete
+- Event date changes after finalization → notify everyone, keep RSVPs but mark them stale
+- Unclaimed critical items close to the date → dashboard nudge ("popcorn still needed")
+- Deleting events → archive by default, members keep the history
+</details>
+
+---
+
+## 9. Extras & Cross-Site Synergies
+
+**Features beyond modules**
+- **Event templates** — "Movie Night", "BBQ", "Game Night" preloaded module sets; your biggest QoL win since it saves setup every time
+- **Reminders** — "24h before", "new announcement posted", "date finalized" — reusing your site-wide notification system
+- **Archive + stats** — past events page, "you attended 12 events this year" for the dashboard
+- **Recurring events** — duplicate a past event as the base for the next one
+- **Host transfer** — host must hand over before leaving
+
+**Synergies with your existing platform (your unfair advantage)**
+| Site/App | Integration |
+|---|---|
+| **Dashboard** | Next-event card with countdown + your open duties ("vote on date", "you bring chips", "ride confirmed") |
+| **Tasks site** | Per-item opt-in: event todos sync into personal tasks with an event badge; check off in either place |
+| **Tierlist app** | "Rate tonight's movie" button after the event → feeds a shared group tierlist |
+| **Timetable app** | Push finalized dates into it |
+| **App Store** | Event template packs live next to apps; a mini-game from your games collection as event activity (pre-movie quiz) |
+
+---
+
+## 10. Roadmap
+
+### 🥇 MVP
+- Events site + full modular editor (host-only structure)
+- Modules: Title/Subtitle, Notes, Image, Location, Members (RSVP), Doodle, Bring, Car Share, basic Chat
+- Draft → publish flow, link access, logged-in UX
+- 60s polling
+
+### 🥈 Phase 2 — Coordination Power-Up
+- Modules: Costs/Split, Agenda/Timeline
+- Templates ("Movie Night" loads 4 pre-configured modules)
+- Auto-counted RSVPs feeding the dashboard
+- Minimal notifications (date finalized, new announcement)
+
+### 🥉 Phase 3 — Optimization
+- Modules: Photos, Check-in, Playlist
+- Timetable date sync
+- Archive view + member stats
+- Host transfer, module locking
+
+---
+
+## 11. ❓ Open Questions (from last time — still unanswered)
+
+1. **Friend identity:** Is there already a global friends graph (unique ID per account, shared across all sites)? Or does the events site need it built?
+2. **Adding members:** Do you pick from your friends list in-app, or type in emails/usernames for non-friends?
+3. **What happens on add:** When the host adds the 8 friends, do they get an immediate invite notification ("You've been invited to Movie Night"), or are they silently added?
+
+Answer those three and the next step is wireframing the event page or designing the API routes.

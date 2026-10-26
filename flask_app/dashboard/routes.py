@@ -1,26 +1,19 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app
-import json, os
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 from ..models import *
+from ..auth.decorators import login_required, permission_required, PAGE, API, REDIRECT, RENDER
+from ..permissions import catalog_for
 
 dashboard_bp = Blueprint('dashboard', __name__, static_folder='../static')
 
 @dashboard_bp.route('/')
-def dashboard():
-    valid, user = Session.check(request.cookies.get("session_id"))
-
-    if not valid:
-        return redirect(url_for('auth.login_page'))
-
+@permission_required("core", PAGE)
+def dashboard(user):
     return render_template('main/dashboard.html')
 
 
 @dashboard_bp.route('/api/list/owned', methods=['GET'])
-def list_owned_dashboards():
-    valid, user = Session.check(request.cookies.get("session_id"))
-
-    if not valid:
-        return render_template('auth/login.html')
-
+@permission_required("core", RENDER)
+def list_owned_dashboards(user):
     dashboards = [dashboard.name for dashboard in user.dashboards]
 
 
@@ -43,13 +36,8 @@ def list_owned_dashboards():
 
 
 @dashboard_bp.route('/api/load/<dashboardname>', methods=['GET'])
-def load_dashboard(dashboardname):
-    valid, user = Session.check(request.cookies.get("session_id"))
-
-    if not valid:
-        return render_template('auth/login.html')
-
-    dashboard: Dashboard
+@permission_required("core", RENDER)
+def load_dashboard(dashboardname, user):
 
     for dashboard in user.dashboards:
         if dashboard.name == dashboardname:
@@ -62,17 +50,12 @@ def load_dashboard(dashboardname):
 
 
 @dashboard_bp.route('/api/update/update_widget', methods=['POST'])
-def widget_update():
-    valid, user = Session.check(request.cookies.get("session_id"))
-
-    if not valid:
-        return render_template('auth/login.html')
-
-
+@permission_required("core", RENDER)
+def widget_update(user):
     data = request.get_json()
     if not data or "widgets" not in data:
         return jsonify({"error": "Missing 'widgets' data in request body"}), 400
-    
+
 
     new_widgets = data["widgets"]
     dashboardname = data["name"]
@@ -92,11 +75,8 @@ def widget_update():
 
 
 @dashboard_bp.route('/api/apps')
-def apps_data():
-    """Serve data/apps.json so the dashboard can build one widget per app."""
-    json_path = os.path.join(current_app.root_path, 'data', 'apps.json')
-    try:
-        with open(json_path, 'r', encoding='utf-8') as f:
-            return jsonify(json.load(f))
-    except Exception:
-        return jsonify({"error": "Apps data not found"}), 404
+@permission_required("core", API)
+def apps_data(user):
+    """Serve the app catalog with a per-user "locked" flag so widgets and
+    the app corner can hide what the user has no permission for."""
+    return jsonify(catalog_for(user))

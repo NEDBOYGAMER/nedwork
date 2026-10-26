@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nedwork — registration request</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px;
+    background: #16161A; color: #EAEAE6;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px; line-height: 1.5;
+  }
+  .card {
+    max-width: 480px; margin: 0 auto 14px;
+    background: #242423; border: 1px solid #454540;
+    border-radius: 14px; padding: 20px 18px;
+  }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  .sub { margin: 0 0 16px; color: #A3A39D; font-size: 14px; }
+  .who { font-size: 22px; font-weight: 700; }
+  .meta { color: #A3A39D; font-size: 14px; margin: 6px 0 0; word-break: break-all; }
+  .label {
+    margin: 0 0 10px; color: #A3A39D;
+    font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em;
+  }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    min-height: 48px; padding: 8px 18px;
+    border: 1px solid #454540; border-radius: 999px;
+    background: #1B1B1A; color: #A3A39D;
+    font: inherit; font-size: 15px; cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+  }
+  .pill .kind {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    color: #6F6F69; border: 1px solid #454540;
+    border-radius: 999px; padding: 1px 7px;
+  }
+  .pill.on {
+    background: #322A1C; border-color: #6E4A22; color: #EDA34F;
+  }
+  .pill.on .kind { color: #EDA34F; border-color: #6E4A22; }
+  .btn-row { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
+  .btn {
+    min-height: 56px; padding: 12px 18px;
+    border: none; border-radius: 14px;
+    font: inherit; font-size: 17px; font-weight: 700; cursor: pointer;
+  }
+  .btn-approve { background: #2E7D46; color: #FFFFFF; }
+  .btn-approve:active { background: #256638; }
+  .btn-deny { background: transparent; color: #E5484D; border: 2px solid #E5484D; }
+  .btn-deny:active { background: #3A211F; }
+  .msg { margin: 10px 0 0; color: #E5484D; font-size: 14px; min-height: 20px; }
+  .done { text-align: center; padding: 30px 10px; }
+  .done .big { font-size: 44px; margin-bottom: 8px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="card" id="request-card">
+  <p class="sub">Registration request</p>
+  <p class="who">{{ pending.name }}</p>
+  <p class="meta">{{ pending.email }}{% if requested %} &middot; {{ requested }}{% endif %}</p>
+</div>
+
+<div class="card">
+  <p class="label">Permissions to grant</p>
+  <div class="pill-row" id="pills">
+    {% for p in perms %}
+    <button type="button"
+            class="pill{% if p.selected %} on{% endif %}"
+            data-perm="{{ p.name }}"
+            {% if p.description %}title="{{ p.description }}{% if p.kind == 'function' %} (function key){% endif %}"{% endif %}>
+      {{ p.name }}
+      <span class="kind">{{ 'fn' if p.kind == 'function' else 'access' }}</span>
+    </button>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card btn-row">
+  <button type="button" class="btn btn-approve" id="approve">Approve &amp; grant selected</button>
+  <button type="button" class="btn btn-deny" id="deny">Deny request</button>
+  <p class="msg" id="msg"></p>
+</div>
+
+<div class="card done hidden" id="approved">
+  <div class="big">&#10003;</div>
+  <h1>Approved</h1>
+  <p class="sub" id="approved-text"></p>
+</div>
+
+<div class="card done hidden" id="denied">
+  <div class="big">&#10005;</div>
+  <h1>Request denied</h1>
+  <p class="sub">The request was discarded. Nothing was notified.</p>
+</div>
+
+<script>
+  const pendingId = {{ pending.id }};
+  const token = {{ token | tojson }};
+  const msg = document.getElementById('msg');
+
+  document.querySelectorAll('.pill').forEach(pill => {
+    pill.addEventListener('click', () => pill.classList.toggle('on'));
+  });
+
+  async function decide(action) {
+    msg.textContent = '';
+    const buttons = [document.getElementById('approve'), document.getElementById('deny')];
+    buttons.forEach(b => b.disabled = true);
+    try {
+      const permissions = [...document.querySelectorAll('.pill.on')]
+        .map(p => p.dataset.perm);
+      const res = await fetch(
+        `/notify/pending/${pendingId}/decide`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, permissions, token }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        msg.textContent = data.error || 'Something went wrong - handle this request in the console.';
+        buttons.forEach(b => b.disabled = false);
+        return;
+      }
+      document.querySelectorAll('.card').forEach(c => c.classList.add('hidden'));
+      if (data.action === 'approve') {
+        document.getElementById('approved-text').textContent =
+          `${data.username} can now log in` +
+          (data.granted && data.granted.length
+            ? ` - granted: ${data.granted.join(', ')}`
+            : ' (no permissions granted yet)');
+        document.getElementById('approved').classList.remove('hidden');
+      } else {
+        document.getElementById('denied').classList.remove('hidden');
+      }
+    } catch (e) {
+      msg.textContent = 'Connection failed - try again.';
+      buttons.forEach(b => b.disabled = false);
+    }
+  }
+
+  document.getElementById('approve').addEventListener('click', () => decide('approve'));
+  document.getElementById('deny').addEventListener('click', () => decide('deny'));
+</script>
+
+</body>
+</html>

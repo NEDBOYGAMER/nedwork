@@ -303,25 +303,30 @@ function countUpFact(el) {
 }
 
 /* ============================== admin mode ============================== */
+/* Server decides: the UI section only lights up when /auth/api/who says
+   the session actually holds the admin permission (write paths are
+   gated server-side anyway — this is just UI feedback). */
 
 const isAdmin = () => sessionStorage.getItem('nedwork:admin') === '1';
 
-function setAdmin(on) {
-    sessionStorage.setItem('nedwork:admin', on ? '1' : '0');
-    document.body.classList.toggle('is-admin', on);
-    renderUpdates();
-    if (on) toast('admin mode on — add updates with the button in the changelog, esc closes the dialog');
+function renderAdminUi() {
+    document.body.classList.toggle('is-admin', isAdmin());
+    if (isAdmin()) renderUpdates();
 }
 
-function initAdminFromUrl() {
-    const p = new URLSearchParams(location.search);
-    if (p.get('admin') === '1') {
-        sessionStorage.setItem('nedwork:admin', '1');
-        p.delete('admin');
-        const qs = p.toString();
-        history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
+async function initAdminFromWho() {
+    try {
+        const res = await fetch('/auth/api/who');
+        if (res.ok) {
+            const data = await res.json();
+            sessionStorage.setItem('nedwork:admin', data.is_admin ? '1' : '0');
+        } else {
+            sessionStorage.setItem('nedwork:admin', '0');
+        }
+    } catch {
+        sessionStorage.setItem('nedwork:admin', '0');
     }
-    document.body.classList.toggle('is-admin', isAdmin());
+    renderAdminUi();
 }
 
 /* ============================== add-update modal (stopgap) ============== */
@@ -676,7 +681,7 @@ function flashBrand() {
 
 /* ============================== init ==================================== */
 
-initAdminFromUrl();
+initAdminFromWho();
 applySettings();
 loadUpdates();
 loadIdeas();

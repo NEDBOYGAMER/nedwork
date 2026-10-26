@@ -1,0 +1,536 @@
+{% extends "admin/admin_base.html" %}
+
+{#
+  admin.html — console sections.
+
+  Tab contract: .nav-link[data-tab="x"] <-> section#tab-x.
+
+  New in this revision:
+    tab-pending      logins awaiting approval (approve = create user)
+    tab-permissions  permission types + apps x permissions matrix
+    UX: all actions are real <form>s, changelog tag is a segmented
+        picker that writes into hidden #changelogTag.
+
+  The inline script at the bottom is client-only glue (submit guard,
+  user filter, tag picker). admin.js may absorb it.
+#}
+
+{% block admin_content %}
+
+    <!-- 1. Pending logins -->
+    <section id="tab-pending" class="admin-section">
+        <div class="card admin-card">
+            <div class="admin-section-head">
+                <div>
+                    <h3>Pending logins</h3>
+                    <p class="hint">
+                        People who tried to sign in and are waiting for access.
+                        Approving creates a user account; denying discards the request.
+                    </p>
+                </div>
+                <div class="admin-actions">
+                    <button class="btn" id="pendingRefresh" type="button">Refresh</button>
+                    <button class="btn btn-danger" id="pendingDenyAll" type="button">Deny all</button>
+                </div>
+            </div>
+
+            <table class="admin-table" id="pendingTable">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Detail</th>
+                        <th scope="col">Requested</th>
+                        <th scope="col" class="th-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <p class="admin-empty" id="pendingEmpty" hidden>
+                No pending requests — everyone who asked for access has been handled.
+            </p>
+            <p class="hint admin-error" id="pendingError" hidden></p>
+        </div>
+
+        {#
+          Row template for admin.js (columns are editable — keep cells in sync):
+
+            <tr>
+              <td class="username">Jane Doe</td>
+              <td class="cell-muted">jane@example.com</td>
+              <td class="cell-muted">2026-10-25 14:32</td>
+              <td class="td-actions">
+                <div class="admin-actions">
+                  <button class="btn btn-primary" data-approve="ID">Approve</button>
+                  <button class="btn btn-danger" data-deny="ID">Deny</button>
+                </div>
+              </td>
+            </tr>
+
+          Expected API (shape is yours to settle — this file only pins the DOM):
+            GET  /admin/api/pending              -> [{id, name, detail?, requested_at}]
+            POST /admin/api/pending/<id>/approve -> 200; remove row
+            POST /admin/api/pending/<id>/deny    -> 200; remove row
+
+          Also: hide #pendingTable and show #pendingEmpty when the list is
+          empty, #pendingError on fetch failure, and set #navPendingCount
+          in the rail (hidden when 0). "Deny all" should confirm() first.
+        #}
+    </section>
+
+    <!-- 2. Users -->
+    <section id="tab-users" class="admin-section" hidden>
+        <div class="card admin-card">
+            <div class="admin-toolbar">
+                <div class="admin-field admin-field--grow">
+                    <label for="userSearch">Filter</label>
+                    <input type="search" id="userSearch" placeholder="Name, permission, group…"
+                           autocomplete="off">
+                </div>
+            </div>
+
+            <table class="admin-table" id="userTable">
+                <thead>
+                    <tr>
+                        <th scope="col">User</th>
+                        <th scope="col">Access</th>
+                        <th scope="col">Permissions</th>
+                        <th scope="col">Groups</th>
+                        <th scope="col" class="th-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <p class="hint admin-error" id="usersError" hidden></p>
+        </div>
+    </section>
+
+    <!-- 2b. Apps — the live interface to the app catalog (the DB-backed
+         apps.json): create apps, edit title/link/types/description, drop
+         the tile image, and assign permission keys. -->
+    <section id="tab-apps" class="admin-section" hidden>
+        <div class="card admin-card">
+            <div class="admin-section-head">
+                <div>
+                    <h3>Apps</h3>
+                    <p class="hint">
+                        The app-store catalog — everything the app corner shows.
+                        Drop an image onto an app's tile to set its icon
+                        (saved to <code>img/apps/</code> and linked automatically).
+                        Permission keys are assigned here: "Requires to open"
+                        locks the app, "Functions" documents feature keys.
+                    </p>
+                </div>
+            </div>
+
+            <form class="admin-add-form" id="appAddForm">
+                <div class="admin-field">
+                    <label for="appNewName">Name</label>
+                    <input type="text" id="appNewName" placeholder="Colors"
+                           autocomplete="off" spellcheck="false" required>
+                </div>
+                <div class="admin-field">
+                    <label for="appNewUrl">Link <span class="label-meta">/slug if empty</span></label>
+                    <input type="text" id="appNewUrl" placeholder="/colors"
+                           autocomplete="off" spellcheck="false">
+                </div>
+                <div class="admin-field">
+                    <label for="appNewTypes">Types <span class="label-meta">comma separated</span></label>
+                    <input type="text" id="appNewTypes" placeholder="Tools, Games"
+                           autocomplete="off" spellcheck="false">
+                </div>
+                <div class="admin-field admin-field--grow">
+                    <label for="appNewDesc">Description</label>
+                    <input type="text" id="appNewDesc" placeholder="What the app is"
+                           autocomplete="off">
+                </div>
+                <button class="btn btn-primary" type="submit">Add app</button>
+            </form>
+
+            <div id="appsList"></div>
+
+            <p class="admin-empty" id="appsEmpty" hidden>No apps yet — add the first one above.</p>
+
+            <p class="hint admin-error" id="appsError" hidden></p>
+        </div>
+
+        {#
+          App card contract for admin.js (one .app-box per catalog entry):
+
+            <div class="app-box" data-slug="colors">
+              <div class="app-box-head">
+                <div class="app-thumb" (image dropzone; click = file picker)>
+                  <img src=STATIC_URL+img/apps+image> or fallback initial
+                </div>
+                <div class="app-box-title">
+                  <h3>Colors</h3>
+                  <div class="hint mono">#colors - id 1 - /colors</div>
+                </div>
+                <div class="admin-actions"> <button class="btn btn-danger">Delete</button> </div>
+              </div>
+
+              <form class="app-box-form">   (one Save button per card)
+                Name <input>   Link <input>   Types chips + <input list=typesDatalist>
+                Description <input>
+              </form>
+
+              Requires to open: .chip-row of access keys (x unlinks)
+                + <select> of unlinked access keys + Add
+              Functions: same shape for function keys (colors_ai style)
+            </div>
+
+          API:
+            GET    /admin/api/apps  -> [{id, name, slug, url, image, types[],
+                                         description, permissions[], functions[]}]
+            GET    /admin/api/permissions -> [..., kind: "access"|"function"]
+            POST   /admin/api/apps                {name, url?, types?, description?}
+            PATCH  /admin/api/apps/<slug>         {name?, url?, description?, types?}
+            DELETE /admin/api/apps/<slug>         (image moves to img/apps/bin/)
+            POST   /admin/api/apps/<slug>/image   multipart "image"
+            POST   /admin/api/apps/<slug>/permissions {permission, granted}
+            POST   /admin/api/apps/<slug>/functions   {permission, granted}
+          The server refuses cross-kind chips (function key under Requires,
+          access key under Functions) with a 400 - surface its message.
+        #}
+    </section>
+
+    <!-- 3. Permissions — ONE unified manager: keys, descriptions, and the
+         apps (from the app store catalog) that use each key -->
+    <section id="tab-permissions" class="admin-section" hidden>
+        <div class="card admin-card">
+            <div class="admin-section-head">
+                <div>
+                    <h3>Permissions</h3>
+                    <p class="hint">
+                        Where permission keys are <b>created</b>. Assigning them
+                        happens in the Apps tab (app access + functions) and the
+                        Users/Groups tabs (people). The guide below explains
+                        how it all fits together.
+                    </p>
+                </div>
+            </div>
+
+            <form class="admin-add-form" id="permAddForm">
+                <div class="admin-field">
+                    <label for="permNewKey">Key</label>
+                    <input type="text" id="permNewKey" placeholder="files.read"
+                           autocomplete="off" spellcheck="false" required>
+                </div>
+                <div class="admin-field admin-field--grow">
+                    <label for="permNewDesc">Description</label>
+                    <input type="text" id="permNewDesc" placeholder="What this permission allows"
+                           autocomplete="off">
+                </div>
+                <div class="admin-field admin-field--check">
+                    <label for="permNewKind"><input type="checkbox" id="permNewKind"> Function key</label>
+                </div>
+                <button class="btn btn-primary" type="submit">Add permission</button>
+            </form>
+
+            <table class="admin-table" id="permTable">
+                <thead>
+                    <tr>
+                        <th scope="col">Permission</th>
+                        <th scope="col">Permits</th>
+                        <th scope="col" class="th-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <p class="admin-empty" id="permEmpty" hidden>No permission types yet — add the first one above.</p>
+
+            <p class="hint admin-error" id="permError" hidden></p>
+        </div>
+
+        <!-- 3b. Cookbook: a separate collapsible panel BELOW everything else
+             in this tab (how a "function permission" like colors_ai is
+             wired end to end). Static instructions, not data. -->
+        <div class="card admin-card admin-card--guide">
+            <details class="admin-guide" id="permGuide">
+                <summary>Guide: gate one app function behind its own permission (the colors_ai pattern)</summary>
+                <div class="admin-guide-body">
+                    <p><b>How permissions work here (living doc - kept up to date
+                       as the console changes):</b></p>
+                    <ol>
+                        <li><b>Keys are created HERE (Permissions tab).</b> A key has
+                            a name, a description and a <b>kind</b>:
+                            <ul>
+                                <li><b>Access key</b> - gates <b>opening an app</b>.
+                                    Assigned in the Apps tab under "Requires to
+                                    open"; the app then needs it (any-of next to
+                                    the app's other access keys). tierforge is
+                                    the example: hold it and TierForge opens.</li>
+                                <li><b>Function key</b> - gates <b>one feature inside
+                                    an app</b>, never the app itself. Shown in the
+                                    Apps tab under "Functions" (colors_ai is the
+                                    example). The feature's own code enforces it;
+                                    the link is documentation for this console.
+                                    A function key can never lock anyone out of
+                                    an app - the server filters it out of the
+                                    open requirement by design.</li>
+                            </ul></li>
+                        <li><b>Keys get assigned in the Apps tab.</b> One card per
+                            app: title, link, types, description, tile image
+                            (drag &amp; drop - saved to <code>img/apps/</code> and
+                            linked automatically), "Requires to open" chips
+                            (access keys) and "Functions" chips (function keys).
+                            The kinds are strictly separated: an access key
+                            cannot become a Functions chip and vice versa.</li>
+                        <li><b>Keys get granted in the Users/Groups tabs.</b> "+ key"
+                            chips on a person or group. Without a grantee a
+                            key simply switches its gate off for everyone.</li>
+                        <li><b>Backend enforcement (code, one decorator per key):</b>
+                            <pre>@permission_required("core", REDIRECT)
+@permission_required("colors_ai", REDIRECT)
+def palette_from_image(user):
+    ...</pre>
+                            Decorators stack like AND - every key must be held.
+                            Keep the app's general keys (core) on their own
+                            decorator. Use <code>API</code> mode when the JS should
+                            receive a clean JSON 403 instead of a redirect.</li>
+                        <li><b>Frontend concealment.</b> The server is the real
+                            gate, but users should not see controls they can
+                            never use. <code>GET /auth/api/who</code> returns the
+                            logged-in user's held keys (top-level
+                            <code>permissions</code> list):
+                            <pre>const who = await fetch('/auth/api/who', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : null);
+const canUse = !!who && who.permissions.includes('colors_ai');
+document.getElementById('upload-btn').style.display =
+    canUse ? '' : 'none';</pre></li>
+                        <li><b>App links are enforced - handle with care.</b>
+                            "Permits" on a key row lists the apps whose OPEN
+                            requirement contains the key (any-of!). A key with
+                            several app chips opens ALL of them for its
+                            holders. Removing a chip is the safe direction;
+                            adding one weakens the app's lock for key holders.</li>
+                        <li><b>Naming.</b> Access keys: the app's name
+                            (<code>tierforge</code>) or domain
+                            (<code>files.read</code>). Function keys:
+                            <code>&lt;app&gt;_&lt;function&gt;</code>
+                            (<code>colors_ai</code>, <code>tierforge_export</code>,
+                            <code>trivia_host</code>). Stay consistent per app.</li>
+                    </ol>
+                </div>
+            </details>
+        </div>
+
+        {#
+          Row contract for admin.js — the Permissions tab CREATES keys and
+          shows where each key is in use; assigning happens in Apps/Users.
+
+            <tr data-perm="files.read">
+              <td>
+                <div class="username"><code>files.read</code></div>
+                <div class="hint">Read app files</div>
+                [<span class="badge accent" title="function key">fn</span>]
+              </td>
+              <td>
+                <div class="chip-row">
+                  <span class="chip">TierForge <button data-unlink-app="tierforge">x</button></span>
+                </div>
+              </td>
+              <td class="td-actions">
+                <button data-edit-desc>Edit</button>
+                <button data-del-perm="files.read">Delete</button>
+              </td>
+            </tr>
+
+          Inline editor row (Edit pressed): description <input> + Save/Cancel
+          -> PATCH /admin/api/permissions/<key> {description} (the same
+          endpoint also accepts {kind} for access <-> function, guarded
+          server-side).
+
+          Loads: GET /admin/api/permissions (keys, kind, descriptions,
+          users/groups, apps). Unlink chip -> POST
+          /admin/api/apps/<slug>/permissions {permission, granted:false}.
+          Hide #permTable and show #permEmpty when there are no keys;
+          #permError on failures.
+        #}
+    </section>
+
+    <!-- 4. Groups -->
+    <section id="tab-groups" class="admin-section" hidden>
+        <div class="card admin-card">
+            <form class="admin-toolbar" id="groupAddForm">
+                <div class="admin-field admin-field--grow">
+                    <label for="newGroupName">New group</label>
+                    <input type="text" id="newGroupName" placeholder="3–20 characters"
+                           minlength="3" maxlength="20" autocomplete="off" required>
+                </div>
+                <button class="btn btn-primary" id="createGroupBtn" type="submit">Create group</button>
+            </form>
+
+            <div id="groupsList"></div>
+
+            <p class="admin-empty" id="groupsEmpty" hidden>No groups yet — create the first one above.</p>
+        </div>
+
+        {#
+          #groupsList is fully rendered by admin.js — keep using:
+            .group-box > h3 (group name)
+            .chip-row > .chip (member name + <button>x</button> to remove)
+            .group-member-row (label + <select> of candidates + Add button)
+          Toggle #groupsEmpty when there are no groups.
+        #}
+    </section>
+
+    <!-- 5. Suggestions -->
+    <section id="tab-suggestions" class="admin-section" hidden>
+        <div class="card admin-card">
+            <div id="suggestionsList"></div>
+            <p class="admin-empty" id="suggestionsEmpty" hidden>
+                Nothing here yet — no suggestions have been submitted via the about page.
+            </p>
+        </div>
+
+        {#
+          Render each suggestion as:
+            <div class="suggestion-item">
+              <div class="suggestion-head">
+                <span class="username">Name</span>   (optional)
+                <span class="suggestion-date">2026-10-25 14:32</span>
+              </div>
+              <p class="suggestion-what">…</p>
+              <p class="suggestion-why">…</p>
+            </div>
+        #}
+    </section>
+
+    <!-- 6. Changelog -->
+    <section id="tab-changelog" class="admin-section" hidden>
+        <div class="card admin-card">
+            <div class="admin-section-head">
+                <div>
+                    <h3>New update</h3>
+                    <p class="hint">One update per shipped change. Shown on the public changelog.</p>
+                </div>
+            </div>
+
+            <form class="admin-changelog-form" id="changelogForm">
+                <div class="admin-field admin-field--grow">
+                    <label for="changelogTitle">Title <span class="label-meta">max 80 chars</span></label>
+                    <input type="text" id="changelogTitle" maxlength="80" placeholder="What shipped"
+                           autocomplete="off">
+                </div>
+
+                <div class="admin-field">
+                    <span class="admin-field-label" id="changelogTagLabel">Tag</span>
+                    <div class="admin-segments" role="group" aria-labelledby="changelogTagLabel"
+                         id="changelogTagPicker">
+                        <button type="button" class="segment" data-tag="feature" aria-pressed="true">feature</button>
+                        <button type="button" class="segment" data-tag="improvement" aria-pressed="false">improvement</button>
+                        <button type="button" class="segment" data-tag="fix" aria-pressed="false">fix</button>
+                        <button type="button" class="segment" data-tag="heads-up" aria-pressed="false">heads-up</button>
+                        <button type="button" class="segment" data-tag="note" aria-pressed="false">note</button>
+                    </div>
+                    {# hidden input keeps the old contract: admin.js still reads #changelogTag.value #}
+                    <input type="hidden" id="changelogTag" value="feature">
+                </div>
+
+                <div class="admin-field admin-field--grow admin-field--body">
+                    <label for="changelogBody">Body <span class="label-meta">max 2000 chars</span></label>
+                    <textarea id="changelogBody" rows="3" maxlength="2000"
+                              placeholder="Optional details — what changed and why"></textarea>
+                </div>
+
+                <div class="admin-form-foot">
+                    <button class="btn btn-primary" id="changelogAdd" type="submit">Publish update</button>
+                </div>
+            </form>
+
+            <div id="changelogList"></div>
+        </div>
+    </section>
+
+    <!-- 7. Settings -->
+    <section id="tab-settings" class="admin-section" hidden>
+        <div class="card admin-card">
+            <div class="admin-section-head">
+                <div>
+                    <h3>Console access</h3>
+                    <p class="hint" id="admin-pw-hint">Changing the password logs out every open console session.</p>
+                </div>
+            </div>
+
+            <form class="admin-add-form" id="adminPwForm">
+                <div class="admin-field admin-field--grow">
+                    <label for="admin-pw-current">Current password</label>
+                    <input type="password" id="admin-pw-current" autocomplete="current-password">
+                </div>
+                <div class="admin-field admin-field--grow">
+                    <label for="admin-pw-new">New password <span class="label-meta">at least 8 chars</span></label>
+                    <input type="password" id="admin-pw-new" minlength="8" autocomplete="new-password">
+                </div>
+                <button class="btn btn-primary" id="admin-pw-change" type="submit">Change password</button>
+            </form>
+
+            <p class="hint admin-error" id="admin-pw-error" hidden></p>
+        </div>
+
+        <div class="card admin-card">
+            <div class="admin-section-head">
+                <div>
+                    <h3>Site settings</h3>
+                    <p class="hint">Reserved for future site-wide settings (feature toggles, maintenance, backups, …).</p>
+                </div>
+            </div>
+            <p class="admin-empty">Nothing to configure yet.</p>
+        </div>
+    </section>
+
+    <div id="admin-password-modal" class="pw-modal" hidden>
+        <div class="card auth-card pw-modal-card">
+            <h3 id="pwModalTitle">Force password reset</h3>
+            <p class="hint" id="pwModalText">A temporary password was generated and shown once.</p>
+            <p class="pw-temp" id="pwModalValue"></p>
+            <div class="pw-modal-actions">
+                <button class="btn btn-primary" id="pwModalCopy" type="button">Copy</button>
+                <button class="btn" id="pwModalClose" type="button">Close</button>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+        /* Client-only glue. admin.js may absorb any of this.
+
+           1. submit guard: every console action is a real <form> so Enter
+              works and native validation runs; native submission (page
+              reload) is never wanted here. IMPORTANT for admin.js: bind
+              handlers on "submit" — OR on click, but never both, or you
+              fire twice.
+           2. user filter: hides #userTable rows that don't match. Runs on
+              input; after a re-render the next keystroke re-applies it.
+           3. tag picker: segmented control that keeps hidden #changelogTag
+              in sync, so admin.js can keep reading its .value as before.
+        */
+        document.addEventListener("submit", (e) => {
+            if (e.target.closest(".admin-shell")) e.preventDefault();
+        });
+
+        document.getElementById("userSearch")?.addEventListener("input", (e) => {
+            const q = e.target.value.trim().toLowerCase();
+            document.querySelectorAll("#userTable tbody tr").forEach((tr) => {
+                tr.hidden = q !== "" && !tr.textContent.toLowerCase().includes(q);
+            });
+        });
+
+        (() => {
+            const picker = document.getElementById("changelogTagPicker");
+            const target = document.getElementById("changelogTag");
+            picker?.addEventListener("click", (e) => {
+                const btn = e.target.closest(".segment");
+                if (!btn) return;
+                target.value = btn.dataset.tag;
+                picker.querySelectorAll(".segment").forEach((b) =>
+                    b.setAttribute("aria-pressed", String(b === btn)));
+            });
+        })();
+    </script>
+    <script type="module" src="{{ url_for('static', filename='js/pages/admin.js') }}"></script>
+{% endblock %}

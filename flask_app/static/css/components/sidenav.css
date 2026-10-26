@@ -85,6 +85,13 @@ body.no-sidenav #content {
     font-weight: 500;
 }
 
+/* Logout is an <a> so it stays a plain navigation (stale-JS-proof) */
+a.nav-item {
+    display: block;
+    box-sizing: border-box;
+    text-decoration: none;
+}
+
 .nav-item:hover {
     background: var(--surface-2);
 }

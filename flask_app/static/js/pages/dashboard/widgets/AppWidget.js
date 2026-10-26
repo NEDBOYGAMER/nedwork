@@ -93,7 +93,21 @@ export class AppWidget extends Widget {
         this._ro = null
     }
 
-    open() {
+    async open() {
+        // permission re-check against the annotated catalog (defence in
+        // depth — the app page itself enforces again server-side)
+        try {
+            const res = await fetch('/dashboard/api/apps')
+            if (res.ok) {
+                const apps = await res.json()
+                const entry = apps.find(a => String(a.id) === String(this.app.id))
+                if (entry && entry.locked) {
+                    console.warn('No permission for ' + (this.app.name || 'this app'))
+                    return
+                }
+            }
+        } catch { /* offline → let the server decide */ }
+
         window.location.href = "/apps" + this.appUrl
     }
 }

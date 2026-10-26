@@ -130,6 +130,13 @@ function isAppDisabled(app) {
     return config.disabled_apps.includes(app.id);
 }
 
+/* Permission gating: the catalog API stamps "locked" per current user —
+ * locked apps are kept out of the regular shelves and listed collapsed
+ * under a "No permission" section instead. */
+function isAppLocked(app) {
+    return Boolean(app.locked);
+}
+
 function isAppFavorited(app) {
     return config.favorited_apps.includes(app.id);
 }
@@ -140,12 +147,19 @@ function isInteractive(app) {
 
 function allTypes() {
     const set = new Set();
-    apps.forEach(app => set.add(app.type));
+    apps.forEach(app => appTypesOf(app).forEach(t => set.add(t)));
     return Array.from(set);
 }
 
+/* An app can live on several shelves: `types` (list) is authoritative,
+   the legacy singular `type` is the fallback for old catalog payloads. */
+function appTypesOf(app) {
+    if (Array.isArray(app.types) && app.types.length) return app.types;
+    return app.type ? [app.type] : [];
+}
+
 function appsByType(type) {
-    return apps.filter(app => app.type === type && !isAppDisabled(app));
+    return apps.filter(app => appTypesOf(app).includes(type) && !isAppDisabled(app) && !isAppLocked(app));
 }
 
 /* FNV-1a — stable across sessions so generated capsule art is consistent */
@@ -239,7 +253,7 @@ function render() {
     if (config.show_recent) {
         const recentApps = [...new Set(config.recent_apps)]
             .map(getAppById)
-            .filter(app => app && !isAppDisabled(app));
+            .filter(app => app && !isAppDisabled(app) && !isAppLocked(app));
 
         if (recentApps.length > 0) {
             container.appendChild(buildShelf({
@@ -256,7 +270,7 @@ function render() {
     // 2. Favorites — compact capsules, never disableable
     const favoritedApps = config.favorited_apps
         .map(getAppById)
-        .filter(app => app && !isAppDisabled(app));
+        .filter(app => app && !isAppDisabled(app) && !isAppLocked(app));
 
     if (favoritedApps.length > 0) {
         container.appendChild(buildShelf({
@@ -287,9 +301,11 @@ function render() {
 
     // 4. Collapsible disabled section
     const disabledApps = config.disabled_apps.map(getAppById).filter(Boolean);
+    const lockedApps = apps.filter(isAppLocked);
     const hasDisabledContent =
         (!config.show_recent && config.recent_apps.map(getAppById).filter(Boolean).length > 0) ||
         disabledApps.length > 0 ||
+        lockedApps.length > 0 ||
         config.disabled_shelves.length > 0;
 
     if (hasDisabledContent) {
@@ -316,8 +332,8 @@ function buildHero() {
     const featured =
         config.recent_apps
             .map(getAppById)
-            .find(app => app && !isAppDisabled(app) && isInteractive(app)) ||
-        apps.find(app => !isAppDisabled(app) && isInteractive(app));
+            .find(app => app && !isAppDisabled(app) && !isAppLocked(app) && isInteractive(app)) ||
+        apps.find(app => !isAppDisabled(app) && !isAppLocked(app) && isInteractive(app));
 
     if (!featured) return;
 
@@ -418,8 +434,19 @@ function buildDisabledSection(disabledApps) {
         }));
     }
 
+    if (lockedApps.length > 0) {
+        content.appendChild(buildShelf({
+            title: 'No permission',
+            apps: lockedApps,
+            shelfKey: '__locked__',
+            small: true,
+            disabled: true,
+            locked: true,
+        }));
+    }
+
     config.disabled_shelves.forEach(type => {
-        const shelfApps = apps.filter(app => app.type === type);
+        const shelfApps = apps.filter(app => appTypesOf(app).includes(type));
         if (shelfApps.length === 0) return;
         content.appendChild(buildShelf({
             title: type,
@@ -446,6 +473,7 @@ function buildShelf({
     headerRestore = false,
     cardRestore = false,
     canDisableShelf = false,
+    locked = false,
 }) {
     const shelf = document.createElement('section');
     shelf.className = `shelf${small ? '' : ''}${disabled ? ' shelf--disabled' : ''}`;
@@ -494,7 +522,7 @@ function buildShelf({
     row.className = 'shelf-row';
 
     shelfApps.forEach((app, i) => {
-        const card = buildCard(app, { disabled, cardRestore, small });
+        const card = buildCard(app, { disabled, cardRestore, small, locked });
         if (!disabled) {
             card.classList.add('reveal');
             card.style.animationDelay = `${Math.min(i * 40, 480)}ms`;
@@ -560,14 +588,15 @@ function setupShelfNav(body, row) {
    Card — artwork, overlaid name, tilt-on-hover, floating info panel
    ========================================================================== */
 
-function buildCard(app, { disabled = false, cardRestore = false, small = false } = {}) {
-    const interactive = isInteractive(app);
+function buildCard(app, { disabled = false, cardRestore = false, small = false, locked = false } = {}) {
+    const interactive = isInteractive(app) && !locked;
 
     const card = document.createElement('div');
     card.className = [
         'app-card',
         small ? 'app-card--sm' : '',
         disabled ? 'app-card--disabled' : '',
+        locked ? 'app-card--locked' : '',
         interactive ? '' : ' app-card--placeholder',
     ].filter(Boolean).join(' ').trim();
     card.dataset.appId = app.id;
@@ -927,6 +956,11 @@ function bindLongPress(card, items, onFired = () => {}) {
    ──────────────────────────────────────────────────────────────── */
 
 async function openApp(app) {
+    if (isAppLocked(app)) {
+        console.warn('No permission for ' + app.name);
+        return;
+    }
+
     config.recent_apps = [app.id, ...config.recent_apps.filter(id => id !== app.id)].slice(0, 10);
 
     // Persist in a way that survives the navigation below.

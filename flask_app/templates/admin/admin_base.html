@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+{#
+  admin_base.html
+
+  The admin console is its own site: no normal-site sidenav, no ambient
+  background. Flat dark greyscale with a single orange accent (#C77400) —
+  the palette is pinned in css/pages/admin.css, not taken from colors.css.
+
+  Pages extend this and provide {% block admin_content %} (+ optional
+  page CSS/scripts).
+
+  Tab contract (admin.js drives the switching):
+    .nav-link[data-tab="x"]  <->  section#tab-x
+  #navPendingCount shows the pending-login count; keep it [hidden] at 0.
+#}
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}nedwork — Admin{% endblock %}</title>
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#1B1B1A">
+
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global/colors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global/ui-elements.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/admin.css') }}">
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<div class="admin-shell">
+
+    <aside class="admin-rail">
+        <div class="admin-brand">
+            nedwork <span class="admin-brand-tag">admin</span>
+        </div>
+
+        <nav class="admin-nav" id="adminNav">
+            <button class="nav-link active" data-tab="pending">Pending logins <span class="nav-count" id="navPendingCount" hidden>0</span></button>
+            <button class="nav-link" data-tab="users">Users</button>
+            <button class="nav-link" data-tab="apps">Apps</button>
+            <button class="nav-link" data-tab="permissions">Permissions</button>
+            <button class="nav-link" data-tab="groups">Groups</button>
+            <button class="nav-link" data-tab="suggestions">Suggestions</button>
+            <button class="nav-link" data-tab="changelog">Changelog</button>
+            <button class="nav-link" data-tab="settings">Settings</button>
+        </nav>
+
+        <div class="admin-rail-footer">
+            <button class="nav-link nav-danger" id="admin-logout">Log out</button>
+        </div>
+    </aside>
+
+    <main class="admin-main">
+        <header class="admin-header">
+            <h1>Admin console</h1>
+            <p class="hint">Approve pending logins and manage access for the whole site — users, groups and app permissions. This console is separate from the normal site.</p>
+        </header>
+
+        {% block admin_content %}{% endblock %}
+    </main>
+
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

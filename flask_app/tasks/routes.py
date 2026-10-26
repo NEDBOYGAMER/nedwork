@@ -4,6 +4,7 @@ import secrets
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 
 from ..models import *   # Task, User, Session, db, ... (same pattern as before)
+from ..auth.decorators import login_required, permission_required, PAGE, API
 
 
 tasks_bp = Blueprint('tasks', __name__, static_folder='../static')
@@ -254,10 +255,8 @@ def _task_to_dict(task):
 # ---------------------------------------------------------------------------
 
 @tasks_bp.route('/')
-def tasks_page():
-    valid, user = Session.check(request.cookies.get("session_id"))
-    if not valid:
-        return redirect(url_for('auth.login_page'))
+@permission_required("core", PAGE)
+def tasks_page(user):
     return render_template('main/tasks.html')
 
 
@@ -273,24 +272,16 @@ def tasks_page():
 #   GET    /tasks/api/get_tasks/me             -> user id (for client-side stats keying)
 # ---------------------------------------------------------------------------
 
-def _require_user():
-    valid, user = Session.check(request.cookies.get("session_id"))
-    return user if valid else None
-
 
 @tasks_bp.route('/api/get_tasks/me', methods=['GET'])
-def me():
-    user = _require_user()
-    if user is None:
-        return jsonify({"error": "unauthorized"}), 401
+@permission_required("core", API)
+def me(user):
     return jsonify({"user_id": user.id})
 
 
 @tasks_bp.route('/api/get_tasks', methods=['GET', 'POST'])
-def list_owned_tasks():
-    user = _require_user()
-    if user is None:
-        return jsonify({"error": "unauthorized"}), 401
+@permission_required("core", API)
+def list_owned_tasks(user):
 
     if request.method == 'POST':
         payload = request.get_json(silent=True) or {}
@@ -330,10 +321,8 @@ def list_owned_tasks():
 
 
 @tasks_bp.route('/api/get_tasks/reorder', methods=['POST'])
-def reorder_tasks():
-    user = _require_user()
-    if user is None:
-        return jsonify({"error": "unauthorized"}), 401
+@permission_required("core", API)
+def reorder_tasks(user):
 
     payload = request.get_json(silent=True) or {}
     order = payload.get("order")
@@ -352,10 +341,8 @@ def reorder_tasks():
 
 
 @tasks_bp.route('/api/get_tasks/<int:task_id>', methods=['PATCH', 'DELETE'])
-def task_detail(task_id):
-    user = _require_user()
-    if user is None:
-        return jsonify({"error": "unauthorized"}), 401
+@permission_required("core", API)
+def task_detail(user, task_id):
 
     task = Task.query.filter_by(id=task_id, user_id=user.id).first()
     if task is None:
@@ -401,12 +388,10 @@ def task_detail(task_id):
 
 
 @tasks_bp.route('/api/get_tasks/private_salt', methods=['POST'])
-def private_salt():
+@permission_required("core", API)
+def private_salt(user):
     """Idempotent: creates the user's salt if missing, always returns it.
     The client needs it to derive the AES key from the passphrase."""
-    user = _require_user()
-    if user is None:
-        return jsonify({"error": "unauthorized"}), 401
 
     _ensure_private_salt(user)
     db.session.commit()
@@ -414,14 +399,12 @@ def private_salt():
 
 
 @tasks_bp.route('/api/get_tasks/private_reset', methods=['POST'])
-def private_reset():
+@permission_required("core", API)
+def private_reset(user):
     """Escape hatch for a forgotten passphrase: deletes ALL of the user's
     private tasks (the ciphertext is unreadable without the passphrase, so
     there is nothing to recover) and clears the salt so the next private
     task starts with a fresh passphrase. Regular tasks are untouched."""
-    user = _require_user()
-    if user is None:
-        return jsonify({"error": "unauthorized"}), 401
 
     deleted = Task.query.filter_by(user_id=user.id, private=True).delete(synchronize_session=False)
     user.encryption_key = None

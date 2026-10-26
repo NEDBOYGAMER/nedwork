@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}nedwork — No access{% endblock %}
+
+{% block body_class %}no-sidenav{% endblock %}
+
+{% block sidenav %}{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/login.css') }}">
+{% endblock %}
+
+{% block content %}
+<div id="login-page">
+
+    <div id="main-box">
+        <h1 class="hero-title">Locked</h1>
+        <h2 class="hero-subtitle">you have no access here</h2>
+        <div id="pulse-bar"></div>
+    </div>
+
+    <div class="card auth-card">
+        <p class="hint" style="margin-bottom: 10px;">
+            You are logged in, but your account does not have the permission
+            this page requires.
+        </p>
+        <p class="hint">
+            If you believe this is wrong, ask the site admin to grant you access.
+        </p>
+        {% if on_dashboard %}
+        <p class="hint" style="margin-top:14px;">
+            This is the dashboard itself — an admin has to grant your account
+            the "core" permission before you can enter.
+        </p>
+        <button class="btn btn-primary" id="forbidden-logout" style="display:block; width:100%; margin-top:14px;">Log out</button>
+        {% else %}
+        <a class="btn btn-primary" href="/dashboard" style="display:block; text-align:center; margin-top:14px;">Back to dashboard</a>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.getElementById("forbidden-logout")?.addEventListener("click", async () => {
+        // server deletes the session + clears the cookie; reloading the
+        // denied page then redirects the anonymous visit to the login page
+        try { await fetch("{{ url_for('auth.logout') }}", { method: "POST" }); } catch (e) {}
+        window.location.reload();
+    });
+</script>
+{% endblock %}

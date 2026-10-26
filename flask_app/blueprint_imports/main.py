@@ -8,6 +8,8 @@ from flask_app.apps.routes import apps_bp
 from flask_app.tasks.routes import tasks_bp
 from flask_app.events.routes import events_bp
 from flask_app.about.routes import about_bp
+from flask_app.admin.routes import admin_bp
+from flask_app.notify_routes import notify_bp
 
 # Store blueprints in a list of tuples: (blueprint_object, url_prefix)
 ALL_BLUEPRINTS = [
@@ -21,6 +23,8 @@ ALL_BLUEPRINTS = [
     (tasks_bp, '/tasks'),
     (events_bp, '/events'),
     (about_bp, '/about'),
+    (admin_bp, '/admin'),
+    (notify_bp, '/notify'),
 ]
 
 def register_all_blueprints(app):

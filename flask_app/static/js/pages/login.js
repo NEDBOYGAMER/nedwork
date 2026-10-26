@@ -54,20 +54,49 @@ async function register() {
             body: JSON.stringify({ username, password, email })
         });
 
+        const data = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-            const text = await response.text();
-            console.error("Registration failed on server:", response.status, text);
+            const msg = data.error || `Registration failed (status ${response.status})`;
+            showAuthError(msg);
+            console.error("Registration failed on server:", response.status, msg);
             return;
         }
 
-        const data = await response.json();
-        console.log(data);
+        if (data.error) {
+            showAuthError(data.error);
+            return;
+        }
+
+        if (data.pending) {
+            // registration is now a request: no session is created —
+            // show the server's message and nothing else to do here
+            showAuthError(data.message || "Request submitted — an admin needs to approve it");
+            return;
+        }
+
         state = "login";
         switchTab("login")
         loadLogin()
     } catch (error) {
         console.error('Request failed:', error);
     }
+}
+
+function showAuthError(message) {
+    const container = document.getElementById("formArea");
+    if (!container) return;
+    let msg = document.getElementById("auth-error");
+    if (!msg) {
+        msg = document.createElement("p");
+        msg.id = "auth-error";
+        msg.className = "hint";
+        msg.style.color = "var(--danger, #e5484d)";
+        msg.style.margin = "8px 0";
+        container.appendChild(msg);
+    }
+    msg.textContent = message;
+    setTimeout(() => { msg.textContent = ""; }, 6000);
 }
 
 async function login() {
@@ -81,8 +110,9 @@ async function login() {
     });
 
     if (!response.ok) {
-        const text = await response.text();
-        console.error("Login failed:", response.status, text);
+        const data = await response.json().catch(() => ({}));
+        showAuthError(data.error || "Invalid username or password");
+        console.error("Login failed:", response.status, data.error);
         const passwordEl = document.getElementById('password');
         passwordEl?.classList.add("wrong");
         setTimeout(() => passwordEl?.classList.remove("wrong"), 800);
@@ -91,7 +121,12 @@ async function login() {
 
     const data = await response.json();
     if (data.success) {
-        window.location.href = '/dashboard';
+        // bootstrapped admin (or admin-forced reset) must set a real
+        // password first; admins land in the console, everyone else
+        // on the normal dashboard
+        window.location.href = data.must_change_password
+            ? "/auth/change-password"
+            : (data.is_admin ? "/admin" : "/dashboard");
     } else {
         console.log("Invalid username or password");
     }

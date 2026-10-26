@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+{#
+  admin/login.html — the console's password-only login prompt.
+
+  The admin is not a user: this lives entirely outside the normal site
+  and the /auth flow. Reaches here by explicitly visiting /admin while
+  unauthenticated (admin_page renders this instead of the console).
+
+  Style: flat dark greyscale + orange #C77400, one centered card —
+  nedwork logo as the title with "admin" beneath, matching the console
+  (css/pages/admin.css also kills the ambient dot grid here).
+#}
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>nedwork — Admin access</title>
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#1B1B1A">
+
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global/colors.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global/ui-elements.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/admin.css') }}">
+
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1B1B1A;
+            color: #EAEAE6;
+            font: 400 14px/1.6 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .admin-login {
+            --accent: #C77400;        /* ui-elements' primary button picks this up */
+            --accent-ink: #FFFFFF;
+            --danger: #E5484D;
+
+            width: min(360px, 92vw);
+            padding: 34px 32px 28px;
+            background: #242423;
+            border: 1px solid #35352F;
+            border-radius: 16px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .admin-login .brand img {
+            display: block;
+            width: 56px;
+            height: auto;
+            margin: 0 auto 10px;
+        }
+
+        .admin-login .brand .role {
+            display: block;
+            margin-top: 2px;
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: .02em;
+            color: #EAEAE6;
+        }
+
+        .admin-login .rule {
+            height: 1px;
+            margin: 20px 0;
+            background: #35352F;
+        }
+
+        .admin-login label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 10.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: #A3A39D;
+            text-align: left;
+        }
+
+        .admin-login input {
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 14px;
+            padding: 9px 12px;
+            border: 1px solid #454540;
+            border-radius: 10px;
+            background: #2B2B29;
+            color: #EAEAE6;
+            font: inherit;
+            font-size: 14px;
+        }
+
+        .admin-login input:focus {
+            outline: 2px solid rgba(199, 116, 0, .4);
+            outline-offset: 0;
+            border-color: #C77400;
+        }
+
+        .admin-login .btn {
+            width: 100%;
+            display: inline-flex;
+            justify-content: center;
+            padding: 9px 12px;
+            border: 1px solid #C77400;
+            border-radius: 10px;
+            background: #C77400;
+            color: #FFFFFF;
+            font: inherit;
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .admin-login .btn:hover {
+            background: #DA8A15;
+            border-color: #DA8A15;
+        }
+
+        .admin-login .btn[disabled] {
+            opacity: .55;
+            cursor: not-allowed;
+        }
+
+        #admin-login-error {
+            margin: 10px 0 0;
+            min-height: 18px;
+            color: #E5484D;
+            font-size: 12.5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-login">
+        <div class="brand">
+            <img src="{{ url_for('static', filename='img/nedwork.png') }}" alt="nedwork logo">
+            <span class="role">admin</span>
+        </div>
+
+        <div class="rule"></div>
+
+        <label for="admin-login-password">Password</label>
+        <input type="password" id="admin-login-password" autofocus
+               placeholder="••••••••" autocomplete="current-password">
+        <button class="btn btn-primary" id="admin-login-btn">Log in</button>
+
+        <p id="admin-login-error"></p>
+    </div>
+
+    <script>
+        async function submit(event) {
+            if (event && event.type === "keydown" && event.key !== "Enter") return;
+            const button = document.getElementById("admin-login-btn");
+            const error = document.getElementById("admin-login-error");
+            button.setAttribute("disabled", "true");
+            try {
+                const response = await fetch("/admin/api/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        password: document.getElementById("admin-login-password").value
+                    })
+                });
+                if (response.ok) {
+                    window.location.reload();
+                    return;
+                }
+                const data = await response.json().catch(() => ({}));
+                error.textContent = data.error || "Login failed";
+            } catch (e) {
+                error.textContent = "Login failed — see console";
+                console.error(e);
+            }
+            button.removeAttribute("disabled");
+        }
+
+        document.getElementById("admin-login-btn")?.addEventListener("click", submit);
+        document.getElementById("admin-login-password")?.addEventListener("keydown", submit);
+    </script>
+</body>
+</html>

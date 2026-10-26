@@ -1,0 +1,20 @@
+Done — the permission system is implemented, migrated, and passing a full smoke test suite.
+What you get
+Permission model (reuse of your existing tables, now live):
+- core — login + site membership → dashboard, appstore, events, tasks, settings + every app without its own gate. Granted automatically on registration; you can revoke it to lock someone out.
+- admin — implies everything, auto-passes all checks.
+- tierforge, colors_ai — per-app extras.
+- Groups can hold permissions and distribute them to members (e.g. a "gamers" group with tierforge).
+Enforcement map (source: apps.json permissions field — unread until today):
+- TierForge → tierforge (+admin), Timetable/Colors/Links → core, TownClaim/Controller Tester/Trivia → public, unknown apps → core by default (locked-by-default)
+- Colors AI palette endpoint additionally requires colors_ai
+- /about changelog write/delete now admin-only (the client-side "admin mode" is cosmetic no more — server-verified)
+- App HTML pages are gated at apps_bp; static JS/CSS stays public (no data in it); TownClaim auth now fails closed instead of silently skipping
+Admin panel at /admin (Users / Permissions / Groups tabs): approve–lockout (kills sessions instantly), grant/revoke permissions, force password reset with one-time temp password shown once, group creation with permissions + member management. Sidenav shows Admin for admins only.
+Admin bootstrap: admin user auto-created on first boot, random password printed once to the console, forced password change at first login.
+Immediate notes
+1. Your local admin account is ready right now:
+- username admin, password XxNaEab_l8dLZiLk69I0aA — you'll be prompted to set your own on first login
+2. Migration b41c2d8a9f01 is already applied locally. On the server, run flask db upgrade before/with the deploy — app.py boot degrades gracefully and prints instructions if the DB is old.
+3. Heads-up: the working tree already contained an uncommitted security pass (auth decorators, CSRF, etc.) from before — my changes sit on top of it; nothing was reverted.
+4. Pre-existing quirk I noticed but didn't change: app_corner.js saves preferences via navigator.sendBeacon, which can't carry the CSRF header — check whether that POST ever succeeds; if it 403s in production it'd need switching to fetch(..., {keepalive:true}).

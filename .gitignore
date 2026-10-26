@@ -13,9 +13,18 @@ env/
 instance/
 .webassets-cache
 
+# SQLite databases created by db.create_all() (debug runs) — never commit
+*.db
+*.db-shm
+*.db-wal
+
 # Environment variables / Secrets
 .env
 .flaskenv
+
+# Server ops docs — contain passwords / IPs, stay local only
+__docs/server_cheat-sheet.md
+__docs/structure.md
 
 # IDEs and editors
 .vscode/

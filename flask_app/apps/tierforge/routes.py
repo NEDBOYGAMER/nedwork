@@ -12,6 +12,7 @@ except ImportError:
     HAS_PIL = False
 
 from ...models import Session
+from ...auth.decorators import login_required, permission_required, API
 
 # NOTE ON REGISTRATION: this blueprint is meant to be mounted at
 # url_prefix='/apps/tierforge' (same convention as the colors app), e.g.
@@ -65,14 +66,6 @@ IMAGE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 # ------------------------------------------------------------------
 # helpers
 # ------------------------------------------------------------------
-
-def _require_user():
-    """Returns the logged-in User, or None if the session is invalid."""
-    valid, user = Session.check(request.cookies.get("session_id"))
-    if not valid:
-        return None
-    return user
-
 
 def _user_dir(user):
     path = os.path.join(UPLOAD_ROOT, str(user.id))
@@ -133,7 +126,8 @@ def _strip_ext(filename):
 # ------------------------------------------------------------------
 
 @tierforge_bp.route("/images", methods=["POST"])
-def upload_images():
+@permission_required("tierforge", API)
+def upload_images(user):
     """Accepts one or more files under the 'images' field in a single
     multipart POST (the frontend batches a whole file-picker selection
     into one request rather than one request per file — far fewer round
@@ -141,9 +135,6 @@ def upload_images():
     server-side and store both; the browser only ever gets URLs back,
     never image bytes it has to decode itself for the on-screen grid.
     """
-    user = _require_user()
-    if user is None:
-        return jsonify({"error": "Not authenticated"}), 401
 
     if not HAS_PIL:
         return jsonify({"error": "Pillow is not installed on the server"}), 500
@@ -189,7 +180,8 @@ def upload_images():
 
 
 @tierforge_bp.route("/images/<image_id>/<variant>", methods=["GET"])
-def get_image(image_id, variant):
+@permission_required("tierforge", API)
+def get_image(user, image_id, variant):
     """Serves either the thumbnail or the full-resolution copy.
 
     Both are immutable once written (a fresh id is minted per upload, we
@@ -197,9 +189,6 @@ def get_image(image_id, variant):
     client — this matters most for the thumbnail, since it's the one
     re-requested on every reload/reconnect.
     """
-    user = _require_user()
-    if user is None:
-        return jsonify({"error": "Not authenticated"}), 401
 
     if variant not in ("thumb", "full"):
         abort(404)
@@ -218,14 +207,12 @@ def get_image(image_id, variant):
 
 
 @tierforge_bp.route("/images/<image_id>", methods=["DELETE"])
-def delete_image(image_id):
+@permission_required("tierforge", API)
+def delete_image(user, image_id):
     """Removes both copies of an image. Called by the frontend whenever an
     image is actually removed (not just moved between tiers/pool) or when
     a loaded .tierforge file replaces the whole board — best-effort, so a
     missing file is not an error."""
-    user = _require_user()
-    if user is None:
-        return jsonify({"error": "Not authenticated"}), 401
 
     orig_path, thumb_path = _safe_image_paths(user, image_id)
     if orig_path is None:

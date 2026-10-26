@@ -3,7 +3,7 @@
     "id": 0,
     "name": "TierForge",
     "image": "/tier_forge.png",
-    "permissions": ["tierforge", "admin"],
+    "permissions": ["tierforge"],
     "url": "/tierforge",
     "type": "Gaming",
     "description": "TierForge is a fast and easy tier list maker that lets you rank anything."
@@ -12,7 +12,7 @@
     "id": 1,
     "name": "Colors",
     "image": "/colors.svg",
-    "permissions": [],
+    "permissions": ["core"],
     "url": "/colors",
     "type": "Tools",
     "description": "A color picker and pallete maker"
@@ -39,7 +39,7 @@
     "id": 5,
     "name": "Links",
     "image": "/links.svg",
-    "permissions": [],
+    "permissions": ["core"],
     "url": "/links",
     "type": "Tools",
     "description": "Store all your weblinks here"
@@ -57,7 +57,7 @@
     "id": 16,
     "name": "Timetable",
     "image": "/placeholder",
-    "permissions": [],
+    "permissions": ["core"],
     "url": "/timetable",
     "type": "Organizing",
     "description": "Timetablemaker"

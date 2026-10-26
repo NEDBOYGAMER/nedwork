@@ -2,11 +2,12 @@ import time
 import uuid
 import re
 
-from flask import Blueprint, request, jsonify, redirect, url_for
+from flask import Blueprint, request, jsonify
 from sqlalchemy.orm.attributes import flag_modified
 
 from ...models import *
 from ... import db
+from ...auth.decorators import permission_required, REDIRECT
 
 links_bp = Blueprint('links', __name__)
 
@@ -38,14 +39,6 @@ def _default_links():
 # ------------------------------------------------------------------
 # helpers
 # ------------------------------------------------------------------
-
-def _require_user():
-    """Returns the logged-in User, or None if the session is invalid."""
-    valid, user = Session.check(request.cookies.get("session_id"))
-    if not valid:
-        return None
-    return user
-
 
 def _get_or_create_linklist(user):
     """Every user gets exactly one AppsConfig + LinkList row, created lazily.
@@ -99,11 +92,8 @@ def _clean_tags(tags):
 # ------------------------------------------------------------------
 
 @links_bp.route("/list", methods=["GET"])
-def list_links():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for('auth.login_page'))
-
+@permission_required("core", REDIRECT)
+def list_links(user):
     link_list = _get_or_create_linklist(user)
     db.session.commit()
 
@@ -111,11 +101,8 @@ def list_links():
 
 
 @links_bp.route("/save", methods=["POST"])
-def save_link():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for('auth.login_page'))
-
+@permission_required("core", REDIRECT)
+def save_link(user):
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "No data provided"}), 400
@@ -171,11 +158,8 @@ def save_link():
 
 
 @links_bp.route("/delete", methods=["POST"])
-def delete_link():
-    user = _require_user()
-    if user is None:
-        return redirect(url_for('auth.login_page'))
-
+@permission_required("core", REDIRECT)
+def delete_link(user):
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "No data provided"}), 400
