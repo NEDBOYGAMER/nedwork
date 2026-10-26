@@ -7,14 +7,18 @@ import shutil
 
 db = SQLAlchemy()
 
+# PWA tags injected into pages that lack them. The favicon lives OUTSIDE the
+# blob and is injected separately (guarded): pages that declare their own icon
+# (admin -> admin.ico) must never receive a second, later-declared icon —
+# some engines pick the last rel="icon", which broke the admin tab icon.
 _PWA_HEAD_TAGS = (
     '<meta name="viewport" content="width=device-width, initial-scale=1">'
     '<meta name="color-scheme" content="dark light">'
     '<meta name="theme-color" content="#16161A">'
     '<link rel="manifest" href="/manifest.json">'
-    '<link rel="icon" href="/favicon.ico" sizes="any">'
     '<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">'
 )
+_PWA_ICON_TAG = '<link rel="icon" href="/favicon.ico" sizes="any">'
 
 _CSRF_SCRIPT_TAG = '<script src="/static/js/global/csrf.js"></script>'
 _TOAST_SCRIPT_TAG = '<script src="/static/js/global/toast.js"></script>'
@@ -203,6 +207,12 @@ def create_app():
                 changed = False
                 if 'rel="manifest"' not in html:
                     html = html.replace("</head>", _PWA_HEAD_TAGS + "</head>", 1)
+                    changed = True
+                # Never inject a favicon into a page that already declares one
+                # (admin pages use admin.ico) — a second, later-declared
+                # rel="icon" wins in some engines and breaks the tab icon.
+                if 'rel="icon"' not in html:
+                    html = html.replace("</head>", _PWA_ICON_TAG + "</head>", 1)
                     changed = True
                 # Load the CSRF fetch/XHR patch on every HTML page — including
                 # pages that do not extend base.html (apps, about).
