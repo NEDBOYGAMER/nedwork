@@ -57,12 +57,15 @@
           var token = readToken();
           if (token) {
             init = Object.assign({}, init || {});
-            var headers = new Headers(
-              (init.headers instanceof Headers ||
-                (init.headers && init.headers.append))
-                ? init.headers
-                : (init.headers || null)
-            );
+            /* init.headers || [] — never fall back to null: the Headers
+               constructor REJECTS null with a TypeError in spec-compliant
+               engines (Firefox included). The surrounding catch then swallows
+               the error and the token is silently dropped, so any fetch that
+               passes no headers of its own — i.e. every FormData upload —
+               fails CSRF server-side while JSON posts that set a
+               Content-Type header keep working. An empty array is a valid
+               HeadersInit (empty header sequence) everywhere. */
+            var headers = new Headers(init.headers || []);
             if (!headers.get(HEADER_NAME)) {
               headers.set(HEADER_NAME, token);
             }
@@ -70,7 +73,9 @@
           }
         }
       } catch (e) {
-        /* never break a request because of token bookkeeping */
+        /* never break a request because of token bookkeeping — but do not
+           fail silently either: a dropped header surfaces as a remote 403 */
+        console.warn("csrf.js: could not attach X-CSRF-Token:", e);
       }
       return originalFetch(input, init);
     };
