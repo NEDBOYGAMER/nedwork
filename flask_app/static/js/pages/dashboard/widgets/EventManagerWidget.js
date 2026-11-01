@@ -1,5 +1,10 @@
 import { Widget } from '../Widget.js'
 
+// Real upcoming events come from the Events site API. Demo data is only a
+// silent fallback when the API is unreachable.
+const API_URL = '/events/api/upcoming'
+const POLL_MS = 60_000
+
 function daysFromNow(days) {
     const d = new Date()
     d.setDate(d.getDate() + days)
@@ -8,28 +13,26 @@ function daysFromNow(days) {
 }
 
 function demoEvents() {
-    const month = new Date().toLocaleDateString([], { month: "long", year: "numeric" })
     return [
-        { id: 1, name: "Team standup", date: daysFromNow(0), color: "accent" },
-        { id: 2, name: "Design review", date: daysFromNow(2), color: "success" },
-        { id: 3, name: "Game night", date: daysFromNow(5), color: "warning" },
-        { id: 4, name: "Server maintenance", date: daysFromNow(8), color: "danger" },
-        { id: 5, name: `Monthly sync (${month})`, date: daysFromNow(12), color: "accent" },
+        { id: 1, title: "Game night", event_date: daysFromNow(5).toISOString(), attending: 3, member_count: 5 },
     ]
 }
 
-const EVENT_ICONS = {
-    accent: "📌",
-    success: "🎉",
-    warning: "⏰",
-    danger: "🔧",
+const RSVP_BADGES = {
+    attending: "Going",
+    maybe: "Maybe",
+    cant: "Can't",
+    pending: "Invited",
 }
 
 export class EventManagerWidget extends Widget {
     constructor(config, ctx) {
         super(config, ctx)
 
-        this.events = (config.events || demoEvents()).map(e => ({ ...e, date: new Date(e.date) }))
+        this.events = []
+        this.live = false
+        this.limit = Math.max(1, parseInt(config.settings?.limit, 10) || 5)
+        this.pollTimer = null
 
         this.todayEl = null
         this.listEl = null
@@ -52,6 +55,30 @@ export class EventManagerWidget extends Widget {
         this.listEl.className = "events-list"
         this.content.appendChild(this.listEl)
 
+        this.fetchEvents()
+        this.pollTimer = setInterval(() => this.fetchEvents(), POLL_MS)
+
+        this.render()
+    }
+
+    dispose() {
+        clearInterval(this.pollTimer)
+    }
+
+    async fetchEvents() {
+        try {
+            const res = await fetch(API_URL, { credentials: "same-origin" })
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            const data = await res.json()
+            const rows = data.events || []
+            this.live = true
+            this.events = rows.map(e => ({
+                ...e,
+                date: e.event_date ? new Date(e.event_date) : null,
+            }))
+        } catch (err) {
+            if (!this.live) this.events = demoEvents().map(e => ({ ...e, date: new Date(e.event_date) }))
+        }
         this.render()
     }
 
@@ -66,28 +93,40 @@ export class EventManagerWidget extends Widget {
 
         this.listEl.innerHTML = ""
         const upcoming = this.events
-            .filter(e => e.date >= now)
+            .filter(e => e.date && e.date >= now)
             .sort((a, b) => a.date - b.date)
-            .slice(0, 5)
+            .slice(0, this.limit)
 
         upcoming.forEach(event => {
             const item = document.createElement("li")
             item.className = "event-item"
+            if (event.id) {
+                item.style.cursor = "pointer"
+                item.title = "Open event"
+                item.addEventListener("click", () => {
+                    window.location.href = `/events/${event.id}/`
+                })
+            }
 
             const icon = document.createElement("span")
             icon.className = "event-icon"
-            icon.innerText = EVENT_ICONS[event.color] || "📅"
+            icon.innerText = "📅"
 
             const info = document.createElement("div")
             info.className = "event-info"
 
             const name = document.createElement("span")
             name.className = "event-name"
-            name.innerText = event.name
+            name.innerText = event.title
 
             const when = document.createElement("span")
             when.className = "event-when"
-            when.innerText = this.friendlyDate(event.date)
+            when.innerText = [
+                this.friendlyDate(event.date),
+                this.countdown(event.date),
+                RSVP_BADGES[event.my_rsvp] || "",
+                `${event.attending}/${event.member_count} going`,
+            ].filter(Boolean).join(" · ")
 
             info.append(name, when)
             item.append(icon, info)
@@ -100,6 +139,16 @@ export class EventManagerWidget extends Widget {
             empty.innerText = "No upcoming events"
             this.listEl.appendChild(empty)
         }
+    }
+
+    countdown(date) {
+        const ms = date - new Date()
+        const minutes = Math.round(ms / 60000)
+        if (minutes < 60) return `in ${Math.max(1, minutes)} min`
+        const hours = Math.round(minutes / 60)
+        if (hours < 24) return `in ${hours}h`
+        const days = Math.round(hours / 24)
+        return `in ${days} day${days === 1 ? "" : "s"}`
     }
 
     friendlyDate(date) {

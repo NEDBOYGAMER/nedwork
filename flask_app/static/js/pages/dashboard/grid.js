@@ -56,8 +56,18 @@ export class GridManager {
         this.drag = null
     }
 
-    /* Normalize a widget to a legal cell rectangle */
+    /* Normalize a widget to a legal cell rectangle.
+       locked widgets (app icons) are always forced to exactly 1x1, whatever
+       the persisted state says - they can never be resized/expanded. */
     norm(widget) {
+        if (widget.locked) {
+            return {
+                x: clamp(Math.round(num(widget.x, 0)), 0, GRID_COLS - 1),
+                y: clamp(Math.round(num(widget.y, 0)), 0, MAX_ROWS),
+                w: 1,
+                h: 1,
+            }
+        }
         return {
             x: clamp(Math.round(num(widget.x, 0)), 0, GRID_COLS - 1),
             y: clamp(Math.round(num(widget.y, 0)), 0, MAX_ROWS),

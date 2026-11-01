@@ -40,6 +40,10 @@ export class Widget {
         if (this.fullBleed) this.card.classList.add("widget--full-bleed")
         this.card.dataset.id = this.id
         this.card.dataset.type = this.type
+        // card appearance style: "tech" default, see WIDGET_STYLES + the
+        // [data-style="…"] rules in widgets.css. settings.style wins over a
+        // legacy root-level style key.
+        this.card.dataset.style = this.config.settings?.style || this.config.style || "tech"
 
         this.grip = document.createElement("span")
         this.grip.className = "card-grip"
@@ -87,6 +91,13 @@ export class Widget {
     /* Persist this widget's current state */
     save(delta) {
         if (delta) Object.assign(this.config, delta)
+
+        // re-sync derived UI when settings changed (e.g. the title)
+        this.title = this.config.settings?.title || ""
+        if (this.titleEl) this.titleEl.innerText = this.title
+
+        // keep the card's appearance style in sync (e.g. changed via settings)
+        if (this.card) this.card.dataset.style = this.config.settings?.style || this.config.style || "tech"
         if (this.ctx.onSave) this.ctx.onSave()
     }
 
@@ -106,24 +117,49 @@ export class Widget {
             const menu = document.createElement("ul")
             menu.id = "context-menu"
             menu.className = "context-menu"
-            menu.style.left = `${event.pageX}px`
-            menu.style.top = `${event.pageY}px`
 
             const edit = document.createElement("li")
             edit.className = "context-option"
             edit.innerText = "Edit"
-            edit.addEventListener("click", () => this.edit())
+            edit.addEventListener("click", () => {
+                menu.remove()
+                this.edit()
+            })
 
-            const del = document.createElement("li")
+            let armed = false
+            let del
+            del = document.createElement("li")
             del.className = "context-option"
             del.innerText = "Delete"
-            del.addEventListener("click", () => this.delete())
+            del.addEventListener("click", () => {
+                if (armed) {
+                    menu.remove()
+                    this.delete()
+                    return
+                }
+                // first click only arms the confirm
+                armed = true
+                del.innerText = "Confirm delete"
+                del.classList.add("context-danger")
+            })
 
             menu.append(edit, del)
             document.body.appendChild(menu)
+
+            // position:fixed takes viewport coords — pageX/pageY are
+            // document coords (and undefined outside Firefox), which put
+            // the menu far below the click whenever the page is scrolled.
+            // Clamped after appendChild so the real size is measurable
+            // (same synchronous block, so nothing paints in between).
+            const px = Math.min(event.clientX, window.innerWidth - menu.offsetWidth - 8)
+            const py = Math.min(event.clientY, window.innerHeight - menu.offsetHeight - 8)
+            menu.style.left = `${Math.max(8, px)}px`
+            menu.style.top = `${Math.max(8, py)}px`
         })
 
-        document.addEventListener("click", () => {
+        document.addEventListener("click", (event) => {
+            // clicks inside the menu are handled by the menu itself
+            if (event.target instanceof Element && event.target.closest("#context-menu")) return
             document.getElementById("context-menu")?.remove()
         }, { capture: true })
     }
@@ -176,9 +212,29 @@ export class Widget {
         form.className = "settings-form"
         box.appendChild(form)
 
+        // accordion helper shared by every dropdown in this modal:
+        // opening one closes all the others
+        const closeDropdowns = (except) => {
+            form.querySelectorAll(".select-dropdown.open").forEach(d => {
+                if (d === except) return
+                d.classList.remove("open")
+                d.querySelector(".select-dropdown-trigger")?.setAttribute("aria-expanded", "false")
+            })
+        }
+
+        // rows, grouped under mono eyebrow labels whenever the schema's
+        // group key changes between entries
+        let lastGroup = null
         Object.entries(schema).forEach(([key, def]) => {
             if (def.type === "na") return
-            form.appendChild(this._buildRow(key, def, draft))
+            if (def.group && def.group !== lastGroup) {
+                const groupLabel = document.createElement("div")
+                groupLabel.className = "settings-group-label"
+                groupLabel.innerText = def.group
+                form.appendChild(groupLabel)
+                lastGroup = def.group
+            }
+            form.appendChild(this._buildRow(key, def, draft, closeDropdowns))
         })
 
         const actions = document.createElement("div")
@@ -199,7 +255,34 @@ export class Widget {
         document.body.appendChild(overlay)
         overlay.classList.add("open")
 
-        const close = () => overlay.remove()
+        // outside click closes any open dropdown menu
+        const onDocClick = (event) => {
+            if (!(event.target instanceof Element)) return
+            form.querySelectorAll(".select-dropdown.open").forEach(d => {
+                if (!d.contains(event.target)) {
+                    d.classList.remove("open")
+                    d.querySelector(".select-dropdown-trigger")?.setAttribute("aria-expanded", "false")
+                }
+            })
+        }
+        document.addEventListener("click", onDocClick)
+
+        // Escape closes the open dropdown first, then the modal
+        const onEsc = (event) => {
+            if (event.key !== "Escape") return
+            if (form.querySelector(".select-dropdown.open")) {
+                closeDropdowns()
+                return
+            }
+            close()
+        }
+        document.addEventListener("keydown", onEsc)
+
+        const close = () => {
+            document.removeEventListener("click", onDocClick)
+            document.removeEventListener("keydown", onEsc)
+            overlay.remove()
+        }
         closeBtn.addEventListener("click", close)
         cancelBtn.addEventListener("click", close)
         overlay.addEventListener("click", (event) => {
@@ -209,6 +292,9 @@ export class Widget {
             Object.assign(this.config, draft)
             this.save()
             close()
+            // settings are read in the widget constructors — surface them
+            // by re-rendering every widget instead of waiting for a reload
+            if (this.ctx.onSettingsChanged) this.ctx.onSettingsChanged()
         })
     }
 
@@ -225,38 +311,69 @@ export class Widget {
         }
     }
 
-    _buildRow(key, def, draft) {
+    _buildRow(key, def, draft, closeOthers) {
+        const value = this._field(draft, key)
+        const onChange = (v) => this._set(draft, key, v)
+        const labelText = key.replace(/_/g, " ")
+
+        // toggles and color pickers sit in a setting-item row: label left,
+        // control right — the same row pattern as the site Settings page
+        if (def.type === "boolean" || def.type === "color") {
+            const row = document.createElement("div")
+            row.className = "setting-item"
+
+            const info = document.createElement("div")
+            info.className = "setting-item-info"
+
+            const label = document.createElement("h3")
+            label.innerText = labelText
+            info.appendChild(label)
+
+            if (def.desc) {
+                const desc = document.createElement("p")
+                desc.innerText = def.desc
+                info.appendChild(desc)
+            }
+
+            const control = document.createElement("div")
+            control.className = "setting-item-control"
+
+            row.append(info, control)
+            control.appendChild(def.type === "boolean"
+                ? this._switch(value, onChange)
+                : this._color(value, onChange))
+
+            return row
+        }
+
+        // text/dropdown/textarea fields read better with the label above
+        // a full-width control
         const row = document.createElement("div")
-        row.className = "settings-row"
+        row.className = "settings-row stacked"
 
         const label = document.createElement("span")
         label.className = "settings-label"
-        label.innerText = key.replace(/_/g, " ")
+        label.innerText = labelText
         row.appendChild(label)
 
-        const value = this._field(draft, key)
-        const onChange = (v) => this._set(draft, key, v)
+        if (def.desc) {
+            const desc = document.createElement("span")
+            desc.className = "settings-desc"
+            desc.innerText = def.desc
+            row.appendChild(desc)
+        }
 
         switch (def.type) {
-            case "boolean":
-                row.appendChild(this._switch(value, onChange))
-                break
             case "dropdown":
-                row.classList.add("stacked")
-                row.appendChild(this._dropdown(key, def.options, value, onChange))
+                row.appendChild(this._dropdown(def.options, value, onChange, closeOthers))
                 break
             case "text_area":
-                row.classList.add("stacked")
                 row.appendChild(this._textarea(value, onChange))
-                break
-            case "color":
-                row.appendChild(this._color(value, onChange))
                 break
             case "location":
             case "timezone":
             case "input_field":
             default:
-                row.classList.add("stacked")
                 row.appendChild(this._input(value, onChange))
                 break
         }
@@ -291,48 +408,70 @@ export class Widget {
         return input
     }
 
-    _dropdown(key, options, value, onChange) {
+    /* Custom select using the shared .select-dropdown component (same
+       markup and behavior as the site Settings page). closeOthers gives
+       the accordion: opening one dropdown closes the others. */
+    _dropdown(options, value, onChange, closeOthers) {
         const wrap = document.createElement("div")
-        wrap.className = "dropdown"
+        wrap.className = "select-dropdown"
 
-        const uid = `drop-${key}-${this.id}`
-        const toggle = document.createElement("input")
-        toggle.type = "checkbox"
-        toggle.id = uid
+        const trigger = document.createElement("button")
+        trigger.type = "button"
+        trigger.className = "select-dropdown-trigger"
+        trigger.setAttribute("aria-haspopup", "listbox")
+        trigger.setAttribute("aria-expanded", "false")
 
-        const header = document.createElement("label")
-        header.className = "dropdown-header dropdown-box"
-        header.setAttribute("for", uid)
+        const valueEl = document.createElement("span")
+        valueEl.className = "select-dropdown-value"
+        valueEl.innerText = value ?? ""
 
-        const selected = document.createElement("span")
-        selected.className = "dropdown-selected"
-        selected.innerText = value ?? ""
+        const caret = document.createElement("span")
+        caret.className = "icon select-dropdown-caret"
+        caret.style.setProperty("--icon",
+            `url('${(window.STATIC_URL || "/static/")}img/icons/tabler-arrow-down.svg')`)
 
-        const arrow = document.createElement("span")
-        arrow.className = "dropdown-arrow"
-        arrow.innerText = "▾"
+        trigger.append(valueEl, caret)
 
-        header.append(selected, arrow)
+        const menu = document.createElement("ul")
+        menu.className = "select-dropdown-menu"
+        menu.setAttribute("role", "listbox")
 
-        const menu = document.createElement("div")
-        menu.className = "dropdown-menu"
+        const setOpen = (open) => {
+            wrap.classList.toggle("open", open)
+            trigger.setAttribute("aria-expanded", String(open))
+        }
+
+        trigger.addEventListener("click", () => {
+            const opening = !wrap.classList.contains("open")
+            if (opening && closeOthers) closeOthers(wrap)
+            setOpen(opening)
+        })
+
         ;(options || []).forEach(option => {
-            const opt = document.createElement("div")
-            opt.className = "dropdown-option"
+            const opt = document.createElement("li")
+            opt.className = "select-dropdown-option"
+            opt.setAttribute("role", "option")
+            opt.dataset.value = option
             opt.innerText = option
+            if (option === value) opt.classList.add("selected")
             opt.addEventListener("click", () => {
-                selected.innerText = option
-                toggle.checked = false
+                menu.querySelectorAll(".select-dropdown-option.selected")
+                    .forEach(o => o.classList.remove("selected"))
+                opt.classList.add("selected")
+                valueEl.innerText = option
+                setOpen(false)
                 onChange(option)
             })
             menu.appendChild(opt)
         })
 
-        wrap.append(toggle, header, menu)
+        wrap.append(trigger, menu)
         return wrap
     }
 
     _switch(value, onChange) {
+        // global .switch component — the knob is drawn by
+        // .switch-track::before, no extra element needed
         const label = document.createElement("label")
         label.className = "switch"
 
@@ -342,9 +481,6 @@ export class Widget {
 
         const track = document.createElement("span")
         track.className = "switch-track"
-        const knob = document.createElement("span")
-        knob.className = "switch-knob"
-        track.appendChild(knob)
 
         label.append(input, track)
         input.addEventListener("change", () => onChange(input.checked))

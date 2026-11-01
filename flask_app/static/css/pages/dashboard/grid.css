@@ -24,6 +24,10 @@
 
 /* ==========================================================================
    Card (a widget's shell)
+   container-type: size makes each card a CSS size container, so every hidden
+   widget CSS rule can scale fluidly with the card's own footprint using
+   cqw/cqh units - a 3-cell and an 8-cell widget of the same type look
+   different continuously, not in 3 discrete tiers.
    ========================================================================== */
 
 .card.widget {
@@ -37,6 +41,7 @@
     cursor: default;
     overflow: hidden;
     transition: border-color .15s ease, opacity .15s ease, transform .15s ease;
+    container-type: size;
 }
 
 .card.widget:hover {

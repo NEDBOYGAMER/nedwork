@@ -2,8 +2,9 @@
    modal.css
    Widget-specific modal content. The overlay/box themselves
    (.modal-backdrop / .modal / .modal-actions) come from ui-elements.css -
-   this file only covers what's unique to the "add widget" and
-   "edit widget settings" modals.
+   this file only covers the add-widget picker plus the shared close
+   button and blurred backdrop. The widget settings modal styles live in
+   settings.css.
    ========================================================================== */
 
 .close-btn {
@@ -178,113 +179,4 @@
     font-size: 12px;
     color: var(--text-muted);
     line-height: 1.4;
-}
-
-/* ---- Edit widget settings form ---- */
-
-.settings-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: var(--space-4);
-}
-
-.settings-form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-}
-
-.settings-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-}
-
-.settings-row.stacked {
-    flex-direction: column;
-    align-items: stretch;
-}
-
-.settings-label {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-muted);
-}
-
-.color-input {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    background: none;
-    cursor: pointer;
-}
-
-.color-input::-webkit-color-swatch-wrapper { padding: 2px; }
-.color-input::-webkit-color-swatch { border: none; border-radius: 8px; }
-
-/* ---- Dropdown (checkbox-driven, no JS toggle needed for open state) ---- */
-
-.dropdown {
-    position: relative;
-}
-
-.dropdown-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-}
-
-.dropdown-box {
-    background: var(--surface-2);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    font-size: 14px;
-}
-
-.dropdown-arrow {
-    color: var(--text-muted);
-    font-size: 12px;
-}
-
-.dropdown input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-}
-
-.dropdown-menu {
-    display: none;
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 0;
-    right: 0;
-    background: var(--surface-strong);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    box-shadow: 0 8px 24px var(--shadow);
-    z-index: 10;
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-.dropdown input[type="checkbox"]:checked ~ .dropdown-menu {
-    display: block;
-}
-
-.dropdown-option {
-    padding: 10px 12px;
-    font-size: 14px;
-    cursor: pointer;
-}
-
-.dropdown-option:hover {
-    background: var(--surface-hover);
 }

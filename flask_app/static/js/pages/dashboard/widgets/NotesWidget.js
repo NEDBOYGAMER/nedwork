@@ -14,6 +14,7 @@ export class NotesWidget extends Widget {
 
         this.text = config.text ?? SAMPLE_NOTES
         this.mode = config.mode || "edit"
+        this.font = config.settings?.font || "default"
 
         this.toggleBtn = null
         this.container = null
@@ -24,7 +25,7 @@ export class NotesWidget extends Widget {
 
     build() {
         this.buildShell()
-        this.content.classList.add("notes-widget")
+        this.content.classList.add("notes-widget", `font-${this.font}`)
 
         this.toggleBtn = document.createElement("button")
         this.toggleBtn.className = "notes-toggle"
@@ -67,7 +68,26 @@ export class NotesWidget extends Widget {
         if (preview) {
             const renderMarkdown = window.marked || ((md) => md)
             this.previewEl.innerHTML = renderMarkdown(this.text || "")
+            this.sanitizePreview()
         }
+    }
+
+    /* marked output is injected as HTML - strip anything active (self-XSS
+       guard): dangerous elements, inline event handlers and script URLs */
+    sanitizePreview() {
+        this.previewEl.querySelectorAll("script, style, iframe, object, embed, link, meta, form, input, button")
+            .forEach(el => el.remove())
+
+        this.previewEl.querySelectorAll("*").forEach(el => {
+            for (const attr of [...el.attributes]) {
+                const name = attr.name.toLowerCase()
+                if (name.startsWith("on")) {
+                    el.removeAttribute(attr.name)
+                } else if ((name === "href" || name === "src") && /^\s*javascript:/i.test(attr.value)) {
+                    el.removeAttribute(attr.name)
+                }
+            }
+        })
     }
 
     toggleMode() {

@@ -48,9 +48,11 @@
     line-height: 1;
 }
 
-/* ==========================================================================
-   Dashboard switcher popover (click the dashboard name)
-   ========================================================================== */
+/* Dashboard switcher popover (click the dashboard name)
+   Structure: .dashboard-switcher > .dashboard-switcher-list (scrollable,
+   role=menu) + .dashboard-switcher-footer ("+ New dashboard", pinned below
+   the list). JS positions it right-aligned under the dash-name anchor and
+   clamps/flips it to the viewport. */
 
 .dash-name-clickable {
     cursor: pointer;
@@ -65,18 +67,34 @@
     position: fixed;
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    z-index: 100;
     min-width: 180px;
-    padding: var(--space-2);
+    max-width: 280px;
     background: var(--surface-strong);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
     box-shadow: 0 8px 24px var(--shadow);
-    z-index: 100;
     animation: cardIn .2s cubic-bezier(.16, 1, .3, 1);
 }
 
+/* flipped above the anchor - the entrance slides up instead of down */
+.dashboard-switcher--above {
+    animation: cardInUp .2s cubic-bezier(.16, 1, .3, 1);
+}
+
+.dashboard-switcher-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    max-height: 320px;
+    overflow-y: auto;
+}
+
 .dashboard-switcher-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     text-align: left;
     font-size: 14px;
     font-weight: 500;
@@ -84,6 +102,18 @@
     background: transparent;
     border-radius: var(--radius-sm);
     padding: 8px 10px;
+}
+
+.dashboard-switcher-label {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.dashboard-switcher-check {
+    flex: none;
+    color: var(--accent);
 }
 
 .dashboard-switcher-item.active {
@@ -102,8 +132,46 @@
     color: var(--text-muted);
 }
 
+.dashboard-switcher-footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    border-top: 1px solid var(--line);
+}
+
+.dashboard-switcher-new {
+    text-align: left;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: transparent;
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    transition: color .15s ease, background .15s ease;
+}
+
+.dashboard-switcher-new:hover {
+    color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.dashboard-switcher-input {
+    width: 100%;
+}
+
+.dashboard-switcher-error {
+    font-size: 12px;
+    color: var(--danger);
+}
+
 @keyframes cardIn {
     from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cardInUp {
+    from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
 }
 

@@ -93,6 +93,11 @@ async function fill_dashboard(name = current_dashboard) {
         onDelete: deleteWidget,
         editName: openSettingsFor,
         dashboard: () => dashboard_name,
+        // a settings save re-renders the whole grid: widgets read their
+        // settings in the constructor, so a live config object alone is
+        // not enough. Persist first, then rebuild (timers/notes survive
+        // because their state lives in the persisted config).
+        onSettingsChanged: () => persistImmediate().then(() => fill_dashboard(current_dashboard)),
     }
 
     widgets.forEach(widget => {
@@ -435,22 +440,37 @@ function openSettingsFor(config) {
 function setup_dashboard_switcher() {
     const dashNameEl = document.getElementById("dash-name")
     dashNameEl.classList.add("dash-name-clickable")
+    dashNameEl.setAttribute("aria-haspopup", "menu")
+    dashNameEl.setAttribute("aria-expanded", "false")
 
     dashNameEl.addEventListener("click", (event) => {
         event.stopPropagation()
 
         const existing = document.getElementById("dashboard-switcher")
         if (existing) {
-            existing.remove()
+            close_dashboard_switcher()
             return
         }
 
         open_dashboard_switcher(dashNameEl)
     })
 
-    document.addEventListener("click", () => {
-        document.getElementById("dashboard-switcher")?.remove()
+    // outside click, scrolling and resizing all close the popover - fixed
+    // positioning would otherwise strand it away from its anchor
+    document.addEventListener("click", close_dashboard_switcher)
+    document.addEventListener("scroll", close_dashboard_switcher, true)
+    window.addEventListener("resize", close_dashboard_switcher)
+    document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return
+        // Escape inside the create-name input is handled there first
+        if (event.target.closest?.("#dashboard-switcher .dashboard-switcher-input")) return
+        close_dashboard_switcher()
     })
+}
+
+function close_dashboard_switcher() {
+    document.getElementById("dashboard-switcher")?.remove()
+    document.getElementById("dash-name")?.setAttribute("aria-expanded", "false")
 }
 
 async function open_dashboard_switcher(anchor) {
@@ -462,33 +482,153 @@ async function open_dashboard_switcher(anchor) {
     list.id = "dashboard-switcher"
     list.className = "dashboard-switcher"
 
+    const items = document.createElement("div")
+    items.className = "dashboard-switcher-list"
+    items.setAttribute("role", "menu")
+
     if (dashboards.length === 0) {
         const empty = document.createElement("span")
         empty.className = "dashboard-switcher-empty"
         empty.innerText = "No dashboards found"
-        list.appendChild(empty)
+        items.appendChild(empty)
     }
 
     dashboards.forEach(name => {
         const item = document.createElement("button")
+        item.setAttribute("role", "menuitem")
         item.className = "nav-item dashboard-switcher-item"
-        if (name === dashboard_name) item.classList.add("active")
-        item.innerText = name
+
+        const label = document.createElement("span")
+        label.className = "dashboard-switcher-label"
+        // long names are ellipsized by CSS - the full name lives in title
+        label.title = name
+        label.innerText = name
+        item.appendChild(label)
+
+        if (name === dashboard_name) {
+            item.classList.add("active")
+            const check = document.createElement("span")
+            check.className = "icon dashboard-switcher-check"
+            check.style.setProperty("--icon",
+                `url('${(window.STATIC_URL || "/static/")}img/icons/tabler-check.svg')`)
+            item.appendChild(check)
+        }
 
         item.addEventListener("click", (event) => {
             event.stopPropagation()
-            list.remove()
+            close_dashboard_switcher()
             if (name !== dashboard_name) switch_dashboard(name)
         })
 
-        list.appendChild(item)
+        items.appendChild(item)
     })
 
-    const rect = anchor.getBoundingClientRect()
-    list.style.top = `${rect.bottom + 8}px`
-    list.style.left = `${rect.left}px`
+    list.append(items, buildSwitcherCreateRow())
 
     document.body.appendChild(list)
+    anchor.setAttribute("aria-expanded", "true")
+
+    // measured after appendChild so offsetWidth/Height are meaningful.
+    // Right-aligned to the anchor (the dash-name sits at the header's right
+    // edge), then clamped on both axes; flipped above the anchor when the
+    // viewport below is shorter than the list.
+    const margin = 8
+    const gap = 8
+    const rect = anchor.getBoundingClientRect()
+    let left = rect.right - list.offsetWidth
+    left = Math.max(margin, Math.min(left, window.innerWidth - list.offsetWidth - margin))
+
+    const flip = rect.bottom + gap + list.offsetHeight > window.innerHeight - margin
+        && rect.top - list.offsetHeight - gap >= margin
+    let top = flip ? rect.top - list.offsetHeight - gap : rect.bottom + gap
+    top = Math.max(margin, Math.min(top, window.innerHeight - list.offsetHeight - margin))
+    if (flip) list.classList.add("dashboard-switcher--above")
+
+    list.style.left = `${left}px`
+    list.style.top = `${top}px`
+}
+
+/* Footer with the "+ New dashboard" action; starts an inline input in place
+   so creating a dashboard needs no second modal. */
+function buildSwitcherCreateRow() {
+    const footer = document.createElement("div")
+    footer.className = "dashboard-switcher-footer"
+
+    const newBtn = document.createElement("button")
+    newBtn.className = "dashboard-switcher-new"
+    newBtn.innerText = "+ New dashboard"
+
+    newBtn.addEventListener("click", (event) => {
+        event.stopPropagation()
+        startCreate()
+    })
+
+    const startCreate = () => {
+        footer.classList.add("creating")
+        footer.innerHTML = ""
+
+        const input = document.createElement("input")
+        input.className = "ui-input dashboard-switcher-input"
+        input.maxLength = 20
+        input.placeholder = "Dashboard name"
+        input.spellcheck = false
+        // keep typing/Escape/Enter from reaching the document handlers
+        input.addEventListener("click", (event) => event.stopPropagation())
+        input.addEventListener("keydown", (event) => event.stopPropagation())
+
+        const msg = document.createElement("span")
+        msg.className = "dashboard-switcher-error"
+        msg.hidden = true
+
+        const cancel = () => {
+            footer.classList.remove("creating")
+            footer.innerHTML = ""
+            footer.appendChild(newBtn)
+        }
+
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                cancel()
+                return
+            }
+            if (event.key !== "Enter") return
+            if (!input.value.trim()) {
+                msg.innerText = "Please enter a name"
+                msg.hidden = false
+                return
+            }
+            submit()
+        })
+
+        async function submit() {
+            try {
+                const response = await fetch('/dashboard/api/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: input.value.trim() })
+                })
+                if (response.ok) {
+                    const data = await response.json()
+                    close_dashboard_switcher()
+                    switch_dashboard(data.name)
+                    return
+                }
+                const data = await response.json().catch(() => ({}))
+                msg.innerText = data.error || "Could not create dashboard"
+                msg.hidden = false
+            } catch (err) {
+                console.error("Failed to create dashboard", err)
+                msg.innerText = "Could not create dashboard"
+                msg.hidden = false
+            }
+        }
+
+        footer.append(input, msg)
+        input.focus()
+    }
+
+    footer.appendChild(newBtn)
+    return footer
 }
 
 async function switch_dashboard(name) {
@@ -500,4 +640,5 @@ async function switch_dashboard(name) {
 function close_popups() {
     document.getElementById("modal-menu")?.classList.remove("open")
     document.getElementById("context-menu")?.remove()
+    close_dashboard_switcher()
 }

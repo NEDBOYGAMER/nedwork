@@ -1,0 +1,438 @@
+/* ===========================================================================
+   timer.css - TimerWidget presentation
+   ---------------------------------------------------------------------------
+   Linked by dashboard.html AFTER widgets.css. This file fully owns the
+   timer widget; widgets.css keeps only the tier rule that hides the timer
+   controls on small cards and the shared .flip-* block used by TimeWidget.
+   Everything here is scoped under .timer-widget, so TimeWidget is untouched.
+
+   Design rules:
+   - Everything is drawn from currentColor + alpha mixes (color-mix), so it
+     follows whatever ink each card style sets: tech / borderless /
+     transparent / opaque / glassy all work unchanged.
+   - Sizing: .timer-widget is an inline-size container (cqi = widget width).
+     Block-axis sizes that must react to card shape use cqh, which falls
+     through to the card (grid.css makes .card.widget a size container).
+     The ring is sized BY HEIGHT (aspect-ratio derives the width), so its
+     box can never disagree with itself - the old oval bug came from width
+     and height being set from two different unit systems.
+   - Progress is a single --progress number (0..1) on the widget root; the
+     conic sweep, the bar fill and the flush transition all read it.
+   ======================================================================== */
+
+@property --progress {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0;
+}
+
+/* ---- container + tokens -------------------------------------------------- */
+
+.timer-widget,
+.timer-widget *,
+.timer-widget *::before,
+.timer-widget *::after {
+    box-sizing: border-box;
+}
+
+.timer-widget {
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: max(3cqi, 8px);
+    padding: max(4cqi, 10px) max(5cqi, 12px);
+    min-height: 0;
+    color: inherit;
+
+    /* theme knobs - override these to re-tint the whole widget */
+    --timer-accent: var(--accent, currentColor);
+    --timer-surface: color-mix(in srgb, currentColor 12%, transparent);
+    --timer-line: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+/* the stage centers whichever view is active and soaks up the space
+   between the title bar and the controls */
+.timer-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ---- digits -------------------------------------------------------------- */
+
+.timer-display {
+    margin: 0;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    /* bar/text views: wide enough to stay impressive, capped by card height
+       so short wide cards don't clip */
+    font-size: clamp(20px, min(20cqi, 30cqh), 170px);
+}
+
+/* smaller once the countdown crosses an hour (H:MM:SS) */
+.timer-widget.timer-hms .timer-display {
+    font-size: clamp(14px, min(13cqi, 22cqh), 110px);
+}
+
+/* ---- ring view ------------------------------------------------------------ */
+
+.timer-ring {
+    --timer-ring-thickness: max(4.5cqi, 5px);
+    /* sized by height only; width follows via aspect-ratio, so the box is
+       square by construction. The cqi term handles wide-but-short cards,
+       the percentage term the remaining height of the stage. */
+    height: min(56cqi, 88%);
+    aspect-ratio: 1;
+    position: relative;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    /* the ring is its own container so the digits scale with the ring,
+       not with the widget (matters on short wide cards) */
+    container-type: inline-size;
+}
+
+/* the ring itself: conic sweep of elapsed time over a visible track */
+.timer-ring::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+        from -90deg,
+        var(--timer-accent) calc(var(--progress) * 360deg),
+        var(--timer-surface) calc(var(--progress) * 360deg + 1deg)
+    );
+    -webkit-mask: radial-gradient(closest-side, transparent calc(100% - var(--timer-ring-thickness)), #000 calc(100% - var(--timer-ring-thickness) + 1px));
+            mask: radial-gradient(closest-side, transparent calc(100% - var(--timer-ring-thickness)), #000 calc(100% - var(--timer-ring-thickness) + 1px));
+}
+
+/* the sweep glides between ticks while running (needs @property support;
+   browsers without it just jump - same result, less smooth) */
+.timer-widget.is-running .timer-ring::before {
+    transition: --progress 1s linear;
+}
+
+/* digits live inside the ring's coordinate system */
+.timer-ring .timer-display {
+    font-size: clamp(13px, 26cqi, 160px);
+}
+
+.timer-widget.timer-hms .timer-ring .timer-display {
+    font-size: clamp(11px, 15cqi, 100px);
+}
+
+/* ---- bar view -------------------------------------------------------------- */
+
+.timer-widget.timer-bar .timer-stage {
+    flex-direction: column;
+    gap: max(4cqi, 10px);
+}
+
+.timer-bar-track {
+    width: 100%;
+    height: max(2.6cqi, 5px);
+    border-radius: 999px;
+    /* clearly visible at 0%: tinted track plus a hairline edge */
+    background: color-mix(in srgb, currentColor 14%, transparent);
+    box-shadow: inset 0 0 0 1px var(--timer-line);
+    overflow: hidden;
+    flex: 0 0 auto;
+}
+
+.timer-bar-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--timer-accent);
+    transform-origin: left center;
+    transform: scaleX(var(--progress));
+}
+
+.timer-widget.is-running .timer-bar-fill {
+    transition: transform 1s linear;
+}
+
+/* ---- flip view --------------------------------------------------------------
+   NOTE: scoped under .timer-widget on purpose - the shared .flip-* block in
+   widgets.css serves the TimeWidget (--flip-h geometry, card units) and must
+   not be rebased by this file. */
+
+.timer-widget .flip-clock {
+    --timer-flip-radius: max(2cqi, 3px);
+    /* height = 1.45 * size; the cqh term keeps rows inside short cards */
+    --flip-size: clamp(20px, min(14cqi, 30cqh), 72px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: max(2cqi, 3px);
+    min-width: 0;
+    min-height: 0;
+}
+
+/* H:MM:SS - six cards, so each one gets smaller */
+.timer-widget .flip-clock.compact {
+    --flip-size: clamp(15px, min(8.5cqi, 24cqh), 46px);
+}
+
+.timer-widget .flip-colon {
+    width: max(2.2cqi, 4px);
+    height: calc(var(--flip-size) * 1.45);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 26%;
+}
+
+.timer-widget .flip-colon::before,
+.timer-widget .flip-colon::after {
+    content: "";
+    width: 80%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.8;
+}
+
+@keyframes timer-blink {
+    0%, 45% { opacity: 0.85; }
+    55%, 100% { opacity: 0.2; }
+}
+
+.timer-widget.is-running .flip-colon::before,
+.timer-widget.is-running .flip-colon::after {
+    animation: timer-blink 1s ease-in-out infinite;
+}
+
+.timer-widget .flip-digit {
+    position: relative;
+    width: var(--flip-size);
+    height: calc(var(--flip-size) * 1.45);
+    border-radius: var(--timer-flip-radius);
+    background: var(--timer-surface);
+    box-shadow: inset 0 0 0 1px var(--timer-line);
+    color: currentColor;
+    font-variant-numeric: tabular-nums;
+    perspective: calc(var(--flip-size) * 8);
+}
+
+/* seam between the two halves */
+.timer-widget .flip-digit::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    background: color-mix(in srgb, currentColor 20%, transparent);
+    z-index: 3;
+    pointer-events: none;
+}
+
+/* each half clips half of a full-height glyph:
+   i is 200% of the half (= full card), centered on the card */
+.timer-widget .flip-half,
+.timer-widget .flip-flap {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    overflow: hidden;
+}
+
+.timer-widget .flip-half.top,
+.timer-widget .flip-flap {
+    top: 0;
+    border-radius: var(--timer-flip-radius) var(--timer-flip-radius) 0 0;
+}
+
+.timer-widget .flip-half.bottom {
+    bottom: 0;
+    border-radius: 0 0 var(--timer-flip-radius) var(--timer-flip-radius);
+}
+
+.timer-widget .flip-half i,
+.timer-widget .flip-flap i {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 200%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-style: normal;
+    font-weight: 600;
+    font-size: calc(var(--flip-size) * 0.8);
+    line-height: 1;
+}
+
+.timer-widget .flip-half.top i { top: 0; }
+.timer-widget .flip-half.bottom i { bottom: 0; }
+.timer-widget .flip-flap i { top: 0; }
+
+.timer-widget .flip-flap {
+    z-index: 2;
+    background: color-mix(in srgb, currentColor 10%, transparent);
+    transform-origin: center bottom;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+@keyframes timer-flap {
+    from { transform: rotateX(0deg); filter: brightness(1); }
+    to   { transform: rotateX(-90deg); filter: brightness(0.55); }
+}
+
+.timer-widget .flip-digit.flipping .flip-flap {
+    animation: timer-flap 0.5s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
+    box-shadow: 0 max(1cqi, 2px) max(3cqi, 8px) color-mix(in srgb, black 28%, transparent);
+}
+
+/* ---- controls -------------------------------------------------------------- */
+
+.timer-controls {
+    flex: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: max(2.5cqi, 6px);
+    padding-top: max(1cqi, 4px);
+}
+
+.timer-btn {
+    appearance: none;
+    font: inherit;
+    color: inherit;
+    background: var(--timer-surface);
+    border: 1px solid var(--timer-line);
+    border-radius: 999px;
+    padding: max(1.4cqi, 6px) max(4.5cqi, 14px);
+    font-size: clamp(11px, 3.4cqi, 16px);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+}
+
+.timer-btn:hover {
+    background: color-mix(in srgb, currentColor 16%, transparent);
+    border-color: color-mix(in srgb, currentColor 30%, transparent);
+}
+
+.timer-btn:active {
+    transform: scale(0.96);
+}
+
+.timer-btn:focus-visible {
+    outline: 2px solid var(--timer-accent);
+    outline-offset: 2px;
+}
+
+/* "Start" gets a touch more presence than "Pause" */
+.timer-btn--primary {
+    background: color-mix(in srgb, currentColor 14%, transparent);
+    border-color: color-mix(in srgb, currentColor 32%, transparent);
+}
+
+/* ---- states ------------------------------------------------------------------ */
+
+@keyframes timer-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* done re-tints the progress visuals and lets the digits read it too */
+.timer-widget.timer-done {
+    --timer-accent: var(--danger, #ff5c5c);
+}
+
+.timer-widget.timer-done .timer-display {
+    color: var(--danger, #ff5c5c);
+}
+
+.timer-widget.timer-done .flip-half i,
+.timer-widget.timer-done .flip-flap i {
+    color: var(--danger, #ff5c5c);
+}
+
+.timer-widget.timer-done .flip-colon::before,
+.timer-widget.timer-done .flip-colon::after {
+    background: var(--danger, #ff5c5c);
+}
+
+.timer-widget.timer-done .timer-ring::before,
+.timer-widget.timer-done .timer-bar-fill {
+    animation: timer-pulse 1.6s ease-in-out infinite;
+}
+
+/* ---- shape re-layouts ---------------------------------------------------------
+   grid.js tags cards data-tier / data-orientation. The tier rule hiding the
+   controls on small cards lives in widgets.css with the rest of the tier
+   block; everything shape-specific for the timer is here. */
+
+/* wide cards: stage fills the rest, controls stack at the end */
+.card[data-orientation="wide"] .timer-widget {
+    flex-direction: row;
+    align-items: center;
+}
+
+.card[data-orientation="wide"] .timer-controls {
+    flex-direction: column;
+    gap: max(2cqi, 6px);
+    padding-top: 0;
+}
+
+/* flip stays stacked on wide cards - a row would cramp the flap cards
+   against the buttons */
+.card[data-orientation="wide"] .timer-widget.timer-flip {
+    flex-direction: column;
+}
+
+.card[data-orientation="wide"] .timer-widget.timer-flip .timer-controls {
+    flex-direction: row;
+}
+
+/* ---- per card-style tuning -----------------------------------------------------
+   The base look is neutral (currentColor + alpha), so these are small
+   touches per shell variant rather than full restyles. */
+
+.card[data-style="glassy"] .timer-widget .flip-digit,
+.card[data-style="glassy"] .timer-widget .timer-btn {
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+.card[data-style="opaque"] .timer-widget .flip-flap {
+    background: color-mix(in srgb, currentColor 13%, transparent);
+}
+
+.card[data-style="transparent"] .timer-widget .flip-digit {
+    background: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+/* ---- reduced motion -------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .timer-widget.is-running .timer-ring::before,
+    .timer-widget.is-running .timer-bar-fill {
+        transition: none;
+    }
+
+    .timer-widget .flip-digit.flipping .flip-flap {
+        animation: none;
+    }
+
+    .timer-widget.is-running .flip-colon::before,
+    .timer-widget.is-running .flip-colon::after,
+    .timer-widget.timer-done .timer-ring::before,
+    .timer-widget.timer-done .timer-bar-fill {
+        animation: none;
+    }
+}

@@ -4,6 +4,17 @@
     --warning: #E8A23D;
     --danger:  #E5484D;
     --info:    #4EA1F3;
+
+    /* ===== Aliases used by the dashboard widgets + widget settings modal =====
+       These names were referenced but never defined, which silently dropped
+       every border/background/text-color declaration that used them. Each
+       resolves to a real token (var() indirection is live), so theme and
+       accent switches keep working through the alias. */
+    --border-soft: var(--line);
+    --surface-button-dark: var(--surface-2);
+    --surface-dark: var(--bg);
+    --text-color: var(--text);
+    --accent-text: var(--accent-ink);
 }
 
 /* ===== Theme: dark (default) ===== */

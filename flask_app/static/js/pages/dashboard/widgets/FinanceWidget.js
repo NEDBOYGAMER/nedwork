@@ -23,6 +23,7 @@ export class FinanceWidget extends Widget {
 
         const currency = config.settings?.currency || "CHF"
         this.formatAmount = new Intl.NumberFormat([], { style: "currency", currency }).format
+        this.showTransactions = config.settings?.show_transactions !== false   // default on
 
         this.balanceEl = null
         this.categoriesEl = null
@@ -42,10 +43,12 @@ export class FinanceWidget extends Widget {
         this.categoriesEl.className = "finance-categories"
         this.content.appendChild(this.categoriesEl)
 
-        this.appendLabel("Recent")
-        this.transactionsEl = document.createElement("ul")
-        this.transactionsEl.className = "finance-transactions"
-        this.content.appendChild(this.transactionsEl)
+        if (this.showTransactions) {
+            this.appendLabel("Recent")
+            this.transactionsEl = document.createElement("ul")
+            this.transactionsEl.className = "finance-transactions"
+            this.content.appendChild(this.transactionsEl)
+        }
 
         this.render()
     }
@@ -104,30 +107,32 @@ export class FinanceWidget extends Widget {
             this.categoriesEl.appendChild(row)
         })
 
-        this.transactionsEl.innerHTML = ""
-        this.transactions.forEach(tx => {
-            const item = document.createElement("li")
-            item.className = "finance-tx"
+        if (this.transactionsEl) {
+            this.transactionsEl.innerHTML = ""
+            this.transactions.forEach(tx => {
+                const item = document.createElement("li")
+                item.className = "finance-tx"
 
-            const name = document.createElement("span")
-            name.className = "finance-tx-name"
-            name.innerText = tx.name
+                const name = document.createElement("span")
+                name.className = "finance-tx-name"
+                name.innerText = tx.name
 
-            const meta = document.createElement("span")
-            meta.className = "finance-tx-meta"
+                const meta = document.createElement("span")
+                meta.className = "finance-tx-meta"
 
-            const date = document.createElement("span")
-            date.className = "finance-tx-date"
-            date.innerText = tx.date
+                const date = document.createElement("span")
+                date.className = "finance-tx-date"
+                date.innerText = tx.date
 
-            const amount = document.createElement("span")
-            amount.className = "finance-tx-amount"
-            amount.classList.add(tx.amount < 0 ? "negative" : "positive")
-            amount.innerText = (tx.amount < 0 ? "−" : "+") + this.formatAmount(Math.abs(tx.amount))
+                const amount = document.createElement("span")
+                amount.className = "finance-tx-amount"
+                amount.classList.add(tx.amount < 0 ? "negative" : "positive")
+                amount.innerText = (tx.amount < 0 ? "−" : "+") + this.formatAmount(Math.abs(tx.amount))
 
-            meta.append(date, amount)
-            item.append(name, meta)
-            this.transactionsEl.appendChild(item)
-        })
+                meta.append(date, amount)
+                item.append(name, meta)
+                this.transactionsEl.appendChild(item)
+            })
+        }
     }
 }

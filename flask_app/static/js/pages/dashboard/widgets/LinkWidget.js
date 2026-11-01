@@ -50,6 +50,16 @@ export class LinkWidget extends Widget {
         this.buildShell()
         this.content.classList.add("link-widget")
 
+        // no url configured yet - render a quiet placeholder instead of a
+        // dead <a href=""> that just reloads the dashboard
+        if (!this.url.trim()) {
+            const empty = document.createElement("span")
+            empty.className = "link-widget-empty"
+            empty.innerText = "No URL set — right-click to edit"
+            this.content.appendChild(empty)
+            return
+        }
+
         const inner = document.createElement("a")
         inner.className = "link-widget-link"
         inner.href = this.url

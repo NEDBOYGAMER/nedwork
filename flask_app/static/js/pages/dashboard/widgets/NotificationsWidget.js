@@ -1,5 +1,12 @@
 import { Widget } from '../Widget.js'
 
+// Real in-app notifications come from the Events site's notification API
+// (the Notification model lives there for now). Demo data is only a
+// silent fallback when the API is unreachable (e.g. offline).
+const API_URL = '/events/api/notifications'
+const READ_URL = '/events/api/notifications/read'
+const POLL_MS = 60_000
+
 function minutesAgo(minutes) {
     const d = new Date()
     d.setMinutes(d.getMinutes() - minutes)
@@ -7,18 +14,35 @@ function minutesAgo(minutes) {
 }
 
 const DEMO_NOTIFICATIONS = [
-    { id: "n1", category: "system", title: "Server backup complete", time: minutesAgo(25), read: false },
-    { id: "n2", category: "message", title: "Lena sent you a message", time: minutesAgo(80), read: false },
-    { id: "n3", category: "event", title: "Game night starts in 3 days", time: minutesAgo(200), read: false },
-    { id: "n4", category: "task", title: "Task 'Update docs' is due tomorrow", time: minutesAgo(320), read: true },
-    { id: "n5", category: "system", title: "New device signed in", time: minutesAgo(1400), read: true },
+    { id: 1, type: "event", title: "Game night starts in 3 days", time: minutesAgo(200), read: false },
+    { id: 2, type: "task", title: "Task 'Update docs' is due tomorrow", time: minutesAgo(320), read: true },
+    { id: 3, type: "system", title: "New device signed in", time: minutesAgo(1400), read: true },
 ]
 
 const CATEGORY_META = {
-    system:  { label: "System" },
-    message: { label: "Message" },
-    event:   { label: "Event" },
-    task:    { label: "Task" },
+    system:   { label: "System" },
+    message:  { label: "Message" },
+    event:    { label: "Event" },
+    task:     { label: "Task" },
+}
+
+// Notification types -> { label, slug, message } (payload.title is the event title)
+const TYPE_LABELS = {
+    event_published: { label: "Event", slug: "event", message: (p) => `You're invited: ${p.title || "event"}` },
+    member_added:    { label: "Event", slug: "event", message: (p) => `You were added to ${p.title || "an event"}` },
+    date_finalized:  { label: "Event", slug: "event", message: (p) => `Date finalized: ${p.title || "event"}` },
+    date_changed:    { label: "Event", slug: "event", message: (p) => `Date changed: ${p.title || "event"} — re-confirm` },
+    ride_cancelled:  { label: "Event", slug: "event", message: (p) => `A ride was cancelled: ${p.title || "event"}` },
+    event:           { label: "Event", slug: "event", message: (p) => p.title || "Event update" },
+    friend_request:  { label: "Social", slug: "message", message: (p) => `${p.actor || "Someone"} sent you a friend request` },
+    friend_accepted: { label: "Social", slug: "message", message: (p) => `${p.actor || "Someone"} accepted your friend request` },
+    group_join_request: { label: "Social", slug: "message", message: (p) => `${p.actor || "Someone"} wants to join ${p.group || "your group"}` },
+    group_joined:    { label: "Social", slug: "message", message: (p) => `${p.actor || "An admin"} approved you into ${p.group || "a group"}` },
+    group_denied:    { label: "Social", slug: "message", message: (p) => `Your request to join ${p.group || "a group"} was denied` },
+    group_added:     { label: "Social", slug: "message", message: (p) => `${p.actor || "An admin"} added you to ${p.group || "a group"}` },
+    group_removed:   { label: "Social", slug: "message", message: (p) => `You were removed from ${p.group || "a group"}` },
+    task:            { label: "Task", slug: "task", message: (p) => p.title || "Task update" },
+    system:          { label: "System", slug: "system", message: (p) => p.title || "System update" },
 }
 
 function relativeTime(date) {
@@ -35,13 +59,10 @@ export class NotificationsWidget extends Widget {
     constructor(config, ctx) {
         super(config, ctx)
 
-        const stored = Array.isArray(config.read_ids) ? config.read_ids : []
-        this.read_ids = new Set(stored)
-
-        this.items = (config.items || DEMO_NOTIFICATIONS).map(n => ({ ...n, time: new Date(n.time) }))
-        this.items.forEach(n => {
-            if (this.read_ids.has(n.id)) n.read = true
-        })
+        this.showCategories = config.settings?.show_categories !== false   // default on
+        this.items = []
+        this.live = false          // true once the real API has responded
+        this.pollTimer = null
 
         this.headEl = null
         this.markAllBtn = null
@@ -71,6 +92,42 @@ export class NotificationsWidget extends Widget {
         this.listEl.className = "notifications-list"
         this.content.appendChild(this.listEl)
 
+        this.fetchNotifications()
+        this.pollTimer = setInterval(() => this.fetchNotifications(), POLL_MS)
+
+        this.render()
+    }
+
+    dispose() {
+        clearInterval(this.pollTimer)
+    }
+
+    async fetchNotifications() {
+        try {
+            const res = await fetch(API_URL, { credentials: "same-origin" })
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            const data = await res.json()
+            const rows = data.notifications || []
+            this.live = true
+            this.items = rows.map(n => ({
+                id: n.id,
+                type: n.type,
+                category: TYPE_LABELS[n.type]?.slug || "event",
+                title: TYPE_LABELS[n.type]?.message(n.payload || {}) || n.type,
+                time: new Date(n.created_at),
+                read: !!n.read,
+            }))
+            this.unread = data.unread || 0
+        } catch (err) {
+            // silent fallback to demo data — the plan says the widget must
+            // never look broken when the events site is unreachable
+            if (!this.live) {
+                this.items = DEMO_NOTIFICATIONS.map(n => ({
+                    ...n,
+                    category: TYPE_LABELS[n.type]?.slug || "event",
+                }))
+            }
+        }
         this.render()
     }
 
@@ -84,8 +141,6 @@ export class NotificationsWidget extends Widget {
         const sorted = [...this.items].sort((a, b) => b.time - a.time)
 
         sorted.forEach(notification => {
-            const meta = CATEGORY_META[notification.category] || CATEGORY_META.system
-
             const item = document.createElement("li")
             item.className = "notification-item"
             if (notification.read) item.classList.add("read")
@@ -100,15 +155,17 @@ export class NotificationsWidget extends Widget {
             const head = document.createElement("div")
             head.className = "notification-row"
 
-            const cat = document.createElement("span")
-            cat.className = "notification-category"
-            cat.innerText = meta.label
+            if (this.showCategories) {
+                const cat = document.createElement("span")
+                cat.className = "notification-category"
+                cat.innerText = TYPE_LABELS[notification.type]?.label || "Event"
+                head.appendChild(cat)
+            }
 
             const time = document.createElement("span")
             time.className = "notification-time"
             time.innerText = relativeTime(notification.time)
-
-            head.append(cat, time)
+            head.appendChild(time)
 
             const message = document.createElement("span")
             message.className = "notification-message"
@@ -139,22 +196,38 @@ export class NotificationsWidget extends Widget {
         }
     }
 
-    markRead(id) {
+    async markRead(id) {
         const item = this.items.find(n => n.id === id)
-        if (item) {
-            item.read = true
-            this.read_ids.add(id)
-        }
-        this.save({ read_ids: [...this.read_ids] })
+        if (item) item.read = true
         this.render()
+        try {
+            const res = await fetch(READ_URL, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ids: [id] }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                this.unread = data.unread
+            }
+        } catch (err) { /* offline — local state already updated */ }
     }
 
-    markAllRead() {
-        this.items.forEach(n => {
-            n.read = true
-            this.read_ids.add(n.id)
-        })
-        this.save({ read_ids: [...this.read_ids] })
+    async markAllRead() {
+        this.items.forEach(n => { n.read = true })
         this.render()
+        try {
+            const res = await fetch(READ_URL, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ all: true }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                this.unread = data.unread
+            }
+        } catch (err) { /* offline — local state already updated */ }
     }
 }

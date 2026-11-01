@@ -1,6 +1,7 @@
 import { Widget } from '../Widget.js'
+import { TIME_FIELDS } from '../widget_default.js'
 
-const TIME_FIELDS = ["time", "weekday", "date"]
+const TICK_MS = 1000 // 1s is enough - the smallest thing we show is a second
 
 export class TimeWidget extends Widget {
     constructor(config, ctx) {
@@ -23,7 +24,7 @@ export class TimeWidget extends Widget {
         this.timeEl = null
         this.weekdayEl = null
         this.dateEl = null
-        this._raf = null
+        this.timerId = null
     }
 
     build() {
@@ -35,6 +36,28 @@ export class TimeWidget extends Widget {
         if (this.show_date) this.dateEl = this.field("date", "date")
 
         this.display()
+        this.startClock()
+
+        // don't burn cycles redrawing the clock while the tab is hidden
+        this.onVisibility = () => document.hidden ? this.stopClock() : this.startClock()
+        document.addEventListener("visibilitychange", this.onVisibility)
+    }
+
+    startClock() {
+        this.stopClock()
+        this.display()
+        this.timerId = setInterval(this.display, TICK_MS)
+    }
+
+    stopClock() {
+        if (this.timerId) clearInterval(this.timerId)
+        this.timerId = null
+    }
+
+    dispose() {
+        this.stopClock()
+        if (this.onVisibility) document.removeEventListener("visibilitychange", this.onVisibility)
+        this.onVisibility = null
     }
 
     field(cssClass, name) {
@@ -71,13 +94,29 @@ export class TimeWidget extends Widget {
         const now = new Date()
 
         if (this.timeEl) {
-            this.timeEl.innerText = now.toLocaleTimeString([], {
+            const parts = new Intl.DateTimeFormat([], {
                 timeZone: this.timezone,
                 hour: "2-digit",
                 minute: "2-digit",
                 second: this.show_seconds ? "2-digit" : undefined,
                 hour12: !this.format24
+            }).formatToParts(now)
+
+            let digits = ""
+            let meridiem = ""
+            parts.forEach(p => {
+                if (p.type === "dayPeriod") meridiem = p.value
+                else if (p.type !== "literal") digits += p.value
+                else digits += p.value
             })
+
+            // 12h mode: render the AM/PM as a small quiet suffix instead of
+            // letting it blow up at full clock size
+            if (meridiem) {
+                this.timeEl.innerHTML = `${digits.trim()}<span class="meridiem">${meridiem}</span>`
+            } else {
+                this.timeEl.innerText = digits.trim()
+            }
         }
 
         if (this.weekdayEl) {
@@ -90,12 +129,5 @@ export class TimeWidget extends Widget {
         if (this.dateEl) {
             this.dateEl.innerText = this.formatDate(now)
         }
-
-        this._raf = requestAnimationFrame(this.display)
-    }
-
-    dispose() {
-        if (this._raf) cancelAnimationFrame(this._raf)
-        this._raf = null
     }
 }

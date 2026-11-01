@@ -58,17 +58,9 @@ export class AppWidget extends Widget {
         const art = buildArt(this.app, fallback)
         this.content.appendChild(art)
 
-        // scale the artwork with the tile: images fit into the whole tile
-        // via CSS (max-width/max-height + object-fit), the capsule only
-        // needs its letter sized to the tile
-        this._ro = new ResizeObserver(() => {
-            if (art.classList.contains("app-widget-art--cap")) {
-                const s = Math.max(24, Math.round(this.card.clientWidth * 0.4))
-                art.style.fontSize = `${s}px`
-            }
-        })
-        this._ro.observe(this.card)
-
+        // the artwork scales with the tile through CSS (container units, see
+        // .app-widget-art--cap in widgets.css): images fit the whole tile via
+        // object-fit, the capsule letter is sized with a cqw/cqh clamp
         this.card.title = this.app.name || 'App'
 
         if (this.interactive) {
@@ -86,11 +78,6 @@ export class AppWidget extends Widget {
         } else {
             this.content.setAttribute("title", "Coming soon")
         }
-    }
-
-    dispose() {
-        this._ro?.disconnect()
-        this._ro = null
     }
 
     async open() {

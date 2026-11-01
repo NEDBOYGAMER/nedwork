@@ -35,6 +35,37 @@ def list_owned_dashboards(user):
     })
 
 
+@dashboard_bp.route('/api/create', methods=['POST'])
+@permission_required("core", RENDER)
+def create_dashboard(user):
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+
+    if not name:
+        return jsonify({"error": "Dashboard name is required"}), 400
+
+    # the model column is String(20) - reject instead of silently truncating
+    if len(name) > 20:
+        return jsonify({"error": "Dashboard name is too long (max 20 characters)"}), 400
+
+    # dashboard lookups go by per-user name, so duplicates would break switching
+    if any(dashboard.name == name for dashboard in user.dashboards):
+        return jsonify({"error": "A dashboard with this name already exists"}), 409
+
+    new_dashboard = Dashboard(
+        name=name,
+        user_id=user.id,
+        widgets=[]
+    )
+    db.session.add(new_dashboard)
+    db.session.commit()
+
+    return jsonify({
+        "name": new_dashboard.name,
+        "dashboards": [dashboard.name for dashboard in user.dashboards]
+    })
+
+
 @dashboard_bp.route('/api/load/<dashboardname>', methods=['GET'])
 @permission_required("core", RENDER)
 def load_dashboard(dashboardname, user):
