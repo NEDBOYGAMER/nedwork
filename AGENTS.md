@@ -176,6 +176,9 @@ stores now live in `instance/data/`).
 
 ## 8. Conventions
 
+- **Never push.** Commits are fine, `git push` is not — deploying to
+  nedwork.ch is the operator's job (pull + restart on the server, see
+  `__docs/git.md`). Don't push, don't create PRs, don't touch remotes.
 - Blueprint object names: `<name>_bp`, registered with explicit URL prefix.
 - New DB columns: change the model **and** generate a migration
   (`flask db migrate -m "..."`); `db.create_all()` only creates missing
