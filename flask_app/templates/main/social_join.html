@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}nedwork — Join group{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/socials.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="socials-page">
+    <div class="card social-join-card">
+        {% if group %}
+            <h1>Join a group</h1>
+            <p class="join-group-title">{{ group.name }}</p>
+            {% if group.description %}<p class="hint">{{ group.description }}</p>{% endif %}
+            <p class="hint">Joining sends a request to the group's admins —
+                they'll confirm before you're in.</p>
+            <button type="button" class="btn btn-primary" id="joinGroupBtn" disabled>Request to join</button>
+            <p class="hint" id="joinHint"></p>
+        {% else %}
+            <h1>Invite invalid</h1>
+            <p class="hint">This group link doesn't work — the code may have
+                been rotated. Ask a group admin for a fresh one.</p>
+            <a class="btn btn-secondary" href="/socials/">Back to nedwork</a>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+        window.SOCIAL_JOIN = {
+            code: {{ code | tojson }},
+            groupId: {{ group.id if group else 'null' }},
+        };
+    </script>
+    <script type="module" src="{{ url_for('static', filename='js/pages/social_join.js') }}"></script>
+{% endblock %}

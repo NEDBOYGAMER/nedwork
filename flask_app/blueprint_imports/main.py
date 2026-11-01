@@ -7,6 +7,7 @@ from flask_app.event_manager.routes import event_manager_bp
 from flask_app.apps.routes import apps_bp
 from flask_app.tasks.routes import tasks_bp
 from flask_app.events.routes import events_bp
+from flask_app.socials.routes import socials_bp
 from flask_app.about.routes import about_bp
 from flask_app.admin.routes import admin_bp
 from flask_app.notify_routes import notify_bp
@@ -22,6 +23,7 @@ ALL_BLUEPRINTS = [
     (apps_bp, '/apps'),
     (tasks_bp, '/tasks'),
     (events_bp, '/events'),
+    (socials_bp, '/socials'),
     (about_bp, '/about'),
     (admin_bp, '/admin'),
     (notify_bp, '/notify'),

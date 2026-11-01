@@ -18,12 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
     switch (window.location.pathname) {
         case "/dashboard/":   activeId = "home-btn";   break;
         case "/events/":      activeId = "events-btn"; break;
+        case "/socials/":     activeId = "socials-btn"; break;
         case "/tasks/":       activeId = "tasks-btn";  break;
         case "/app_corner/":  activeId = "apps-btn";   break;
         default:              activeId = "";
     }
 
-    ["home-btn", "events-btn", "tasks-btn", "apps-btn"].forEach((id) => {
+    ["home-btn", "events-btn", "socials-btn", "tasks-btn", "apps-btn"].forEach((id) => {
         document.getElementById(id)?.classList.toggle("active", id === activeId);
     });
 
@@ -31,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const routes = {
         "home-btn":     "/dashboard",
         "events-btn":   "/events",
+        "socials-btn":  "/socials",
         "tasks-btn":    "/tasks",
         "apps-btn":     "/app_corner",
         "settings-btn": "/settings",

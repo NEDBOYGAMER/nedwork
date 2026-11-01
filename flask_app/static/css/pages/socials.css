@@ -1,0 +1,243 @@
+/* Socials page — friends + groups. Follows the global style ruleset:
+   .card / .btn / .modal patterns, space-* tokens, badge colors, the
+   global .avatar. Visual language mirrors the events site (cards on a
+   page-level surface, accent-tinted initials, hairline rows inside
+   cards). Everything here is socials-scoped — no shared file is themed
+   by this file. */
+
+.socials-page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: var(--space-5) var(--space-5) var(--space-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.socials-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+.socials-header h1 { margin: 0; }
+.socials-subtitle {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin: 0;
+}
+
+/* ── toolbar (add-friend / new-group / join-by-code) ────────────────── */
+.socials-toolbar {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    align-items: center;
+}
+.socials-toolbar .input-group { flex: 1 1 220px; max-width: 420px; }
+.socials-toolbar .btn { flex-shrink: 0; }
+
+/* client-side filter row — one per view, above the columns */
+.socials-filter {
+    max-width: 340px;
+}
+
+/* ── card columns ───────────────────────────────────────────────────── */
+.socials-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+}
+
+.social-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg, 14px);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+.social-card-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin: var(--space-1) 0 var(--space-1);
+}
+.social-card-title .badge { font-size: 11px; }
+
+/* ── rows (friend / member / group) — hairline list inside the card ─── */
+.socials-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.social-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-2);
+    border-radius: var(--radius-md, 10px);
+}
+.social-row + .social-row { border-top: 1px solid var(--line); }
+.social-row:hover { background: var(--surface-hover); }
+
+.social-row .avatar { width: 36px; height: 36px; font-size: 14px; }
+
+.social-name {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.social-key {
+    color: var(--text-muted);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.social-row-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.social-row-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+}
+
+.social-actions {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.module-empty {
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: var(--space-2) 0;
+    margin: 0;
+}
+
+/* group card rows carry a bigger presence: name + desc + count */
+.social-row.group-row { padding: var(--space-3) var(--space-2); }
+.group-row .avatar {
+    background: var(--surface-2);
+    color: var(--text-secondary, var(--text));
+    font-size: 15px;
+}
+.group-row-desc {
+    color: var(--text-muted);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── group detail modal ─────────────────────────────────────────────── */
+.group-code-box {
+    background: var(--accent-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md, 10px);
+    padding: var(--space-3) var(--space-4);
+}
+.group-code-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+}
+.group-code {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    letter-spacing: 3px;
+    font-weight: 600;
+}
+.group-code-box .btn-ghost-icon { color: var(--text-muted); }
+
+/* ── modals (mirror the events .event-modal sizing) ─────────────────── */
+.socials-modal {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg, 14px);
+    width: min(440px, calc(100vw - 2rem));
+    max-height: min(80vh, 720px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.socials-modal-lg { width: min(560px, calc(100vw - 2rem)); }
+.socials-modal-sm { width: min(360px, calc(100vw - 2rem)); }
+
+.socials-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--line);
+}
+.socials-modal-head h2 { margin: 0; font-size: 16px; }
+
+.socials-modal-body {
+    padding: var(--space-4) var(--space-5);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.socials-modal-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-5) var(--space-4);
+}
+
+/* ── join landing card ──────────────────────────────────────────────── */
+.social-join-card {
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: flex-start;
+    max-width: 480px;
+    width: 100%;
+    margin: var(--space-6) auto 0;
+}
+.social-join-card h1 { margin: 0; font-size: 22px; }
+.join-group-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+.social-join-card .hint { margin: 0; }
+
+/* ── mobile — single column, touch-sized rows like the events site ──── */
+@media (max-width: 640px) {
+    .socials-page { padding: var(--space-4) var(--space-4) var(--space-7); }
+    .socials-columns { grid-template-columns: 1fr; gap: var(--space-3); }
+    .socials-toolbar .input-group { max-width: none; }
+    .socials-filter { max-width: none; }
+    .social-row { gap: var(--space-2); padding: var(--space-3) var(--space-1); }
+    .social-row .avatar { width: 32px; height: 32px; font-size: 13px; }
+    .social-row-meta { flex-direction: column; align-items: flex-end; gap: var(--space-1); }
+}
