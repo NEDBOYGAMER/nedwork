@@ -38,3 +38,6 @@ __docs/structure.md
 # OS files
 .DS_Store
 Thumbs.db
+
+# opencode tool — local node_modules, keep only the config
+.opencode/node_modules/
