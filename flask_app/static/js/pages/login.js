@@ -121,12 +121,17 @@ async function login() {
 
     const data = await response.json();
     if (data.success) {
+        // ?next= brings a visitor straight back to where they were
+        // heading (e.g. an invite landing page) — same-origin paths only
+        const next = new URLSearchParams(window.location.search).get("next");
+        const safeNext = next && next.startsWith("/") && !next.startsWith("//")
+            ? next : null;
         // bootstrapped admin (or admin-forced reset) must set a real
         // password first; admins land in the console, everyone else
-        // on the normal dashboard
+        // on the normal dashboard (or their ?next= target)
         window.location.href = data.must_change_password
             ? "/auth/change-password"
-            : (data.is_admin ? "/admin" : "/dashboard");
+            : (data.is_admin ? "/admin" : (safeNext || "/dashboard"));
     } else {
         console.log("Invalid username or password");
     }

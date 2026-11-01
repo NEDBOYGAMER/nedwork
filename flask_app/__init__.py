@@ -104,6 +104,19 @@ def create_app():
             return jsonify({"error": "CSRF token missing or invalid"}), 403
 
     @app.after_request
+    def static_assets_revalidate(response):
+        # JS/CSS ship with no build step and no version query — without an
+        # explicit policy browsers may heuristically cache them for days
+        # and keep serving stale assets after a deploy. no-cache forces a
+        # revalidate on every load; unchanged files answer with a 304.
+        path = request.path
+        if path.endswith((".js", ".css")) and (
+            path.startswith("/static/") or path.startswith("/apps/")
+        ):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
+    @app.after_request
     def inject_pwa_head(response):
         # a logged-in page must never be cacheable - a cached dashboard
         # would fake a session after logout (same class of bug the admin
