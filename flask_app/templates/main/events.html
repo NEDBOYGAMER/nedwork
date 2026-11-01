@@ -1,29 +1,153 @@
 {% extends "base.html" %}
 
-{% block title %}nedwork — Tasks{% endblock %}
+{% block title %}nedwork — Events{% endblock %}
 
 {% block extra_head %}
-    <meta name="description" content="Private Dashboard Site">
+    <meta name="description" content="Coordinate gatherings with your group">
     <meta property="og:image" content="{{ url_for('static', filename='img/about/header_img.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/events.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/context_menu.css') }}">
+    {# vendored Leaflet (static/vendor/leaflet) — no CDN, works offline;
+       location module (view) and its settings card (edit) render maps #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
+    <script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
 {% endblock %}
+
+{% macro icon(name, cls='icon') -%}
+    <span class="{{ cls }}" style="--icon: url('{{ url_for('static', filename='img/icons/tabler-' ~ name ~ '.svg') }}')"></span>
+{%- endmacro %}
 
 {% block content %}
 
-    <main class="Events">
+    <main class="events-page" id="eventsRoot">
 
-        <header id="events-header">
-            <h1 id="events-title">Events</h1>
+        <header class="events-header">
+            {% if event_id is defined and event_id %}
+                <a class="btn btn-secondary events-back" href="{{ url_for('events.events_page') }}">
+                    {{ icon('arrow-left') }}
+                    All events
+                </a>
+            {% else %}
+                <h1>Events</h1>
+            {% endif %}
+            {% if not (event_id is defined and event_id) %}
+                <div class="events-toolbar">
+                    <button type="button" class="btn btn-primary" id="newEventBtn">
+                        {{ icon('plus') }}
+                        New event
+                    </button>
+                </div>
+            {% endif %}
         </header>
 
-        <div id="container">
-        </div>
+        <div id="container"></div>
 
     </main>
+
+    {# ── create-event modal ─────────────────────────────────────────── #}
+    <div class="modal-backdrop" id="eventModalBackdrop">
+        <div class="event-modal" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle">
+            <form id="eventForm" novalidate>
+                <header class="event-modal-head">
+                    <h2 id="eventModalTitle">New event</h2>
+                    <button type="button" class="btn-ghost-icon" data-action="close-modal" title="Close">
+                        {{ icon('x') }}
+                    </button>
+                </header>
+                <div class="event-modal-body">
+                    <div class="field">
+                        <label for="eventTitle">Title</label>
+                        <input id="eventTitle" name="title" type="text" maxlength="120" required>
+                    </div>
+                    <div class="field">
+                        <label for="eventSubtitle">Subtitle</label>
+                        <input id="eventSubtitle" name="subtitle" type="text" maxlength="200">
+                    </div>
+                    <div class="field">
+                        <label for="eventTemplate">Template</label>
+                        <select id="eventTemplate" name="template">
+                            <option value="">Empty event</option>
+                            <option value="movie_night">Movie Night</option>
+                        </select>
+                    </div>
+                </div>
+                <footer class="event-modal-foot">
+                    <button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="eventSaveBtn">Create draft</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    {# ── friend picker modal ────────────────────────────────────────── #}
+    <div class="modal-backdrop" id="pickerBackdrop">
+        <div class="event-modal" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+            <header class="event-modal-head">
+                <h2 id="pickerTitle">Add members</h2>
+                <button type="button" class="btn-ghost-icon" data-action="close-picker" title="Close">
+                    {{ icon('x') }}
+                </button>
+            </header>
+            <div class="event-modal-body">
+                <div class="picker-search input-group has-icon">
+                    {{ icon('search', 'icon input-group-icon') }}
+                    <input id="pickerSearch" type="search" placeholder="Search friends" autocomplete="off">
+                </div>
+                <div id="pickerList" class="picker-list" role="listbox"></div>
+                <div class="picker-manual">
+                    <div class="field">
+                        <label for="pickerKey">Not on the list? Add by key or username</label>
+                        <input id="pickerKey" type="text" placeholder="e.g. abc12def9 or username" maxlength="40">
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="pickerKeyBtn">Add</button>
+                </div>
+            </div>
+            <footer class="event-modal-foot">
+                <button type="button" class="btn btn-secondary" data-action="close-picker">Cancel</button>
+                <button type="button" class="btn btn-primary" id="pickerAddBtn">Add selected</button>
+            </footer>
+        </div>
+    </div>
+
+    {# ── confirm dialog (remove module / member / archive) ──────────── #}
+    <div class="modal-backdrop" id="confirmBackdrop">
+        <div class="event-modal event-modal-sm" role="dialog" aria-modal="true" aria-labelledby="confirmText">
+            <div class="event-modal-body">
+                <p id="confirmText">Are you sure?</p>
+            </div>
+            <footer class="event-modal-foot">
+                <button type="button" class="btn btn-secondary" data-action="confirm-cancel">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmOkBtn">Confirm</button>
+            </footer>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
 
 {% endblock %}
 
 {% block extra_scripts %}
     <script>window.STATIC_URL = "{{ url_for('static', filename='') }}";</script>
+    <script>
+        window.EVENTS_API = {
+            events: "{{ url_for('events.list_events') }}",
+            friends: "{{ url_for('socials.list_friends') }}",
+            event: "{{ url_for('events.event_page', event_id=0) }}",
+            module: "{{ url_for('events.module_detail', module_id=0) }}",
+            item: "{{ url_for('events.item_detail', item_id=0) }}",
+            ride: "{{ url_for('events.delete_ride', ride_id=0) }}",
+            chatMsg: "{{ url_for('events.delete_message', message_id=0) }}",
+            upcoming: "{{ url_for('events.upcoming') }}",
+            notifications: "{{ url_for('events.list_notifications') }}",
+            notificationsRead: "{{ url_for('events.read_notifications') }}",
+            baseUrl: "{{ url_for('events.events_page') }}",
+        };
+        {% if event_id is defined and event_id %}
+            window.EVENT_ID = {{ event_id }};
+            {% if edit_mode is defined and edit_mode %}window.EVENT_EDIT_MODE = true;{% endif %}
+        {% endif %}
+        window.EVENT_USER_ID = {{ user_id | default(0) }};
+        window.LOGIN_URL = "{{ url_for('auth.login_page') }}";
+    </script>
     <script type="module" src="{{ url_for('static', filename='js/pages/events.js') }}"></script>
 {% endblock %}

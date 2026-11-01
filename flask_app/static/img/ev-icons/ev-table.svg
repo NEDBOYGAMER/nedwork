@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+  <!-- members: a gathering table seen from above, seats around it -->
+  <ellipse cx="12" cy="12" rx="5.2" ry="4"/>
+  <path d="M5.8 9.5 L3.2 8.2"/>
+  <path d="M18.2 9.5 L20.8 8.2"/>
+  <path d="M5.8 14.5 L3.2 15.8"/>
+  <path d="M18.2 14.5 L20.8 15.8"/>
+  <path d="M10.6 7.4 L9.8 5"/>
+  <path d="M13.4 7.4 L14.2 5"/>
+  <path d="M10.6 16.6 L9.8 19"/>
+  <path d="M13.4 16.6 L14.2 19"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+  <!-- dates/doodle: a voting sheet — option rows, one already ticked -->
+  <rect x="4.5" y="3.5" width="15" height="17" rx="2.2"/>
+  <path d="M8 8.5 h5"/>
+  <path d="M8 12 h3.5"/>
+  <path d="M8 15.5 h2.5"/>
+  <path d="M13.6 8.6 l1.2 1.3 2.2-2.6"/>
+  <path d="M15.5 12 h2"/>
+</svg>

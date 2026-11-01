@@ -1,0 +1,84 @@
+/* Members module — FIXED (always present, first). View mode: RSVP list
+   only — removing people is an edit-mode setting (settingsMembers). */
+import { el, rsvpBadge, toast } from "../ui.js";
+import { rsvpUrl, api } from "../api.js";
+
+const RSVP_VALUES = ["attending", "maybe", "cant"];
+
+export function renderMembers(root, ctx) {
+    const { module, event, state, isHost, me, refresh } = ctx;
+    const members = state.members || [];
+    const amHost = isHost;
+
+    // my RSVP row (not the host — host is implicit attending)
+    if (me && me.role === "member") {
+        const mine = members.find((m) => m.id === me.id) || me;
+        const row = el("div", "rsvp-row");
+        row.appendChild(el("span", "rsvp-label", "Your RSVP:"));
+        const group = el("div", "rsvp-group");
+        for (const value of RSVP_VALUES) {
+            const btn = el("button", "btn btn-sm " +
+                (mine.rsvp === value ? "btn-primary" : "btn-secondary"));
+            btn.type = "button";
+            btn.textContent = { attending: "Going", maybe: "Maybe", cant: "Can't" }[value];
+            btn.onclick = async () => {
+                try {
+                    await api(rsvpUrl(event.id), {
+                        method: "POST",
+                        body: JSON.stringify({ rsvp: value }),
+                    });
+                    await refresh();
+                } catch (e) { toast(e.message, "error"); }
+            };
+            group.appendChild(btn);
+        }
+        row.appendChild(group);
+        if (mine.rsvp_stale) {
+            row.appendChild(el("span", "badge badge-warning", "Date changed — re-confirm"));
+        }
+        root.appendChild(row);
+    }
+
+    // member list
+    const list = el("ul", "member-list");
+    for (const member of members) {
+        const li = el("li", "member-row");
+        const info = el("div", "member-info");
+        info.appendChild(el("span", "member-name", member.user.username));
+        if (member.role === "host") {
+            info.appendChild(el("span", "badge badge-accent", "Host"));
+        }
+        li.appendChild(info);
+        li.appendChild(rsvpBadge(member.rsvp));
+        if (member.rsvp_stale && member.rsvp !== "pending") {
+            li.appendChild(el("span", "badge badge-warning", "stale"));
+        }
+        if (member.needs_ride) {
+            li.appendChild(el("span", "badge badge-info", "needs ride"));
+        }
+        list.appendChild(li);
+    }
+    root.appendChild(list);
+}
+
+export async function addMembers(event, ids, refresh) {
+    const data = await api(memberUrl(event.id), {
+        method: "POST",
+        body: JSON.stringify({ user_ids: ids }),
+    });
+    if (data.skipped?.length) {
+        toast(`Added ${data.added}, skipped ${data.skipped.length} (already members)`, "info");
+    } else {
+        toast(`Added ${data.added} member${data.added === 1 ? "" : "s"}`, "success");
+    }
+    await refresh();
+}
+
+export async function addMemberByKey(event, lookup, refresh) {
+    await api(byKeyUrl(event.id), {
+        method: "POST",
+        body: JSON.stringify({ key: lookup }),
+    });
+    toast("Member added", "success");
+    await refresh();
+}

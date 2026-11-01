@@ -1,57 +1,1014 @@
-/* ────────────────────────────────────────────────────────────────
-   events — page-specific layout only.
-   Colors, spacing, and radius all come from colors.css / ui-elements.css.
-   Local derived vars below are accent-reactive (they update automatically
-   if the accent is switched to green/red), not separate hardcoded colors.
-   ──────────────────────────────────────────────────────────────── */
+/* ==========================================================================
+   Events page — page-specific layout only.
+   Colors, spacing, radius, badges, buttons, modals, toasts all come from
+   colors.css / ui-elements.css. Local names here: ev- prefix.
+   ========================================================================== */
 
-.events {
-    position: relative;
-    overflow-x: hidden;
-    --accent-light: color-mix(in srgb, var(--accent) 60%, white 40%);
-    --accent-border: color-mix(in srgb, var(--accent) 40%, transparent);
+.events-page { padding-bottom: var(--space-7); }
+
+/* ── header ─────────────────────────────────────────────────────────── */
+.events-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-6) var(--space-4);
+    flex-wrap: wrap;
 }
 
-/* ── Header / Title ──────────────────────────────────────────────── */
-#events-header {
-    position: relative;
-    z-index: 1;
-    padding: var(--space-6) var(--space-5) var(--space-4);
-    max-width: 1400px;
-    margin: 0 auto var(--space-4);
-    border-bottom: 1px solid var(--line);
+.events-header h1 { font-size: 24px; }
+
+/* ── list view ──────────────────────────────────────────────────────── */
+.events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+    padding: 0 var(--space-6);
 }
 
-#events-title {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: 32px;
-    font-weight: 600;
-    line-height: 1;
-    color: var(--text);
-    width: fit-content;
-}
-
-/* ── container ───────────────────────────────────────────── */
-#container {
-    position: relative;
-    z-index: 1;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 var(--space-5) var(--space-8);
+.event-card {
+    text-align: left;
+    cursor: pointer;
     display: flex;
     flex-direction: column;
-    gap: var(--space-6);
+    gap: var(--space-3);
+    padding: var(--space-4);
+    transition: border-color .15s ease;
 }
 
+.event-card:hover { border-color: var(--accent); }
 
-/* ── Responsive ──────────────────────────────────────────────────── */
+.event-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-3);
+}
+
+.event-card-titles { display: flex; flex-direction: column; gap: var(--space-1); }
+.event-card-title { font-size: 16px; margin: 0; }
+.event-card-subtitle { font-size: 13px; color: var(--text-muted); margin: 0; }
+.event-card-date { font-size: 13px; }
+
+.event-card-badges { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.event-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* ── detail view ────────────────────────────────────────────────────── */
+/* .event-detail is the shared wrapper: edit mode (.event-edit) keeps the
+   boxed column, view mode (.event-detail-view) bleeds edge to edge — its
+   overrides live in the "view mode page" block after the responsive rules
+   so they win the cascade over the mobile paddings here. */
+.event-detail {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: var(--space-5) var(--space-5) var(--space-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+/* draft/archived banners sit above the hero, aligned to the content column */
+.event-detail-alerts {
+    max-width: var(--event-col, 1080px);
+    width: 100%;
+    margin: 0 auto;
+    padding: var(--space-4) var(--space-4) 0;
+}
+.event-detail-view > .event-detail-alerts .alert { margin-bottom: 0; }
+
+/* ── hero: full-bleed masthead; the title sits ON the event image ────── */
+.event-hero {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 200px;
+}
+
+/* with a picture the hero earns its height — a real poster band */
+.event-hero-image { min-height: clamp(340px, 46vh, 520px); }
+
+.event-hero-media { position: absolute; inset: 0; }
+.event-hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* legibility scrim — dark at the bottom where the title sits, clear on top.
+   The scrim content aligns to the same content column as the sections. */
+.event-hero-scrim {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: var(--event-col, 1080px);
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-5) var(--space-5);
+    background: linear-gradient(to top,
+        rgba(8, 8, 10, 0.82) 0%,
+        rgba(8, 8, 10, 0.45) 55%,
+        rgba(8, 8, 10, 0.12) 100%);
+    color: #fff;
+}
+.event-hero:not(.event-hero-image) .event-hero-scrim {
+    background: none;
+    color: inherit;
+    padding-top: var(--space-6);
+}
+
+.event-hero-inner { display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* the event title anchors the page — big, dominant */
+.event-title {
+    font-size: clamp(30px, 4.8vw, 52px);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    margin: 0;
+    overflow-wrap: break-word;
+}
+
+/* the host's quiet Edit pill floats top-right inside the same band; the
+   title reserves room for it and wraps instead of running underneath
+   (seen on mobile crops: "Movie Night at Le…" clipped behind the button) */
+.event-hero-host .event-title { padding-right: 7rem; }
+
+/* on the image the meta badges need solid backgrounds to stay readable */
+.event-hero-image .event-head-meta .badge,
+.event-hero-image .event-subtitle { color: #fff; }
+.event-hero-image .event-head-meta .badge-neutral {
+    background: rgba(8, 8, 10, 0.6);
+    color: #fff;
+}
+.event-hero-image .event-head-meta .badge-accent {
+    background: var(--accent);
+    color: var(--on-accent, #fff);
+}
+.event-hero-image .event-date { color: #fff; }
+
+.event-hero-caption {
+    margin: var(--space-2) 0 0;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.75);
+}
+.event-hero:not(.event-hero-image) .event-hero-caption { color: var(--text-muted); }
+
+/* the host's Edit pill — quiet glass, reads as furniture, not a CTA */
+.event-edit-btn {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    z-index: 2;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    text-decoration: none;
+    color: #fff;
+    background: rgba(12, 12, 16, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: background .15s ease, border-color .15s ease;
+}
+.event-edit-btn:hover {
+    background: rgba(12, 12, 16, 0.65);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+.event-hero:not(.event-hero-image) .event-edit-btn {
+    color: var(--text);
+    border-color: var(--line);
+    background: var(--surface-2);
+}
+.event-hero:not(.event-hero-image) .event-edit-btn:hover {
+    border-color: var(--accent);
+    color: var(--text);
+}
+
+.event-subtitle { font-size: 15px; color: var(--text-muted); margin: 0; }
+
+.event-head-main { display: flex; flex-direction: column; gap: var(--space-1); }
+.event-head-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+.event-date { color: var(--text); }
+
+/* prominent labeled back button in the page header (detail/edit views) */
+.events-back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    text-decoration: none;
+}
+
+/* ── event sections — the unboxed page body (view mode) ────────────── */
+/* Sections are separated by hairlines, never boxed as cards: the page
+   reads as one continuous form. The card look stays in edit mode, where
+   it is the editor's language. */
+.event-sections {
+    display: flex;
+    flex-direction: column;
+}
+
+.event-section { padding: var(--space-5) 0; }
+.event-section + .event-section { border-top: 1px solid var(--line); }
+.event-section.module-hidden { opacity: .55; }
+
+/* hidden modules are the host's business — attendees never see the
+   dashed "hidden" state as a module concept; opacity alone communicates
+   it in the host's own view */
+
+.event-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.event-section-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* ── the events icon set (static/img/ev-icons/) — view mode only ────── */
+.ev-icon { width: 20px; height: 20px; }
+
+.event-section-body { display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* edit-mode chrome keeps the module-* names (cards + grip are the
+   editor's language) */
+.module-add-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.module-empty { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+.events-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: var(--space-7) 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+.events-empty h2 { font-size: 18px; margin: 0; }
+
+/* ── notes / image / location ───────────────────────────────────────── */
+.notes-editor { display: flex; flex-direction: column; gap: var(--space-2); }
+.notes-text { white-space: pre-wrap; font-size: 14px; margin: 0; }
+
+.host-content-row { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.host-actions-row { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+.event-figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.event-image { max-width: 100%; border-radius: var(--radius-md); border: 1px solid var(--line); }
+.event-caption { font-size: 13px; color: var(--text-muted); }
+
+.location-address { font-size: 14px; margin: 0; }
+.location-note { font-size: 13px; color: var(--text-muted); margin: 0; }
+.location-map-wrap { position: relative; }
+.location-map {
+    width: 100%;
+    height: 300px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    z-index: 0;
+}
+/* search bar overlaid on the map (Leaflet controls sit at z-index 800) */
+.location-search {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    z-index: 1000;
+    pointer-events: none;   /* children re-enable */
+}
+.location-searchbar {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 6px 8px;
+    box-shadow: var(--shadow, 0 2px 8px rgba(0, 0, 0, 0.15));
+    pointer-events: auto;
+    max-width: 420px;
+}
+.location-searchbar .field-input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    padding: 6px 4px;
+}
+.location-searchbar .hint { flex-shrink: 0; }
+.location-popup { font-size: 13px; }
+.location-zoom-hint {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    z-index: 1000;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 2px 8px;
+    pointer-events: none;
+    opacity: 0.85;
+}
+
+/* ── members ────────────────────────────────────────────────────────── */
+.member-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+
+.member-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+}
+
+.member-info { flex: 1; display: flex; align-items: center; gap: var(--space-2); }
+.member-name { font-size: 14px; }
+
+.rsvp-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.rsvp-label { font-size: 13px; color: var(--text-muted); }
+.rsvp-group { display: flex; gap: var(--space-2); }
+
+/* ── doodle ─────────────────────────────────────────────────────────── */
+.doodle-table {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-1) 0;
+}
+
+.doodle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+}
+
+.doodle-when { display: flex; align-items: center; gap: var(--space-2); font-size: 14px; }
+.doodle-date { font-size: 14px; }
+.doodle-votes { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+
+.doodle-editor { display: flex; flex-direction: column; gap: var(--space-2); }
+.doodle-config { display: flex; gap: var(--space-3); align-items: stretch; flex-wrap: wrap; }
+
+/* mode picker — two explained cards instead of a bare radio pair */
+.doodle-mode-card {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    flex: 1;
+    min-width: 220px;
+}
+.doodle-mode-card.is-selected {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.doodle-mode-label { font-size: 14px; font-weight: 600; }
+.doodle-mode-hint { font-size: 12px; color: var(--text-muted); }
+
+.toggle-label { display: flex; align-items: center; gap: var(--space-2); font-size: 13px; color: var(--text-muted); }
+
+.doodle-finalize { display: flex; gap: var(--space-2); align-items: center; }
+.doodle-finalize select { flex: 1; }
+
+.doodle-none { display: flex; gap: var(--space-2); align-items: center; }
+.doodle-none .field-input { flex: 1; }
+
+/* ── bring ──────────────────────────────────────────────────────────── */
+.bring-add { display: flex; gap: var(--space-2); align-items: center; }
+.bring-add .field-input:first-child { flex: 1 1 0; min-width: 0; }
+/* flex-basis (not width) — the global input[type=number] { width: 100% }
+   rule would otherwise win and blow the qty field up to full row width */
+.bring-qty { flex: 0 0 64px; }
+
+.bring-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+
+.bring-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+}
+
+.bring-item-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
+.bring-item-label { font-size: 14px; }
+.bring-item-actions { display: flex; gap: var(--space-2); align-items: center; }
+.bring-claims { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+
+/* ── rides ──────────────────────────────────────────────────────────── */
+.rides-entry { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+.ride-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+}
+.ride-form .ride-seats { width: 70px; }
+.ride-form .ride-when { width: 140px; }
+
+.seat-diagram { display: flex; align-items: center; gap: 6px; }
+.seat-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--line);
+    background: var(--surface);
+    flex-shrink: 0;
+}
+.seat-dot.is-taken { background: var(--accent); border-color: var(--accent); }
+.seat-dot.seat-driver { background: var(--text-muted); border-color: var(--text-muted); }
+
+.ride-route { flex-basis: 100%; font-size: 13px; color: var(--text-muted); }
+
+.ride-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+
+.ride-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+}
+
+.ride-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.ride-driver { font-size: 14px; }
+.ride-note { font-size: 13px; color: var(--text-muted); margin: 0; }
+.ride-seats { width: 64px; }
+.ride-actions { display: flex; gap: var(--space-2); align-items: center; }
+
+/* ── chat — pinned to the page bottom, one quiet band ───────────────── */
+.event-chat {
+    margin: 0 calc(-1 * var(--space-5)) calc(-1 * var(--space-8));
+    padding: var(--space-4) 0 0;
+    border-top: 1px solid var(--line);
+    background: var(--surface-2);
+}
+
+.event-chat-inner {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 var(--space-5) var(--space-6);
+}
+
+.event-chat-head { margin-bottom: var(--space-2); }
+
+.chat-log {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-height: 320px;
+    overflow-y: auto;
+    padding: var(--space-2);
+}
+
+.chat-row { display: flex; flex-direction: column; gap: 2px; }
+.chat-row.chat-mine { align-items: flex-end; }
+
+.chat-head { display: flex; gap: var(--space-2); align-items: baseline; font-size: 12px; color: var(--text-muted); }
+.chat-author { font-weight: 600; }
+.chat-day {
+    align-self: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: var(--space-1) 0;
+}
+.chat-text { margin: 0; font-size: 14px; white-space: pre-wrap; }
+.chat-time { font-size: 11px; }
+
+.chat-form { display: flex; gap: var(--space-2); }
+.chat-form .field-input { flex: 1; }
+
+/* ── duties ─────────────────────────────────────────────────────────── */
+.duties-section { padding: var(--space-3) 0 0; }
+.duties-list { margin: 0; padding: 0 0 0 var(--space-4); font-size: 14px; display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* ── picker modal — shared styles live in ui-elements.css (.picker-*)
+   so the socials add-member picker matches without page-CSS imports ── */
+
+/* ── modal (events variant of the global modal) ─────────────────────── */
+.event-modal {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: var(--space-5);
+    width: 440px;
+    max-width: 92vw;
+    box-shadow: var(--shadow);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.event-modal-sm { width: 360px; }
+
+.event-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+}
+
+.event-modal-head h2 { font-size: 18px; margin: 0; }
+
+.event-modal-body { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.event-modal-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+}
+
+/* ── form helpers (global .field exists; inputs used inline) ────────── */
+.field { display: flex; flex-direction: column; gap: var(--space-1); }
+.field label { font-size: 13px; color: var(--text-muted); }
+
+.field-input {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 14px;
+    color: var(--text);
+    font-family: inherit;
+}
+.field-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+textarea.field-input { resize: vertical; }
+
+select.field-input { cursor: pointer; }
+
+.hint { font-size: 12px; color: var(--text-muted); }
+
+/* ── responsive ─────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
-    #events-header {
-        padding: var(--space-5) var(--space-4) var(--space-3);
-    }
+    .events-header { padding: var(--space-4) var(--space-4) var(--space-3); }
+    .events-grid { padding: 0 var(--space-4); grid-template-columns: 1fr; }
+    .event-detail { padding: var(--space-4) var(--space-4) var(--space-7); }
+    .event-hero { min-height: 180px; }
+    .event-hero-scrim { padding: var(--space-4); }
+    .event-title { font-size: 28px; }
+    .event-edit-btn { top: var(--space-3); right: var(--space-3); }
+    .member-row { flex-wrap: wrap; }
+    .doodle-row { flex-direction: column; align-items: flex-start; }
+    .doodle-config { flex-direction: column; }
+    .doodle-mode-card { min-width: 0; }
+    .doodle-cal { max-width: 100%; }
+    .location-map { height: 220px; }
+    .ride-form .host-content-row { flex-wrap: wrap; }
+    .ride-form .field-input { flex: 1 1 140px; }
+    .ride-form .ride-seats, .ride-form .ride-when { width: auto; }
+    .bring-add { flex-wrap: wrap; }
+    .chat-log { max-height: 260px; }
+    .event-chat { margin-left: calc(-1 * var(--space-4)); margin-right: calc(-1 * var(--space-4)); }
+    .event-chat-inner { padding: var(--space-4) var(--space-4) var(--space-6); }
 
-    #container {
-        padding: 0 var(--space-4) var(--space-7);
+    /* edit mode: one column, thumb-sized sticky bar */
+    .event-edit { padding-bottom: 150px; }
+    .edit-module-list { grid-template-columns: 1fr; }
+    .edit-sticky-bar { padding: var(--space-2) var(--space-3); }
+    .edit-sticky-inner { flex-direction: column-reverse; align-items: stretch; }
+    .edit-sticky-actions { flex-wrap: wrap; }
+    .edit-sticky-actions .btn { flex: 1 1 auto; }
+    .edit-sticky-actions .btn-primary { min-width: 0; flex-basis: 100%; order: -1; }
+}
+
+/* ── edit mode (§1: strict edit/view separation) ───────────────────── */
+.event-edit { max-width: 1400px; padding-bottom: 120px; } /* room for sticky bar */
+
+.event-edit-head { margin-bottom: var(--space-4); }
+.event-edit-head h1 { font-size: 24px; margin: 0 0 var(--space-2); }
+
+/* config cards: strictly one module per line at ~full container width;
+   only the fixed Title + Members pair share the first row */
+.edit-module-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    align-items: start;
+}
+.edit-module-card:nth-child(n+3) { grid-column: 1 / -1; }
+
+.edit-module-card {
+    padding: var(--space-4);
+    position: relative;
+}
+.edit-module-card:not(.edit-module-fixed) { padding-left: 34px; }
+/* card titles are the editor's language (kept under the module-* names) */
+.edit-module-card .module-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 15px;
+    margin: 0;
+}
+.edit-module-fixed { border-style: dashed; opacity: 0.92; }
+.edit-module-card.module-hidden { opacity: 0.55; }
+.edit-module-card.is-dragging {
+    opacity: 0.45;
+    outline: 2px dashed var(--accent);
+}
+
+/* the grip sits on the card's edge — bare dots, not a button */
+.edit-module-grip {
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    padding: 4px 2px;
+    cursor: grab;
+    opacity: 0.35;
+    color: var(--text-muted);
+}
+.edit-module-grip:hover { opacity: 0.85; }
+.edit-module-grip:active { cursor: grabbing; }
+
+.edit-module-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.edit-module-nav { display: flex; gap: var(--space-1); align-items: center; }
+.edit-module-nav .btn-ghost-icon:disabled { opacity: 0.3; cursor: default; }
+
+/* the add-picker spans the full width below the cards */
+.edit-add-card { border-style: dashed; grid-column: 1 / -1; }
+
+.edit-add-card { border-style: dashed; }
+
+/* sticky save bar (§1: Cancel | Save changes) — offset by the sidenav on
+   desktop so its left buttons don't slide underneath the nav column */
+.edit-sticky-bar {
+    position: fixed;
+    left: calc(var(--sidenav-width, 120px) + var(--space-4) * 2);
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    padding: var(--space-3) var(--space-6);
+    display: flex;
+    justify-content: center;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+}
+@media (max-width: 768px) {
+    .edit-sticky-bar { left: 0; }
+}
+.edit-sticky-inner {
+    width: 100%;
+    max-width: 1400px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+.edit-sticky-actions { display: flex; gap: var(--space-2); }
+.edit-sticky-actions .btn-primary { min-width: 160px; }
+
+/* ── doodle date-mode calendar (§4) ─────────────────────────────────── */
+.doodle-cal {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    max-width: 480px;
+    background: var(--surface-2);
+}
+.doodle-cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-2);
+}
+.doodle-cal-head .doodle-cal-month { font-weight: 600; font-size: 14px; }
+.doodle-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+.doodle-cal-dow {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 4px 0;
+}
+.doodle-cal-day {
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    padding: 12px 0;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text);
+    font-family: inherit;
+}
+.doodle-cal-day:hover { background: var(--accent-soft); }
+.doodle-cal-day.is-picked {
+    background: var(--accent);
+    color: var(--on-accent, #fff);
+    font-weight: 600;
+}
+.doodle-cal-day.is-muted { color: var(--text-muted); opacity: 0.4; }
+
+/* time spans (time mode, edit settings) */
+.doodle-slot-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.doodle-slot-list .host-content-row { align-items: center; }
+
+/* invite landing card (§7) */
+.invite-card {
+    max-width: 420px;
+    margin: var(--space-7) auto;
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    text-align: center;
+}
+.invite-card h1 { font-size: 20px; margin: 0; }
+
+/* ── view mode page: full-bleed, one continuous form ────────────────── */
+/* Last in the file so it wins the cascade over the boxed .event-detail
+   rules and the ≤640px mobile paddings — those remain for edit mode.
+   Fullscreen (2026-11): the page uses the whole viewport except the
+   sidenav — content stretches edge to edge behind a tiny shared gutter,
+   no centered column. */
+.event-detail-view {
+    --event-gutter: clamp(8px, 1vw, 16px);   /* shared micro-gutter */
+    max-width: none;
+    margin: 0;
+    padding: 0 0 var(--space-8);
+    gap: 0;
+}
+
+.event-detail-view .event-main {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: 0 var(--event-gutter);
+}
+
+/* the "All events" header floats over the hero instead of sitting above
+   it — the image owns the entire upper part of the page, no padding
+   around it. :has() fallback: without it the header simply stays a
+   normal band above the hero (today's layout). */
+.events-page:has(.event-detail-view) { position: relative; }
+.events-page:has(.event-detail-view) .events-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    padding: var(--space-3) var(--space-5) 0;
+    pointer-events: none;               /* only the button is interactive */
+}
+.events-page:has(.event-detail-view) .events-header .btn {
+    pointer-events: auto;
+}
+/* glass on the image so the button reads over any picture */
+.events-page:has(.event-hero-image) .events-back {
+    color: #fff;
+    background: rgba(12, 12, 16, 0.45);
+    border-color: rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.events-page:has(.event-hero-image) .events-back:hover {
+    background: rgba(12, 12, 16, 0.65);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* draft/archived banners need room under the floating header */
+.event-detail-view > .event-detail-alerts { padding-top: calc(var(--space-3) + 44px); }
+
+.event-detail-view .event-hero { margin-bottom: var(--space-1); }
+
+/* the hero scrim's text sits on the same gutter as the sections */
+.event-detail-view .event-hero-scrim {
+    padding-left: calc(var(--event-gutter) + 4px);
+    padding-right: calc(var(--event-gutter) + 4px);
+}
+
+/* chat: the band spans the full width, text on the shared gutter */
+.event-detail-view .event-chat {
+    margin-left: 0;
+    margin-right: 0;
+}
+.event-detail-view .event-chat .event-chat-inner {
+    max-width: none;
+    padding: 0 var(--event-gutter) var(--space-6);
+}
+
+/* description: bare prose directly under the hero — the page's subtitle,
+   no section head, no icon */
+.event-detail-view .event-description {
+    max-width: none;
+    width: 100%;
+    margin: 0 auto;
+    padding: var(--space-4) var(--event-gutter) 0;
+}
+.event-detail-view .event-description .notes-text {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--text);
+}
+.event-detail-view .event-description .module-empty { margin: 0; }
+
+/* ── hero image integration ──────────────────────────────────────────── */
+/* the picture doesn't end at a hard line — the scrim blends the image
+   into the page background and the title steps into the picture */
+.event-detail-view .event-hero-image {
+    min-height: clamp(340px, 58vh, 680px);
+}
+.event-detail-view .event-hero-image .event-hero-img {
+    filter: saturate(0.92);
+}
+/* the fade itself lives on the picture: clear at the top, fully the page
+   background at the bottom — the image "dissolves" out instead of ending
+   in a hard edge. A slight top-dark keeps the floating back button
+   legible over bright photos. */
+.event-detail-view .event-hero-image .event-hero-media::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom,
+        rgba(8, 8, 10, 0.30) 0%,
+        rgba(8, 8, 10, 0.00) 24%,
+        rgba(8, 8, 10, 0.00) 48%,
+        color-mix(in srgb, var(--bg) 50%, transparent) 80%,
+        var(--bg) 100%);
+}
+.event-detail-view .event-hero-image .event-hero-scrim {
+    background: linear-gradient(to top,
+        var(--bg) 0%,
+        color-mix(in srgb, var(--bg) 55%, transparent) 18%,
+        rgba(8, 8, 10, 0.45) 55%,
+        rgba(8, 8, 10, 0.10) 100%);
+    padding-bottom: var(--space-6);
+}
+
+/* the title anchors the page — bigger on the poster band */
+.event-detail-view .event-title {
+    font-size: clamp(38px, 6.2vw, 74px);
+}
+/* the infos under the title grow with it */
+.event-detail-view .event-subtitle { font-size: 19px; }
+.event-detail-view .event-head-meta {
+    font-size: 16px;
+    gap: var(--space-3);
+}
+
+/* no-image band: title needs clear air under the floating header */
+.event-detail-view .event-hero:not(.event-hero-image) {
+    min-height: 260px;
+}
+.event-detail-view .event-hero:not(.event-hero-image) .event-hero-scrim {
+    padding-top: calc(var(--space-6) + 52px);
+}
+.event-detail-view .event-hero:not(.event-hero-image) .event-edit-btn {
+    color: var(--text);
+    border-color: var(--line);
+    background: var(--surface-2);
+}
+
+/* compact doodle — one slim row per option */
+.event-detail-view .doodle-row {
+    padding: var(--space-1) var(--space-2);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+}
+.event-detail-view .doodle-row:last-child { border-bottom: none; }
+.event-detail-view .doodle-table {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: var(--space-1) var(--space-2);
+    gap: 0;
+}
+
+/* membership actions — quiet band at the page bottom, before chat */
+.event-member-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+    border-top: 1px solid var(--line);
+    margin-top: var(--space-4);
+}
+.event-member-actions .btn-danger { margin-right: auto; }
+
+/* info row: location + members side by side (both are plain info) */
+.event-info-row {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 0 var(--space-5);
+    align-items: start;
+}
+.event-info-row .event-section:first-child + .event-section {
+    border-top: none;
+}
+.event-info-row .event-section-body .location-map-wrap { margin-top: var(--space-2); }
+.event-info-row .event-section-body .location-map { height: 180px; }
+
+@media (max-width: 640px) {
+    .event-info-row { grid-template-columns: 1fr; }
+    .event-info-row .event-section + .event-section {
+        border-top: 1px solid var(--line);
     }
 }
+
+@media (max-width: 640px) {
+    .event-detail-view {
+        --event-gutter: var(--space-3);
+    }
+    /* the floating header keeps the same gutter as the content below it,
+       but clears the fixed mobile hamburger (44px at left 12px + notch) */
+    .events-page:has(.event-detail-view) .events-header {
+        padding-left: calc(64px + env(safe-area-inset-left, 0px));
+    }
+    .event-detail-view .event-main,
+    .event-detail-view .event-chat .event-chat-inner,
+    .event-detail-view .event-hero-scrim {
+        padding-left: var(--event-gutter);
+        padding-right: var(--event-gutter);
+    }
+    .event-detail-view .event-hero-image { min-height: 62vh; }
+    .event-detail-view .event-hero-scrim { padding-bottom: var(--space-5); }
+    .event-detail-view .event-title { padding-right: 6rem; }
+    .event-detail-view .event-section { padding: var(--space-4) 0; }
+    .event-detail-view .doodle-row { padding: var(--space-2) var(--space-2); }
+    .event-detail-view .event-member-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+    .event-detail-view .event-member-actions .btn { width: 100%; }
+}
+
+

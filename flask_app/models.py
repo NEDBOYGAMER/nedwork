@@ -714,3 +714,322 @@ class Task(db.Model):
     position = db.Column(db.Integer)           # manual order in the All tab
 
     user = db.relationship("User", back_populates="tasks")
+
+
+# ── Events site ────────────────────────────────────────────────────────
+# Small closed groups coordinate one gathering per event. The host owns
+# the structure (module set, config, publish state), members fill the
+# content (votes, claims, rides, chat). Claims/seats FK to EventMember so
+# a member leaving auto-releases them; votes/chat FK to users so they
+# survive a leave and show as "left".
+
+EVENT_MODULE_TYPES = ("notes", "image", "location", "members",
+                      "doodle", "bring", "rides", "chat")
+
+# modules that hold per-event state — only one instance per event allowed
+EVENT_SINGLETON_MODULES = ("notes", "image", "location", "members",
+                           "doodle", "bring", "rides", "chat")
+
+
+class Event(db.Model):
+    __tablename__ = "events"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    host_id = db.Column(db.Integer, db.ForeignKey("users.id"),
+                        nullable=False)
+    title = db.Column(db.String(120), nullable=False)
+    subtitle = db.Column(db.String(200))
+
+    status = db.Column(db.String(20), nullable=False, default="draft")
+    # "draft" | "published" | "archived" — archived events are invisible
+    # to members (host-only); there is no hard delete in the MVP.
+
+    event_date = db.Column(db.DateTime)     # canonical; None until set
+    date_source = db.Column(db.String(20), default="manual")
+    # "manual" (host set it) | "doodle" (set by finalization)
+
+    invite_token = db.Column(db.String(64), unique=True)
+    # lazy: generated when the host first requests an invite link
+
+    created_at = db.Column(db.DateTime, nullable=False,
+                           default=db.func.now())
+    updated_at = db.Column(db.DateTime, nullable=False,
+                           default=db.func.now(), onupdate=db.func.now())
+
+    host = db.relationship("User", foreign_keys=[host_id])
+    members = db.relationship("EventMember", back_populates="event",
+                              cascade="all, delete-orphan",
+                              order_by="EventMember.id")
+    modules = db.relationship("EventModule", back_populates="event",
+                              cascade="all, delete-orphan",
+                              order_by="EventModule.position")
+
+
+class EventMember(db.Model):
+    __tablename__ = "event_members"
+    __table_args__ = (db.UniqueConstraint("event_id", "user_id"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"),
+                         nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"),
+                        nullable=False)
+
+    role = db.Column(db.String(10), nullable=False, default="member")
+    # "host" | "member" — exactly one host per event
+
+    rsvp = db.Column(db.String(20), nullable=False, default="pending")
+    # "attending" | "maybe" | "cant" | "pending"
+    rsvp_stale = db.Column(db.Boolean, nullable=False, default=False)
+    # set when the canonical date changes/finalizes → prompt re-confirm
+    needs_ride = db.Column(db.Boolean, nullable=False, default=False)
+
+    joined_at = db.Column(db.DateTime, nullable=False,
+                          default=db.func.now())
+
+    event = db.relationship("Event", back_populates="members")
+    user = db.relationship("User", foreign_keys=[user_id])
+
+    claims = db.relationship("BringClaim", back_populates="member",
+                             cascade="all, delete-orphan")
+    passengers = db.relationship("RidePassenger", back_populates="member",
+                                 cascade="all, delete-orphan")
+
+
+class EventModule(db.Model):
+    __tablename__ = "event_modules"
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"),
+                         nullable=False)
+
+    type = db.Column(db.String(20), nullable=False)
+    # one of EVENT_MODULE_TYPES
+    position = db.Column(db.Integer, nullable=False, default=0)
+    hidden = db.Column(db.Boolean, nullable=False, default=False)
+    # "hide instead of delete" — keeps data, removes from the page
+
+    config = db.Column(db.JSON, nullable=False, default=dict)
+    # content-only modules keep their data here:
+    #   notes    {text, spacing}
+    #   image    {url, caption}
+    #   location {address, lat, lng, note}
+    #   doodle   {anonymous, deadline, show_counts} — deadline as iso str
+
+    event = db.relationship("Event", back_populates="modules")
+
+    options = db.relationship("DoodleOption", back_populates="module",
+                              cascade="all, delete-orphan",
+                              order_by="DoodleOption.position")
+    votes = db.relationship("DoodleVote", back_populates="module",
+                            cascade="all, delete-orphan")
+    items = db.relationship("BringItem", back_populates="module",
+                            cascade="all, delete-orphan")
+    rides = db.relationship("EventRide", back_populates="module",
+                            cascade="all, delete-orphan")
+    messages = db.relationship("ChatMessage", back_populates="module",
+                               cascade="all, delete-orphan")
+
+
+class DoodleOption(db.Model):
+    __tablename__ = "doodle_options"
+
+    id = db.Column(db.Integer, primary_key=True)
+    module_id = db.Column(db.Integer, db.ForeignKey("event_modules.id"),
+                          nullable=False)
+    starts_at = db.Column(db.DateTime, nullable=False)
+    # "time" mode: one time span per option (ends_at set); "date" mode:
+    # whole-day options (ends_at stays NULL).
+    ends_at = db.Column(db.DateTime)
+    position = db.Column(db.Integer, nullable=False, default=0)
+
+    module = db.relationship("EventModule", back_populates="options")
+
+
+class DoodleVote(db.Model):
+    """Checkbox-yes votes: one row per (member-user, option) ticked.
+    user_id (not member_id) so votes survive a leave — serializer marks
+    them "left". The comment belongs to the "none of these work" vote."""
+    __tablename__ = "doodle_votes"
+    __table_args__ = (db.UniqueConstraint("module_id", "user_id",
+                                          "option_id"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    module_id = db.Column(db.Integer, db.ForeignKey("event_modules.id"),
+                          nullable=False)
+    option_id = db.Column(db.Integer, db.ForeignKey("doodle_options.id"),
+                          nullable=True)
+    # NULL option_id = the "none of these work" vote (comment required)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"),
+                        nullable=False)
+    comment = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, nullable=False,
+                           default=db.func.now())
+
+    module = db.relationship("EventModule", back_populates="votes")
+    option = db.relationship("DoodleOption")
+    user = db.relationship("User", foreign_keys=[user_id])
+
+
+class BringItem(db.Model):
+    __tablename__ = "bring_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    module_id = db.Column(db.Integer, db.ForeignKey("event_modules.id"),
+                          nullable=False)
+    label = db.Column(db.String(120), nullable=False)
+    target_qty = db.Column(db.Integer, nullable=False, default=1)
+    added_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    created_at = db.Column(db.DateTime, nullable=False,
+                           default=db.func.now())
+
+    module = db.relationship("EventModule", back_populates="items")
+    claims = db.relationship("BringClaim", back_populates="item",
+                             cascade="all, delete-orphan")
+
+
+class BringClaim(db.Model):
+    """Personal claims — FK to event_members so leaving the event
+    releases them automatically (host removes member → same path)."""
+    __tablename__ = "bring_claims"
+    __table_args__ = (db.UniqueConstraint("item_id", "member_id"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("bring_items.id"),
+                        nullable=False)
+    member_id = db.Column(db.Integer, db.ForeignKey("event_members.id"),
+                          nullable=False)
+    qty = db.Column(db.Integer, nullable=False, default=1)
+    created_at = db.Column(db.DateTime, nullable=False,
+                           default=db.func.now())
+
+    item = db.relationship("BringItem", back_populates="claims")
+    member = db.relationship("EventMember", back_populates="claims")
+
+
+class EventRide(db.Model):
+    __tablename__ = "event_rides"
+
+    id = db.Column(db.Integer, primary_key=True)
+    module_id = db.Column(db.Integer, db.ForeignKey("event_modules.id"),
+                          nullable=False)
+    driver_member_id = db.Column(db.Integer,
+                                 db.ForeignKey("event_members.id"),
+                                 nullable=False)
+    # FK to the member row: when the driver leaves/is removed the ride
+    # dies with them (passengers get released back to the board).
+    seats = db.Column(db.Integer, nullable=False, default=1)
+    departure = db.Column(db.String(40))     # free text, e.g. "18:30"
+    pickup_note = db.Column(db.String(200))  # "from" — meeting point
+    destination = db.Column(db.String(200))  # "to"
+    created_at = db.Column(db.DateTime, nullable=False,
+                           default=db.func.now())
+
+    module = db.relationship("EventModule", back_populates="rides")
+    driver = db.relationship("EventMember", foreign_keys=[driver_member_id])
+    passengers = db.relationship("RidePassenger", back_populates="ride",
+                                 cascade="all, delete-orphan")
+
+
+class RidePassenger(db.Model):
+    __tablename__ = "ride_passengers"
+    __table_args__ = (db.UniqueConstraint("ride_id", "member_id"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    ride_id = db.Column(db.Integer, db.ForeignKey("event_rides.id"),
+                        nullable=False)
+    member_id = db.Column(db.Integer, db.ForeignKey("event_members.id"),
+                          nullable=False)
+
+    ride = db.relationship("EventRide", back_populates="passengers")
+    member = db.relationship("EventMember", back_populates="passengers")
+
+
+class ChatMessage(db.Model):
+    """user_id (not member_id) so messages survive a leave."""
+    __tablename__ = "chat_messages"
+
+    id = db.Column(db.Integer, primary_key=True)
+    module_id = db.Column(db.Integer, db.ForeignKey("event_modules.id"),
+                          nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"),
+                        nullable=False)
+    text = db.Column(db.String(2000), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False,
+                           default=db.func.now())
+
+    module = db.relationship("EventModule", back_populates="messages")
+    user = db.relationship("User", foreign_keys=[user_id])
+
+
+class Notification(db.Model):
+    """Site-wide, user-targeted in-app notification (Events MVP consumer).
+    payload JSON: {event_id, title, actor, ...} — read flag per user."""
+    __tablename__ = "notifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"),
+                        nullable=False)
+    type = db.Column(db.String(40), nullable=False)
+    # "event_published" | "date_finalized" | "date_changed" | "member_added"
+    payload = db.Column(db.JSON, nullable=False, default=dict)
+    read = db.Column(db.Boolean, nullable=False, default=False)
+    created_at = db.Column(db.DateTime, nullable=False,
+                           default=db.func.now())
+
+    user = db.relationship("User", foreign_keys=[user_id])
+
+
+class SocialGroup(db.Model):
+    """A social group (the Socials site) — NOT the permission-system Group
+    above. Users organize friends into groups; joining happens by code or
+    shareable link, admin-approved via join requests."""
+    __tablename__ = "social_groups"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(60), nullable=False)
+    description = db.Column(db.String(300))
+    # 8-char code for "join by code"; also lives in the join link
+    join_code = db.Column(db.String(8), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False,
+                           default=db.func.now())
+
+    members = db.relationship("SocialGroupMember",
+                              back_populates="group",
+                              cascade="all, delete-orphan")
+
+    def admins(self):
+        return [m for m in self.members if m.role in ("admin", "owner")]
+
+    def member(self, user):
+        return SocialGroupMember.query.filter_by(
+            group_id=self.id, user_id=user.id).first()
+
+
+class SocialGroupMember(db.Model):
+    """Membership in a social group. A row with status "pending" IS the
+    open join request (the requester inserted it); admins flip it to
+    "active" or delete it to deny."""
+    __tablename__ = "social_group_members"
+    __table_args__ = (
+        db.UniqueConstraint("group_id", "user_id",
+                            name="uq_sgm_group_user"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    group_id = db.Column(db.Integer, db.ForeignKey("social_groups.id"),
+                         nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"),
+                        nullable=False)
+    role = db.Column(db.Enum("member", "admin", "owner",
+                             name="social_group_role"),
+                     nullable=False, default="member")
+    status = db.Column(db.Enum("pending", "active",
+                               name="social_group_member_status"),
+                       nullable=False, default="pending")
+    joined_at = db.Column(db.DateTime, nullable=False,
+                          default=db.func.now())
+
+    group = db.relationship("SocialGroup", back_populates="members")
+    user = db.relationship("User")

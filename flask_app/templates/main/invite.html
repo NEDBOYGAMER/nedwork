@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}nedwork — Join event{% endblock %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/events.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="events-page">
+    <div class="card invite-card">
+        {% if event %}
+            <h1>You're invited</h1>
+            <p class="invite-event-title">{{ event.title }}</p>
+            {% if event.subtitle %}<p class="invite-event-subtitle">{{ event.subtitle }}</p>{% endif %}
+            <p class="hint" id="inviteHint">Checking who you are…</p>
+            <button type="button" class="btn btn-primary" id="inviteJoinBtn" disabled>
+                Join event
+            </button>
+            <p class="hint">Joining adds you to the member list — the host
+                will see you as pending until you RSVP.</p>
+        {% else %}
+            <h1>Invitation invalid</h1>
+            <p class="hint">This invite link doesn't work — it may have been
+                rotated by the host or the event is not published. Ask the
+                host for a fresh link.</p>
+            <a class="btn btn-secondary" href="{{ url_for('events.events_page') }}">Back to nedwork</a>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>
+        window.INVITE = {
+            token: {{ invite_token | tojson }},
+            eventId: {{ event.id if event else 'null' }},
+        };
+    </script>
+    <script type="module" src="{{ url_for('static', filename='js/pages/invite.js') }}"></script>
+{% endblock %}
