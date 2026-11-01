@@ -229,6 +229,12 @@ chat_m = next(m for m in data["modules"] if m["type"] == "chat")
 member.req("POST", f"/events/api/modules/{chat_m['id']}/chat",
            json={"text": "Hello from the member"},
            name="member chats", expect=201)
+data = member.req("GET", f"/events/api/events/{event_id}/data")
+msg = next(x for x in data["messages"])
+member.req("DELETE", f"/events/api/chat/{msg['id']}", expect=403,
+           name="author cannot delete own message (host only)")
+host.req("DELETE", f"/events/api/chat/{msg['id']}",
+         name="host deletes member message")
 
 print("== description + image ==")
 desc = next(m for m in modules if m["type"] == "description")

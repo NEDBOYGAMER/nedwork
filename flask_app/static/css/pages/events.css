@@ -300,7 +300,9 @@
 .location-map-wrap { position: relative; }
 .location-map {
     width: 100%;
-    height: 300px;
+    max-width: 480px;
+    aspect-ratio: 1 / 1;   /* roughly quadratic: narrower + taller */
+    height: auto;
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
     z-index: 0;
@@ -351,7 +353,15 @@
 }
 
 /* ── members ────────────────────────────────────────────────────────── */
-.member-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+/* two columns of attendee cards on desktop, one on phones */
+.member-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+}
 
 .member-row {
     display: flex;
@@ -372,8 +382,8 @@
 
 /* ── doodle ─────────────────────────────────────────────────────────── */
 .doodle-table {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-2);
     padding: var(--space-1) 0;
 }
@@ -613,12 +623,14 @@ select.field-input { cursor: pointer; }
     .event-hero-scrim { padding: var(--space-4); }
     .event-title { font-size: 28px; }
     .event-edit-btn { top: var(--space-3); right: var(--space-3); }
+    .member-list { grid-template-columns: 1fr; }
     .member-row { flex-wrap: wrap; }
+    .doodle-table { grid-template-columns: 1fr; }
     .doodle-row { flex-direction: column; align-items: flex-start; }
     .doodle-config { flex-direction: column; }
     .doodle-mode-card { min-width: 0; }
     .doodle-cal { max-width: 100%; }
-    .location-map { height: 220px; }
+    .location-map { max-width: none; }   /* full-width square on phones */
     .ride-form .host-content-row { flex-wrap: wrap; }
     .ride-form .field-input { flex: 1 1 140px; }
     .ride-form .ride-seats, .ride-form .ride-when { width: auto; }
@@ -849,6 +861,15 @@ select.field-input { cursor: pointer; }
 
 .event-detail-view .event-hero { margin-bottom: var(--space-1); }
 
+/* the hero breaks out of the sidenav gap and touches the sidebar — only
+   on desktop, where #content still carries the sidenav offset */
+@media (min-width: 769px) {
+    .event-detail-view .event-hero {
+        margin-left: calc(var(--space-4) * -2);
+        width: calc(100% + var(--space-4) * 2);
+    }
+}
+
 /* the hero scrim's text sits on the same gutter as the sections */
 .event-detail-view .event-hero-scrim {
     padding-left: calc(var(--event-gutter) + 4px);
@@ -952,6 +973,11 @@ select.field-input { cursor: pointer; }
     padding: var(--space-1) var(--space-2);
     gap: 0;
 }
+/* two-column date rows: hairline divider between the columns */
+.event-detail-view .doodle-row:nth-child(even) {
+    border-left: 1px solid var(--line);
+    padding-left: var(--space-3);
+}
 
 /* membership actions — quiet band at the page bottom, before chat */
 .event-member-actions {
@@ -975,7 +1001,6 @@ select.field-input { cursor: pointer; }
     border-top: none;
 }
 .event-info-row .event-section-body .location-map-wrap { margin-top: var(--space-2); }
-.event-info-row .event-section-body .location-map { height: 180px; }
 
 @media (max-width: 640px) {
     .event-info-row { grid-template-columns: 1fr; }

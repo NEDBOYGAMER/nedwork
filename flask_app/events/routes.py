@@ -1373,7 +1373,7 @@ def ride_passengers(user, ride_id):
 # ---------------------------------------------------------------------------
 # api - chat
 #   POST   /events/api/modules/<id>/chat   -> send
-#   DELETE /events/api/chat/<msg_id>       -> author or host
+#   DELETE /events/api/chat/<msg_id>       -> host only
 # ---------------------------------------------------------------------------
 
 
@@ -1401,11 +1401,12 @@ def send_chat(user, module_id):
 @events_bp.route('/api/chat/<int:message_id>', methods=['DELETE'])
 @permission_required("core", API)
 def delete_message(user, message_id):
+    # Hosts only — per product decision, authors may NOT delete their own
+    # messages (this TIGHTENS the previous author-or-host rule).
     message = ChatMessage.query.get(message_id)
     if message is None:
         return _deny("not found", 404)
-    if message.user_id != user.id and \
-            _host(message.module.event, user) is None:
+    if _host(message.module.event, user) is None:
         return _deny("forbidden", 403)
     db.session.delete(message)
     db.session.commit()

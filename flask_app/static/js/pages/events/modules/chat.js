@@ -1,5 +1,5 @@
-/* Chat module — basic member chat. Newest last; deleted by author or
-   host; "left" members keep their messages (username shows as (left)). */
+/* Chat module — basic member chat. Newest last; deleted by host only;
+   "left" members keep their messages (username shows as (left)). */
 import { el, icon, iconBtn, toast, fmtTime, fmtDate, confirmDialog } from "../ui.js";
 import { chatUrl, chatMsgUrl, api } from "../api.js";
 
@@ -24,7 +24,7 @@ export function renderChat(root, ctx) {
         if (message.user.id === null) {
             head.appendChild(el("span", "badge badge-neutral", "left"));
         }
-        if (isHost || message.user.id === myUserId) {
+        if (isHost) {
             const del = iconBtn("x", "Delete message", "btn-ghost-icon btn-sm-icon");
             del.onclick = async () => {
                 if (!(await confirmDialog("Delete this message?"))) return;

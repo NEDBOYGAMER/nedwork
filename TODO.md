@@ -123,6 +123,17 @@ absent/hidden; stacks to one column ≤640px). Doodle/bring/rides keep the
 host's saved order stack; chat stays pinned to the bottom; edit mode
 untouched.
 
+**View polish round 5 (2026-11-01):** five small view-mode tweaks —
+chat messages are host-delete-only (backend 403 for authors, delete
+button only for hosts; smoke covers both), the "Who's coming" list is a
+two-column card grid (one column ≤640px), the doodle vote rows render as
+a two-column grid (one column ≤640px), the location map is roughly
+quadratic (`aspect-ratio: 1/1`, capped 480px, full-width on mobile), and
+the event hero breaks out left of the `#content` sidenav gap on desktop
+(negative margin ≥769px only; verified zero horizontal overflow at 1400px
+and 390px). Verified: events API 81/81, browser 36/36, socials 68/68 +
+18/18, node --check, screenshots (`stuff/shots/ev5-*.png`).
+
 ## Socials site (shipped 2026-11-01; redesign + picker round 2026-11-01)
 
 Friends + social groups under `/socials/` (new `socials_bp`, sidebar tab
