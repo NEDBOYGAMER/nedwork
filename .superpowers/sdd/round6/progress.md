@@ -31,3 +31,21 @@ optional for none-of-these votes server-side; "pick at least one
 option" guard stays for a fully empty vote.
 Task 1: complete — events_api_smoke.py 88/88 (RED 3 fails before)
 Task 2: complete — settings.js node --check OK; CSS spacing verified via browser smoke later
+Task 3: complete — view-mode CSS shipped in commit b972bb2; browser_smoke.py 36/36 zero
+  console/page errors; ev5_shot.py overflow: desktop 0 / mobile 0 (after cascade fix)
+Task 4: complete — members.js label drop + doodle.js hint, shipped in b972bb2; node --check OK
+Task 5: complete — admin.js/app_corner.js/admin routes.py cleanups, shipped in b972bb2;
+  node --check OK; browser smoke green
+
+Post-b972bb2 follow-up fix (uncommitted until final commit): the desktop 32px overflow
+returned because the main/chat breakout rule sat BEFORE `.event-detail-view .event-chat
+{ margin-left: 0; margin-right: 0 }` in events.css — later rule won margin-left while
+the width stuck. Moved main+chat breakout into its own media block after the chat reset.
+Mobile: main keeps 0 padding; scrim + chat-inner keep var(--event-gutter) (title x=12px
+measured via computed style at 390px viewport, port 5062). ev5_shot.py re-run after fix.
+
+Final review: self-review (no subagent dispatched — cost/benefit for a CSS+small-JS
+polish round judged not worth a fresh reviewer; noted to human partner). Diff re-read:
+TODO.md completion entry matches shipped commits; events.css cascade order verified;
+no dead code left. Deferred minor: port 5061 is an ERR_UNSAFE_PORT for Chromium —
+measurement scripts must use safe ports (5059/5062).
