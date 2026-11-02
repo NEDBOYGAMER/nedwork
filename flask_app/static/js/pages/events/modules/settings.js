@@ -235,9 +235,14 @@ function buildLocationMap(draft, config) {
 
     const hasPoint = Number.isFinite(draft.location.lat)
         && Number.isFinite(draft.location.lng);
-    const map = L.map(mapDiv, { scrollWheelZoom: true }).setView(
+    const map = L.map(mapDiv, {
+        scrollWheelZoom: true,
+        zoomControl: false,   // re-added bottom-left below (the search
+                              // bar overlays the default top-left spot)
+    }).setView(
         hasPoint ? [draft.location.lat, draft.location.lng] : [47.4, 8.5],
         hasPoint ? 15 : 4);
+    L.control.zoom({ position: "bottomleft" }).addTo(map);
     keepMapSized(map);
     liveMaps.push(map);
     // plain scroll scrolls the page; Ctrl+scroll zooms the map
@@ -616,8 +621,7 @@ export function settingsDoodle(root, ctx) {
             resetBtn.type = "button";
             resetBtn.onclick = async () => {
                 if (!(await confirmDialog(
-                        "Reset all votes? Everyone has to vote again — " +
-                        "then you can edit the options."))) return;
+                        "Reset all votes? Everyone has to vote again."))) return;
                 try {
                     await api(resetVotesUrl(module.id), { method: "DELETE" });
                     toast("Votes reset", "success");

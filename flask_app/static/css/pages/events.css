@@ -107,8 +107,10 @@
     display: block;
 }
 
-/* legibility scrim — dark at the bottom where the title sits, clear on top.
-   The scrim content aligns to the same content column as the sections. */
+/* legibility scrim wrapper — the darker gradient rectangle over the
+   image is gone (operator call, round 6): the title sits directly on
+   the picture, held legible by a text-shadow instead of a scrim. The
+   div stays as the layout wrapper for the title block. */
 .event-hero-scrim {
     position: relative;
     z-index: 1;
@@ -116,14 +118,9 @@
     max-width: var(--event-col, 1080px);
     margin: 0 auto;
     padding: var(--space-8) var(--space-5) var(--space-5);
-    background: linear-gradient(to top,
-        rgba(8, 8, 10, 0.82) 0%,
-        rgba(8, 8, 10, 0.45) 55%,
-        rgba(8, 8, 10, 0.12) 100%);
     color: #fff;
 }
 .event-hero:not(.event-hero-image) .event-hero-scrim {
-    background: none;
     color: inherit;
     padding-top: var(--space-6);
 }
@@ -145,9 +142,15 @@
    (seen on mobile crops: "Movie Night at Le…" clipped behind the button) */
 .event-hero-host .event-title { padding-right: 7rem; }
 
-/* on the image the meta badges need solid backgrounds to stay readable */
+/* on the image the meta badges need solid backgrounds to stay readable;
+   without the scrim the text carries its own shadow instead */
 .event-hero-image .event-head-meta .badge,
 .event-hero-image .event-subtitle { color: #fff; }
+.event-hero-image .event-title,
+.event-hero-image .event-subtitle,
+.event-hero-image .event-date {
+    text-shadow: 0 1px 12px rgba(8, 8, 10, 0.55);
+}
 .event-hero-image .event-head-meta .badge-neutral {
     background: rgba(8, 8, 10, 0.6);
     color: #fff;
@@ -535,6 +538,7 @@
 }
 
 .chat-row { display: flex; flex-direction: column; gap: 2px; }
+.chat-row:not(.chat-mine) { align-items: flex-start; }
 .chat-row.chat-mine { align-items: flex-end; }
 
 .chat-head { display: flex; gap: var(--space-2); align-items: baseline; font-size: 12px; color: var(--text-muted); }
@@ -545,7 +549,24 @@
     color: var(--text-muted);
     padding: var(--space-1) 0;
 }
-.chat-text { margin: 0; font-size: 14px; white-space: pre-wrap; }
+/* speech blobs — every message reads as its own bubble, mine tinted */
+.chat-text {
+    margin: 0;
+    font-size: 14px;
+    white-space: pre-wrap;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    border-bottom-left-radius: 4px;
+    padding: var(--space-2) var(--space-3);
+    max-width: min(75%, 480px);
+}
+.chat-mine .chat-text {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    border-bottom-left-radius: var(--radius-md);
+    border-bottom-right-radius: 4px;
+}
 .chat-time { font-size: 11px; }
 
 .chat-form { display: flex; gap: var(--space-2); }
@@ -830,7 +851,13 @@ select.field-input { cursor: pointer; }
     max-width: none;
     width: 100%;
     margin: 0;
-    padding: 0 var(--event-gutter);
+    padding: 0;
+    /* the gutter moves onto the sections so their hairline separators
+       reach the sidenav edge flush (round 6) */
+}
+.event-detail-view .event-section {
+    padding-left: var(--event-gutter);
+    padding-right: var(--event-gutter);
 }
 
 /* the "All events" header floats over the hero instead of sitting above
@@ -869,9 +896,13 @@ select.field-input { cursor: pointer; }
 .event-detail-view .event-hero { margin-bottom: var(--space-1); }
 
 /* the hero breaks out of the sidenav gap and touches the sidebar — only
-   on desktop, where #content still carries the sidenav offset */
+   on desktop, where #content still carries the sidenav offset. Round 6:
+   the section separators and the chat band are flush to the sidenav too,
+   so the breakout applies to the whole page body. */
 @media (min-width: 769px) {
-    .event-detail-view .event-hero {
+    .event-detail-view .event-hero,
+    .event-detail-view .event-main,
+    .event-detail-view .event-chat {
         margin-left: calc(var(--space-4) * -2);
         width: calc(100% + var(--space-4) * 2);
     }
@@ -933,22 +964,17 @@ select.field-input { cursor: pointer; }
         var(--bg) 100%);
 }
 .event-detail-view .event-hero-image .event-hero-scrim {
-    background: linear-gradient(to top,
-        var(--bg) 0%,
-        color-mix(in srgb, var(--bg) 55%, transparent) 18%,
-        rgba(8, 8, 10, 0.45) 55%,
-        rgba(8, 8, 10, 0.10) 100%);
     padding-bottom: var(--space-6);
 }
 
-/* the title anchors the page — bigger on the poster band */
+/* the title anchors the page — poster scale (9vw, operator call) */
 .event-detail-view .event-title {
-    font-size: clamp(38px, 6.2vw, 74px);
+    font-size: clamp(38px, 9vw, 130px);
 }
 /* the infos under the title grow with it */
-.event-detail-view .event-subtitle { font-size: 19px; }
+.event-detail-view .event-subtitle { font-size: 22px; }
 .event-detail-view .event-head-meta {
-    font-size: 16px;
+    font-size: 18px;
     gap: var(--space-3);
 }
 
@@ -986,6 +1012,18 @@ select.field-input { cursor: pointer; }
     padding-left: var(--space-3);
 }
 
+/* view doodle: bigger text + checkboxes (round 6) */
+.event-detail-view .doodle-when { font-size: 16px; }
+.event-detail-view .doodle-date { font-size: 16px; }
+.event-detail-view .doodle-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* all buttons on the event page: bigger, less fidgety (round 6) */
+.events-page .btn-sm { padding: 9px 16px; font-size: 14px; }
+
 /* membership actions — quiet band at the page bottom, before chat */
 .event-member-actions {
     display: flex;
@@ -997,10 +1035,11 @@ select.field-input { cursor: pointer; }
 }
 .event-member-actions .btn-danger { margin-right: auto; }
 
-/* info row: location + members side by side (both are plain info) */
+/* info row: location + members side by side, half the page width each
+   (round 6: 50/50 split, not 3:2) */
 .event-info-row {
     display: grid;
-    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 0 var(--space-5);
     align-items: start;
 }
@@ -1028,13 +1067,14 @@ select.field-input { cursor: pointer; }
     .event-detail-view .event-main,
     .event-detail-view .event-chat .event-chat-inner,
     .event-detail-view .event-hero-scrim {
-        padding-left: var(--event-gutter);
-        padding-right: var(--event-gutter);
+        padding-left: 0;
+        padding-right: 0;
     }
+    /* sections carry the gutter themselves on mobile too */
+    .event-detail-view .event-section { padding: var(--space-4) var(--event-gutter); }
     .event-detail-view .event-hero-image { min-height: 62vh; }
     .event-detail-view .event-hero-scrim { padding-bottom: var(--space-5); }
     .event-detail-view .event-title { padding-right: 6rem; }
-    .event-detail-view .event-section { padding: var(--space-4) 0; }
     .event-detail-view .doodle-row { padding: var(--space-2) var(--space-2); }
     .event-detail-view .event-member-actions {
         flex-direction: column-reverse;

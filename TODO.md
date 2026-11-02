@@ -134,6 +134,56 @@ the event hero breaks out left of the `#content` sidenav gap on desktop
 and 390px). Verified: events API 81/81, browser 36/36, socials 68/68 +
 18/18, node --check, screenshots (`stuff/shots/ev5-*.png`).
 
+- [ ] **UI rework round 6 — queued full prompt (execute verbatim in one
+      session). Scope confirmed 2026-11-02: round 6 PLUS the small
+      code-side items in the same sweep** (admin console cleanups — dead
+      `IMG_EXT_BY_MAGIC` + `renderPermissions` extra arg; typeless-apps
+      fallback shelf; max-6-types UI hint; kick button decision;
+      groups member-add chips — see their own entries below, tick them
+      off as part of this session).
+
+      Clarifications from the operator (2026-11-02), resolved:
+      - **German address format = "Street number, City"** (standard
+        German order), locale-keyed on `country_code` de/at/ch; keep
+        "number Street" style elsewhere.
+      - **The "square" to delete is the hero scrim** — `div.hero-scrim`
+        (or `.hero-scrim`), the darker rectangle laid over the hero
+        image under the title/status badges. Remove it (title keeps
+        whatever other legibility treatment the executor chooses).
+      - **"Member list can start in the center of the viewport" = the
+        map section and the members section each take half the page
+        width** — the info row's two sections split the viewport width
+        50/50 (width only, not height).
+      - **Post-vote doodle edits are per-date, not all-or-nothing.**
+        Relax the current blanket 409 (`set_options` locks once anyone
+        has voted): edits are allowed, and votes are wiped **only for
+        options that changed or were removed** — e.g. votes on 25 Feb
+        survive deleting the 27th/28th; the vote on 27 Feb is dropped
+        with that date. This reverses the documented vote-lock-409
+        tradeoff from the §1–§7 restructure, and the smoke tests that
+        assert the blanket lock must be updated to assert per-date
+        behavior instead.
+
+      Raw prompt (execute the intents, typos included):
+
+      ```text
+      again try to make the adress change based on place, so in german regions its city, street number and atm its number street, add some paddings and margin in the edit view of the doodle(you forgot some), in edit mode make the map use the width of the module, go through the enitre edit site and add padding and margins where you have forgotten them, chages should be able to be made after people have voted and added stuff, delete the you rvsp, error message comment required for 'none of these work even after selecting multiple dates, delete the square infornt of the background and behind the title and status stuff, mage the title bigger yet, like 9vw, and the other stuff under the title also bit bigger, viewing side doole also a bit bigger text and check boxes, make it less fidgetty( apply this to all buttons on the page, they are all a bit small and fidgety), now the title image has no padding also delete it for the seperators and for the chat ( so no distance to the sidenav), click control to zoom is not inside the map but should be, member list can start in the center of the vieport, chat should fearure some kind of blobs so you know whats is and whats not a message
+      ```
+
+      (Executor notes: Nominatim address format follows locale per the
+      clarification above; missing paddings/margins in the doodle edit
+      view and across the whole edit page; edit-mode map full module
+      width; doodle/bring edits allowed post-vote with per-date vote
+      wiping only; remove the "you RSVP'd" / error-message / "comment
+      required" bits around 'none of these work' after selecting
+      multiple dates; remove the `.hero-scrim` rectangle; title bigger
+      ~9vw with the subtitle/status line also bigger; bigger doodle
+      text + checkboxes in view mode; all page buttons bigger / less
+      fidgety; hero image, separators and chat flush to the sidenav (no
+      left padding); Leaflet zoom control must sit inside the map; map
+      and members sections split viewport width 50/50; chat messages as
+      speech blobs.)
+
 ## Socials site (shipped 2026-11-01; redesign + picker round 2026-11-01)
 
 Friends + social groups under `/socials/` (new `socials_bp`, sidebar tab
@@ -245,25 +295,30 @@ proof), screenshots in `stuff/shots/`.
       /admin/api/users/<id>/force_logout` exists and is tested (kills
       sessions, keeps access) — deliberately not in the UI after Delete
       replaced kick. Decide: add a "Kick" button next to Lock out, or
-      drop the endpoint.
+      drop the endpoint. → **Folded into the round-6 session** (operator
+      chose "round 6 + small code items"; add the Kick button there).
 - [ ] **Groups tab member-add is still a `<select>`.** Permission grants
       became chips; member-add kept the dropdown (no user decision).
-      Convert to chips for consistency or leave.
+      Convert to chips for consistency or leave. → **Folded into the
+      round-6 session** (convert to chips).
 - [ ] **Cosmetic cleanups from the audit:** dead `IMG_EXT_BY_MAGIC`
       (`admin/routes.py:429`, never filled nor read), extra arg in
       `renderPermissions(rows, apps)` call (`admin.js:441` vs 1-arg
       signature). Third item resolved: `typeIn.dataset.known` is gone
-      with the old type row (verified 2026-11-01).
+      with the old type row (verified 2026-11-01). → **Folded into the
+      round-6 session.**
 - [ ] **Site settings card** (Settings tab) is a placeholder — "Nothing
       to configure yet". First real site-wide setting goes there.
 
 ## Apps tab / app corner
 
 - [ ] **Max 6 types per app** is enforced server-side (`_clean_types`)
-      but not surfaced in the UI. Add a hint or raise the cap.
+      but not surfaced in the UI. Add a hint or raise the cap. →
+      **Folded into the round-6 session** (add the hint).
 - [ ] **Typeless apps vanish from every shelf.** An app with no types
       appears nowhere in the app corner (still manageable in the Apps
-      tab). Consider a fallback shelf ("Other") or keep as-is.
+      tab). Consider a fallback shelf ("Other") or keep as-is. →
+      **Folded into the round-6 session** (add the fallback shelf).
 - [x] **Mobile layouts for the restructured app cards.** App corner now
       has a real phone layout (`app_corner.css` ≤640px: 3-per-row shelf
       grid, fades/arrows off, always-visible pills) — done enough for

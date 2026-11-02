@@ -10,11 +10,11 @@ export function renderMembers(root, ctx) {
     const members = state.members || [];
     const amHost = isHost;
 
-    // my RSVP row (not the host — host is implicit attending)
+    // my RSVP row (not the host — host is implicit attending); the
+    // "Your RSVP:" label is gone (round 6) — the buttons speak for it
     if (me && me.role === "member") {
         const mine = members.find((m) => m.id === me.id) || me;
         const row = el("div", "rsvp-row");
-        row.appendChild(el("span", "rsvp-label", "Your RSVP:"));
         const group = el("div", "rsvp-group");
         for (const value of RSVP_VALUES) {
             const btn = el("button", "btn btn-sm " +

@@ -340,6 +340,12 @@ function renderUsers() {
         actions.append(el("button", {
             type: "button",
             class: "btn",
+            title: "Kick them out of every device now (sessions die, access stays)",
+            onclick: () => forceLogout(user),
+        }, "Kick"));
+        actions.append(el("button", {
+            type: "button",
+            class: "btn",
             title: "Force a password reset: fresh temporary password, change forced at next login",
             onclick: () => forcePasswordReset(user),
         }, "Reset password"));
@@ -400,6 +406,17 @@ async function deleteUser(user) {
     loadUsers();
 }
 
+async function forceLogout(user) {
+    if (!confirm(`Kick ${user.username} out of every device now? Their access stays - they can log back in.`)) return;
+    const res = await api(`/admin/api/users/${user.id}/force_logout`, { method: "POST" });
+    const data = res.data;
+    if (!res.ok || !data.success) {
+        setError("usersError", data.error || "Kick failed");
+        return;
+    }
+    toast(`${user.username} kicked - all their sessions were ended`);
+}
+
 async function forcePasswordReset(user) {
     const res = await api(`/admin/api/users/${user.id}/force_password_reset`);
     const data = res.data;
@@ -438,7 +455,7 @@ async function loadPermissions() {
     state.perms = rows;
     state.apps = apps;
     rows.forEach((r) => { PERMISSION_DESCRIPTIONS[r.name] = r.description || ""; });
-    renderPermissions(rows, apps);
+    renderPermissions(rows);
 }
 
 function renderPermissions(permRows) {
@@ -749,6 +766,7 @@ function renderAppCard(app, accessKeys, functionKeys, knownTypes) {
     panels.appendChild(buildTagBox({
         title: "Types",
         darker: false,
+        hint: "Max 6 types per app - an app can live on several shelves.",
         entries: knownTypes.map((t) => ({
             name: t,
             enabled: (app.types || []).includes(t),
@@ -793,13 +811,14 @@ function renderAppCard(app, accessKeys, functionKeys, knownTypes) {
    outline = available. Clicking toggles instantly; optional inline
    "plus" row adds new entries (a type, or a brand-new access key that
    is created and linked in one go). */
-function buildTagBox({ title, darker, full, entries, onToggle, plus, app }) {
+function buildTagBox({ title, darker, full, entries, onToggle, plus, app, hint }) {
     const panel = el("div", {
         class: "app-box-panel"
             + (darker ? " dark" : "")
             + (full ? " full" : ""),
     });
     panel.appendChild(el("div", { class: "app-panel-title" }, title));
+    if (hint) panel.appendChild(el("span", { class: "hint" }, hint));
 
     const tags = el("div", { class: "app-panel-tags" });
     entries.forEach((e) => {
@@ -1082,23 +1101,24 @@ function renderGroups() {
         });
         box.appendChild(chips);
 
-        // add-member row
-        const memberRow = el("div", { class: "group-member-row" });
+        // add-member chips (same language as the permission chips)
         const candidates = candidateUsers(group);
-        memberRow.appendChild(el("label", { for: "member-select-" + group.id }, "Add member"));
         if (candidates.length > 0) {
-            const userSelect = el("select", { id: "member-select-" + group.id });
-            candidates.forEach((u) => userSelect.appendChild(el("option", { value: u }, u)));
-            memberRow.appendChild(userSelect);
-            memberRow.appendChild(el("button", {
-                type: "button",
-                class: "btn",
-                onclick: () => saveGroupMembers(group, [userSelect.value], []),
-            }, "Add"));
+            const addRow = el("div", { class: "chip-row" });
+            addRow.appendChild(el("span", { class: "hint" }, "Add member:"));
+            candidates.forEach((u) => {
+                addRow.appendChild(el("button", {
+                    type: "button",
+                    class: "chip chip-add",
+                    title: "Add " + u + " to this group",
+                    onclick: () => saveGroupMembers(group, [u], []),
+                }, "+ " + u));
+            });
+            box.appendChild(addRow);
         } else {
-            memberRow.appendChild(el("span", { class: "cell-muted" }, "every user is already a member"));
+            box.appendChild(el("div", { class: "group-member-row" },
+                el("span", { class: "cell-muted" }, "every user is already a member")));
         }
-        box.appendChild(memberRow);
 
         // member chips
         const memberChips = el("div", { class: "chip-row" });

@@ -36,8 +36,11 @@ function renderLeafletMap(root, config) {
     holder.appendChild(mapDiv);
     root.appendChild(holder);
 
-    const map = window.L.map(mapDiv, { scrollWheelZoom: true })
-        .setView([config.lat, config.lng], 15);
+    const map = window.L.map(mapDiv, {
+        scrollWheelZoom: true,
+        zoomControl: false,   // re-added bottom-left below
+    }).setView([config.lat, config.lng], 15);
+    window.L.control.zoom({ position: "bottomleft" }).addTo(map);
     keepMapSized(map);
     window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,

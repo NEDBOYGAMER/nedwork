@@ -299,7 +299,22 @@ function render() {
         renderedAny = true;
     });
 
-    // 4. Collapsible disabled section
+    // 4. Typeless apps — the fallback shelf, so catalog entries without
+    //    any type don't vanish from the corner
+    const typelessApps = apps.filter(app =>
+        appTypesOf(app).length === 0 && !isAppDisabled(app) && !isAppLocked(app));
+    if (typelessApps.length > 0 && !config.disabled_shelves.includes('__other__')) {
+        container.appendChild(buildShelf({
+            title: 'Other',
+            apps: typelessApps,
+            shelfKey: '__other__',
+            small: true,
+            canDisableShelf: true,
+        }));
+        renderedAny = true;
+    }
+
+    // 5. Collapsible disabled section
     const disabledApps = config.disabled_apps.map(getAppById).filter(Boolean);
     const lockedApps = apps.filter(isAppLocked);
     const hasDisabledContent =

@@ -426,8 +426,6 @@ def api_pending_deny_all():
 # keys, any-of) and "functions" (function keys, documentation for the
 # console: the feature's own permission_required decorator enforces them).
 
-IMG_EXT_BY_MAGIC = None  # filled by _sniff_image_ext below
-
 
 def _apps_img_dir():
     """static/img/apps — the app-corner resolves App.image as

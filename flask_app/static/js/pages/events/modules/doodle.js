@@ -4,7 +4,8 @@
      time mode: the event date is fixed (Title module); attendees pick
                 the time span that works.
    Host finalizes manually (never auto-picked); finalize sets the
-   canonical event_date. Options are locked once anyone has voted. */
+   canonical event_date. Options stay editable after votes — votes on
+   removed/changed options are wiped with them (per-date rule). */
 import { el, icon, toast, fmtDate, fmtTime } from "../ui.js";
 import { voteUrl, api } from "../api.js";
 
@@ -90,13 +91,13 @@ export function renderDoodle(root, ctx) {
     }
     root.appendChild(table);
 
-    // host: finalize lives in EDIT mode (the doodle settings card) — the
-    // view mode only hints at the lock so the host knows to go edit
+    // host hint: options stay editable after votes now — editing in Edit
+    // mode keeps votes on unchanged dates (per-date rule)
     if (amHost && anyoneVoted) {
         const lockRow = el("div", "host-content-row");
         lockRow.appendChild(el("p", "hint",
-            "Options are locked — participants have already voted. "
-            + "Reset votes or finalize the date from Edit."));
+            "Participants have already voted — editing the options in "
+            + "Edit keeps the votes on unchanged dates."));
         root.appendChild(lockRow);
     }
 
