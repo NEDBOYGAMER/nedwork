@@ -303,7 +303,10 @@
 .location-map-wrap { position: relative; }
 .location-map {
     width: 100%;
-    max-width: 480px;
+    /* fill the info-row column at typical widths, capped + centered on
+       very wide viewports (square height follows the width cap) */
+    max-width: min(100%, 640px);
+    margin-inline: auto;
     aspect-ratio: 1 / 1;   /* roughly quadratic: narrower + taller */
     height: auto;
     border: 1px solid var(--line);
@@ -339,8 +342,8 @@
     padding: 6px 4px;
 }
 .location-searchbar .hint { flex-shrink: 0; }
-/* edit mode: the map spans the whole module card, not the 480px cap */
-.event-edit .location-map { max-width: none; }
+/* edit mode: the map spans the whole module card, no cap */
+.event-edit .location-map { max-width: none; margin-inline: 0; }
 .location-popup { font-size: 13px; }
 .location-zoom-hint {
     position: absolute;

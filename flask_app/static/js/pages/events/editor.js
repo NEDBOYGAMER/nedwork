@@ -1,7 +1,8 @@
 /* Edit mode (§1) — /events/<id>/edit/, host only. Modules render as
    config cards (settings only, no live content interaction); a sticky
    bottom bar holds Cancel + Save changes (drafts also get "publish after
-   saving"). Reordering via up/down arrows per card; Members and Title
+   saving"). Reordering via drag (desktop) or per-card up/down arrows
+   (touch — HTML5 DnD never fires on phones); Members and Title
    are fixed. Saving PATCHes event + module configs, applies reorder,
    then returns to view mode. */
 import { el, icon, toast, confirmDialog } from "./ui.js";
@@ -124,6 +125,37 @@ function draw(wrap, eventId, draft) {
                 nav.appendChild(del);
             }
 
+            // reorder — drag on desktop (HTML5 DnD never fires on touch),
+            // up/down buttons everywhere. Both mutate the DOM; the shared
+            // sync then reorders the live `modules` array from DOM order —
+            // Save persists exactly that order (title card is fixed at 0).
+            const syncOrder = () => {
+                const ordered = [...list.querySelectorAll(
+                    ".edit-module-card[data-module-id]")]
+                    .map((n) => Number(n.dataset.moduleId))
+                    .filter((id) => !Number.isNaN(id));
+                const byId = new Map(modules.map((m) => [m.id, m]));
+                const next = ordered.map((id) => byId.get(id)).filter(Boolean);
+                modules.splice(0, modules.length, ...next);
+            };
+            const moveCard = (dir) => {
+                const sibling = dir < 0 ? card.previousElementSibling
+                                        : card.nextElementSibling;
+                // stay inside the module stack: not above the fixed title
+                // card (always the list's first child), not past the
+                // trailing add-module card
+                if (!sibling || sibling === list.firstElementChild ||
+                        sibling.classList.contains("edit-add-card")) return;
+                list.insertBefore(card, dir < 0 ? sibling : sibling.nextSibling);
+                syncOrder();
+            };
+            const up = iconBtn("arrow-up", "Move up", "edit-module-grip");
+            up.onclick = () => moveCard(-1);
+            const down = iconBtn("arrow-down", "Move down", "edit-module-grip");
+            down.onclick = () => moveCard(1);
+            nav.appendChild(up);
+            nav.appendChild(down);
+
             // drag handle — HTML5 DnD, enabled only from the grip so text
             // inputs inside the card stay draggable/selectable
             const grip = iconBtn("grip-vertical", "Drag to reorder",
@@ -139,15 +171,7 @@ function draw(wrap, eventId, draft) {
                 card.classList.remove("is-dragging");
                 card.draggable = false;
                 dragCard = null;
-                // sync the live `modules` array from DOM order — Save
-                // persists exactly that order (title card is fixed at 0)
-                const ordered = [...list.querySelectorAll(
-                    ".edit-module-card[data-module-id]")]
-                    .map((n) => Number(n.dataset.moduleId))
-                    .filter((id) => !Number.isNaN(id));
-                const byId = new Map(modules.map((m) => [m.id, m]));
-                const next = ordered.map((id) => byId.get(id)).filter(Boolean);
-                modules.splice(0, modules.length, ...next);
+                syncOrder();
             });
             card.addEventListener("dragover", (e) => {
                 if (!dragCard || dragCard === card) return;

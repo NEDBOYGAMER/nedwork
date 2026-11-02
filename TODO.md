@@ -10,15 +10,7 @@ git history — this file keeps only open items.
 
 ## Events site
 
-- [ ] **Location map: more centered and wider** — in view mode the map
-      sits in the left half of the 50/50 info row (`aspect-ratio: 1/1`,
-      capped at 480px), so on a wide viewport it leaves dead space around
-      it and hugs the left edge of its column. Make it use most of the
-      space it has: fill more of its column width, center it in that
-      column, keep it square-ish and full-width on mobile as it is now.
-- [ ] **Module reorder doesn't work on touch** — HTML5 drag-and-drop
-      doesn't fire on phones; reordering is desktop-only for now
-      (up/down buttons or long-press would be the fallback).
+(none — shipped rounds are in git history)
 
 ## Socials site
 
