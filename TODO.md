@@ -134,15 +134,53 @@ the event hero breaks out left of the `#content` sidenav gap on desktop
 and 390px). Verified: events API 81/81, browser 36/36, socials 68/68 +
 18/18, node --check, screenshots (`stuff/shots/ev5-*.png`).
 
-- [ ] **UI rework round 6 — queued full prompt (execute verbatim in one
-      session). Scope confirmed 2026-11-02: round 6 PLUS the small
-      code-side items in the same sweep** (admin console cleanups — dead
-      `IMG_EXT_BY_MAGIC` + `renderPermissions` extra arg; typeless-apps
-      fallback shelf; max-6-types UI hint; kick button decision;
-      groups member-add chips — see their own entries below, tick them
-      off as part of this session).
+- [x] **UI rework round 6 — executed 2026-11-02** (round 6 + the small
+      code-side items in the same sweep; commits `a54e49e`, `b39af6a`,
+      `b972bb2`). What shipped, per the clarified intents:
+      - **Doodle edits after votes (server)**: the blanket 409 vote-lock
+        is gone — `set_options` keeps every option row whose value is
+        still offered (votes on it survive, ids stable) and wipes votes
+        only with options that were removed/changed. "None of these
+        work" no longer requires a comment (400 deleted). Smoke asserts
+        the per-date rule (`events_api_smoke.py` 88/88).
+      - **Locale-aware address** (`settings.js` `shortAddress`):
+        de/at/ch (plus li) → "Street number, City"; elsewhere
+        "number Street, City" (house-number-first).
+      - **Edit view spacing**: `.edit-module-card` is now a flex column
+        with a real gap (cards were bare blocks — consecutive
+        fields/rows/hints stacked tight); `.doodle-editor` gap bumped;
+        edit-mode map spans the full module card (was capped 480px).
+      - **Hero scrim deleted**: the darker gradient rectangle under the
+        title is gone; title sits directly on the picture with a
+        text-shadow instead (scrim div kept as layout wrapper).
+      - **Title ~9vw** (`clamp(38px, 9vw, 130px)`), subtitle 22px,
+        meta 18px; view doodle text 16px + 18px checkboxes; all
+        `.btn-sm` on the events page bumped to 9px/16px 14px.
+      - **Info row 50/50** — map and "Who's coming" split the page
+        width equally (was 3:2).
+      - **Flush to the sidenav**: the desktop negative-margin breakout
+        applies to `.event-main` and `.event-chat` as well, so section
+        separators and the chat band touch the sidenav; the gutter
+        padding moved onto the sections so hairlines stay full-width.
+      - **Leaflet zoom control** moved to bottom-left in both maps (it
+        was buried under the edit-mode search overlay at top-left).
+      - **Chat speech blobs**: every message is a bubble (surface on
+        the surface-2 band, own messages accent-tinted).
+      - **"Your RSVP:" label removed** (buttons speak for themselves);
+        doodle host hint now says votes survive per-date on edits;
+        Reset-votes confirm text updated (no longer claims you must
+        reset before editing).
+      - **Small code items**: dead `IMG_EXT_BY_MAGIC` removed,
+        `renderPermissions` extra arg fixed, Kick button added next to
+        Lock out (`force_logout` finally surfaced), groups member-add
+        is chips now, max-6-types hint in the Types panel, and a
+        fallback **"Other" shelf** for typeless apps in the app corner.
+      Verified 2026-11-02: `events_api_smoke.py` 88/88 (RED 3 before),
+      `browser_smoke.py` 36/36 zero console/page errors, socials smoke
+      re-run clean, `node --check` on all touched JS, screenshots in
+      `stuff/shots/` (desktop + mobile, zero horizontal overflow).
 
-      Clarifications from the operator (2026-11-02), resolved:
+      Original clarifications (for the record):
       - **German address format = "Street number, City"** (standard
         German order), locale-keyed on `country_code` de/at/ch; keep
         "number Street" style elsewhere.

@@ -897,12 +897,11 @@ select.field-input { cursor: pointer; }
 
 /* the hero breaks out of the sidenav gap and touches the sidebar — only
    on desktop, where #content still carries the sidenav offset. Round 6:
-   the section separators and the chat band are flush to the sidenav too,
-   so the breakout applies to the whole page body. */
+   the section separators and the chat band are flush to the sidenav too
+   (their breakout rule lives below the .event-chat margin reset so it
+   wins the cascade). */
 @media (min-width: 769px) {
-    .event-detail-view .event-hero,
-    .event-detail-view .event-main,
-    .event-detail-view .event-chat {
+    .event-detail-view .event-hero {
         margin-left: calc(var(--space-4) * -2);
         width: calc(100% + var(--space-4) * 2);
     }
@@ -922,6 +921,16 @@ select.field-input { cursor: pointer; }
 .event-detail-view .event-chat .event-chat-inner {
     max-width: none;
     padding: 0 var(--event-gutter) var(--space-6);
+}
+/* round 6: hero, main (section separators) and chat all reach the
+   sidenav edge on desktop — same breakout as the hero. AFTER the
+   margin reset above so it wins the cascade. */
+@media (min-width: 769px) {
+    .event-detail-view .event-main,
+    .event-detail-view .event-chat {
+        margin-left: calc(var(--space-4) * -2);
+        width: calc(100% + var(--space-4) * 2);
+    }
 }
 
 /* description: bare prose directly under the hero — the page's subtitle,
@@ -1064,11 +1073,13 @@ select.field-input { cursor: pointer; }
     .events-page:has(.event-detail-view) .events-header {
         padding-left: calc(64px + env(safe-area-inset-left, 0px));
     }
-    .event-detail-view .event-main,
+    /* main's gutter lives on its sections now; the hero scrim and the
+       chat text keep their own (they are not sections) */
+    .event-detail-view .event-main { padding-left: 0; padding-right: 0; }
     .event-detail-view .event-chat .event-chat-inner,
     .event-detail-view .event-hero-scrim {
-        padding-left: 0;
-        padding-right: 0;
+        padding-left: var(--event-gutter);
+        padding-right: var(--event-gutter);
     }
     /* sections carry the gutter themselves on mobile too */
     .event-detail-view .event-section { padding: var(--space-4) var(--event-gutter); }
