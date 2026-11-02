@@ -989,8 +989,8 @@ def event_image(user, filename):
 @events_bp.route('/api/modules/<int:module_id>/votes', methods=['DELETE'])
 @permission_required("core", API)
 def reset_votes(user, module_id):
-    """Host-only: wipes every vote for the doodle so the option set can
-    be edited again (the vote-lock 409 points here)."""
+    """Host-only: wipes every vote for the doodle (a clean re-vote,
+    e.g. before a mode switch — options are editable without it)."""
     module = _module_for(module_id)
     if module is None or module.type != "doodle":
         return _deny("not found", 404)
@@ -1011,15 +1011,9 @@ def set_options(user, module_id):
     if _host(module.event, user) is None:
         return _deny("forbidden", 403)
 
-    # vote lock — once anyone answered, options can't change (Rallly's
-    # "locked: participants have already answered" guard); editing must
-    # not silently wipe votes.
-    if DoodleVote.query.filter(
-            DoodleVote.module_id == module.id,
-            DoodleVote.option_id.isnot(None)).count() > 0:
-        return _deny("options are locked — participants have already "
-                     "voted (reset votes first)", 409)
-
+    # No blanket vote-lock: the host may edit options after votes came
+    # in — votes on options that are still offered survive the edit,
+    # votes on removed/changed values die with their option row.
     payload = request.get_json(silent=True) or {}
     config = module.config or {}
     mode = config.get("mode", "date")
@@ -1060,13 +1054,26 @@ def set_options(user, module_id):
                 return _deny(f"not a date: {day}", 400)
             options.append((d, None))
 
-    DoodleVote.query.filter_by(module_id=module.id).delete(
-        synchronize_session=False)
-    DoodleOption.query.filter_by(module_id=module.id).delete(
-        synchronize_session=False)
+    # per-date preservation: an existing option whose value is still
+    # offered keeps its row (and its votes); everything else is deleted
+    # together with the votes cast on it
+    options = list(dict.fromkeys(options))   # dedupe, keep order
+    existing = DoodleOption.query.filter_by(module_id=module.id).all()
+    keep = {}
+    for opt in existing:
+        key = (opt.starts_at, opt.ends_at)
+        if key in options and key not in keep:
+            keep[key] = opt
+        else:
+            DoodleVote.query.filter_by(option_id=opt.id).delete(
+                synchronize_session=False)
+            db.session.delete(opt)
     db.session.flush()
     for i, (start, end) in enumerate(options):
-        db.session.add(DoodleOption(module_id=module.id, starts_at=start,
+        if (start, end) in keep:
+            keep[(start, end)].position = i
+        else:
+            db.session.add(DoodleOption(module_id=module.id, starts_at=start,
                                     ends_at=end, position=i))
     db.session.commit()
     return jsonify({"module": _module_to_dict(module, deep=True)})
@@ -1112,8 +1119,7 @@ def vote(user, module_id):
     picked = [oid for oid in option_ids if oid in valid_ids]
     none_vote = bool(payload.get("none_of_these"))
 
-    if none_vote and not comment:
-        return _deny("comment required for 'none of these work'", 400)
+    # comment optional — the "none of these work" row needs no text
     if not picked and not none_vote:
         return _deny("pick at least one option", 400)
 

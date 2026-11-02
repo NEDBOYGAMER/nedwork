@@ -153,9 +153,30 @@ oid = data["options"][0]["id"]
 member.req("POST", f"/events/api/modules/{mid}/vote",
            json={"option_ids": [oid], "comment": "works for me"},
            name="member votes for option 1")
+# post-vote edit: no blanket vote-lock anymore — options are editable,
+# votes survive only on dates that are still offered (per-date rule)
+data = host.req("GET", f"/events/api/events/{event_id}/data")
+oid_2 = next(o["id"] for o in data["options"]
+             if o["starts_at"].startswith("2026-11-15"))
+member.req("POST", f"/events/api/modules/{mid}/vote",
+           json={"option_ids": [oid, oid_2]},
+           name="member votes for both days")
 host.req("POST", f"/events/api/modules/{mid}/options",
-         json={"days": ["2026-11-20"]}, expect=409,
-         name="vote-lock: options locked after a vote")
+         json={"days": ["2026-11-14", "2026-11-20"]},
+         name="host edits options after a vote (kept date survives)")
+data = host.req("GET", f"/events/api/events/{event_id}/data")
+kept = next(o for o in data["options"]
+            if o["starts_at"].startswith("2026-11-14"))
+check("kept option keeps its row id", kept["id"] == oid, str(kept))
+check("vote on kept date survives the edit",
+      any(v.get("option_id") == oid for v in data["votes"]),
+      str(data["votes"]))
+check("vote on removed date is wiped with it",
+      not any(v.get("option_id") == oid_2 for v in data["votes"]),
+      str(data["votes"]))
+member.req("POST", f"/events/api/modules/{mid}/vote",
+           json={"option_ids": [], "none_of_these": True},
+           name="none-of-these vote works without a comment")
 host.req("POST", f"/events/api/modules/{mid}/vote",
          json={"option_ids": [oid]}, name="host votes too")
 host.req("POST", f"/events/api/modules/{mid}/finalize",

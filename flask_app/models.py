@@ -860,7 +860,7 @@ class DoodleVote(db.Model):
                           nullable=False)
     option_id = db.Column(db.Integer, db.ForeignKey("doodle_options.id"),
                           nullable=True)
-    # NULL option_id = the "none of these work" vote (comment required)
+    # NULL option_id = the "none of these work" vote (comment optional)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"),
                         nullable=False)
     comment = db.Column(db.String(200))
