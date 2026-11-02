@@ -336,6 +336,8 @@
     padding: 6px 4px;
 }
 .location-searchbar .hint { flex-shrink: 0; }
+/* edit mode: the map spans the whole module card, not the 480px cap */
+.event-edit .location-map { max-width: none; }
 .location-popup { font-size: 13px; }
 .location-zoom-hint {
     position: absolute;
@@ -403,7 +405,7 @@
 .doodle-date { font-size: 14px; }
 .doodle-votes { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 
-.doodle-editor { display: flex; flex-direction: column; gap: var(--space-2); }
+.doodle-editor { display: flex; flex-direction: column; gap: var(--space-3); }
 .doodle-config { display: flex; gap: var(--space-3); align-items: stretch; flex-wrap: wrap; }
 
 /* mode picker — two explained cards instead of a bare radio pair */
@@ -668,6 +670,11 @@ select.field-input { cursor: pointer; }
 .edit-module-card {
     padding: var(--space-4);
     position: relative;
+    /* fields/rows/hints inside a card get a real vertical rhythm —
+       cards were plain blocks, so consecutive blocks stacked tight */
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
 }
 .edit-module-card:not(.edit-module-fixed) { padding-left: 34px; }
 /* card titles are the editor's language (kept under the module-* names) */

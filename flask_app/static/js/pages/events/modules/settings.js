@@ -156,17 +156,22 @@ async function nominatimSearch(query) {
     return results?.[0] || null;
 }
 
-/* "street house_number, city" — composed from the structured address
-   fields (addressdetails=1), not display_name, whose first parts are
-   the POI name ("Brandenburger Tor, 1 …"). Falls back through the
-   city/town/village ladder and omits the house number when absent. */
+/* Locale-aware address from the structured Nominatim fields
+   (addressdetails=1) — not display_name, whose first parts are the POI
+   name ("Brandenburger Tor, 1 …"). German-speaking regions (de/at/ch)
+   use "Street number, City"; elsewhere "number Street, City". Falls
+   back through the city/town/village ladder, omits the house number
+   when absent. */
 function shortAddress(hit) {
     const a = hit?.address || {};
     const street = a.road || a.pedestrian || a.footway || "";
-    const num = a.house_number ? ` ${a.house_number}` : "";
+    const num = a.house_number || "";
     const city = a.city || a.town || a.village || a.municipality
         || a.suburb || "";
-    const parts = [`${street}${num}`.trim(), city].filter(Boolean);
+    const german = ["de", "at", "ch", "li"].includes(
+        (a.country_code || "").toLowerCase());
+    const streetPart = german ? `${street} ${num}` : `${num} ${street}`;
+    const parts = [streetPart.trim(), city].filter(Boolean);
     return parts.length ? parts.join(", ")
         : (hit.display_name || "").split(",").slice(0, 2).join(",").trim();
 }
