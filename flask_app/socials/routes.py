@@ -133,6 +133,23 @@ def list_friends(user):
                     "outgoing": outgoing})
 
 
+@socials_bp.route('/api/users/search', methods=['GET'])
+@permission_required("core", API)
+def search_users(user):
+    """Username suggestions for the member pickers (4+ chars, max 8)."""
+    q = str(request.args.get("q") or "").strip().lstrip("@")
+    if len(q) < 4:
+        return jsonify({"users": []})
+    escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    users = (User.query
+             .filter(User.id != user.id)
+             .filter(User.username.ilike(f"%{escaped}%", escape="\\"))
+             .order_by(User.username)
+             .limit(8)
+             .all())
+    return jsonify({"users": [_user_dict(u) for u in users]})
+
+
 @socials_bp.route('/api/friends', methods=['POST'])
 @permission_required("core", API)
 def add_friend(user):

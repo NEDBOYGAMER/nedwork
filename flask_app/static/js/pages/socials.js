@@ -480,7 +480,7 @@ async function openGroupDetail(g) {
 
     // admins add members straight from their friends list
     if (amAdminish) {
-        const addRow = el("div", "host-actions-row");
+        const addRow = el("div", "social-actions");
         const addBtn = el("button", "btn btn-sm btn-secondary", "Add members");
         addBtn.type = "button";
         addBtn.onclick = () => openGroupPicker(g);
@@ -489,7 +489,7 @@ async function openGroupDetail(g) {
     }
 
     // my own escape hatches
-    const mine = el("div", "host-actions-row");
+    const mine = el("div", "social-actions");
     if (me && me.role !== "owner") {
         const leave = el("button", "btn btn-sm btn-danger", "Leave group");
         leave.type = "button";

@@ -602,6 +602,10 @@ class SettingsConfig(db.Model):
 
     language = db.Column(db.String, default="English")
 
+    notify_events = db.Column(
+        db.Boolean, nullable=False, default=True, server_default="1"
+    )
+
     user_id = db.Column(
         db.Integer,
         db.ForeignKey("users.id"),

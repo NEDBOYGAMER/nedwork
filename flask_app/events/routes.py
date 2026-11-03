@@ -46,8 +46,8 @@ IMAGE_UPLOAD_DIR = "event_images"   # under instance/data/
 IMAGE_EXT = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
              "gif": "image/gif", "webp": "image/webp"}
 
-# Hardcoded "Movie Night" preset — the MVP stand-in for the App Store
-# template packs (master plan §9). module type → initial config.
+# Built-in event presets — module type → initial config. Empty modules
+# only; the host fills in the content after creation.
 EVENT_TEMPLATES = {
     "movie_night": [
         {"type": "description", "config": {"text": "", "spacing": "normal"}},
@@ -58,6 +58,45 @@ EVENT_TEMPLATES = {
         {"type": "bring",  "config": {}},
         {"type": "rides",  "config": {}},
     ],
+    "game_night": [
+        {"type": "description", "config": {"text": "", "spacing": "normal"}},
+        {"type": "image",  "config": {"url": "", "caption": ""}},
+        {"type": "location", "config": {"address": "", "note": ""}},
+        {"type": "doodle", "config": {"anonymous": False, "deadline": None,
+                                      "show_counts": True, "mode": "date"}},
+        {"type": "bring",  "config": {}},
+        {"type": "rides",  "config": {}},
+        {"type": "chat",   "config": {}},
+    ],
+    "party": [
+        {"type": "description", "config": {"text": "", "spacing": "normal"}},
+        {"type": "image",  "config": {"url": "", "caption": ""}},
+        {"type": "location", "config": {"address": "", "note": ""}},
+        {"type": "announcement", "config": {}},
+        {"type": "doodle", "config": {"anonymous": False, "deadline": None,
+                                      "show_counts": True, "mode": "date"}},
+        {"type": "bring",  "config": {}},
+        {"type": "rides",  "config": {}},
+        {"type": "chat",   "config": {}},
+    ],
+    "trip": [
+        {"type": "description", "config": {"text": "", "spacing": "normal"}},
+        {"type": "image",  "config": {"url": "", "caption": ""}},
+        {"type": "location", "config": {"address": "", "note": ""}},
+        {"type": "announcement", "config": {}},
+        {"type": "doodle", "config": {"anonymous": False, "deadline": None,
+                                      "show_counts": True, "mode": "date"}},
+        {"type": "bring",  "config": {}},
+        {"type": "rides",  "config": {}},
+        {"type": "chat",   "config": {}},
+    ],
+}
+
+EVENT_TEMPLATE_LABELS = {
+    "movie_night": "Movie Night",
+    "game_night": "Game Night",
+    "party": "Party",
+    "trip": "Trip",
 }
 
 _INV = object()   # sentinel for an unparseable datetime
@@ -293,7 +332,8 @@ def _release_member_state(member):
 @events_bp.route('/')
 @permission_required("core", PAGE)
 def events_page(user):
-    return render_template('main/events.html', user_id=user.id)
+    return render_template('main/events.html', user_id=user.id,
+                           event_templates=EVENT_TEMPLATE_LABELS)
 
 
 @events_bp.route('/<int:event_id>/')
@@ -301,7 +341,8 @@ def events_page(user):
 def event_page(user, event_id):
     # same SPA template as the list view; JS switches on window.EVENT_ID
     return render_template('main/events.html', event_id=event_id,
-                           user_id=user.id)
+                           user_id=user.id,
+                           event_templates=EVENT_TEMPLATE_LABELS)
 
 
 @events_bp.route('/<int:event_id>/edit/')
@@ -309,7 +350,8 @@ def event_page(user, event_id):
 def event_edit_page(user, event_id):
     # host-only edit mode — same SPA template; JS switches on the path
     return render_template('main/events.html', event_id=event_id,
-                           user_id=user.id, edit_mode=True)
+                           user_id=user.id, edit_mode=True,
+                           event_templates=EVENT_TEMPLATE_LABELS)
 
 
 # invite landing page — /events/<id>?t=<token> is the link the host

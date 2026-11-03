@@ -1,7 +1,7 @@
 /* Friend picker modal — accepted friends as a checkbox list + add by
    key/username for the rare non-friend. Uses the global .modal pattern. */
 import { el, icon, toast, openModal, closeModal } from "./ui.js";
-import { friendsUrl, api } from "./api.js";
+import { friendsUrl, userSearchUrl, api } from "./api.js";
 import { addMembers, addMemberByKey } from "./modules/members.js";
 
 export function openPicker(event, refresh) {
@@ -9,10 +9,40 @@ export function openPicker(event, refresh) {
     const list = document.getElementById("pickerList");
     const search = document.getElementById("pickerSearch");
     const keyInput = document.getElementById("pickerKey");
+    const suggestions = document.getElementById("pickerSuggestions");
     openModal("pickerBackdrop");
 
     let friends = [];
+    let suggestTimer = null;
+    let suggestSeq = 0;
     const selected = new Set();
+
+    const clearSuggestions = () => {
+        suggestions.innerHTML = "";
+        suggestions.hidden = true;
+    };
+
+    const renderSuggestions = (users) => {
+        suggestions.innerHTML = "";
+        if (!users.length) {
+            suggestions.hidden = true;
+            return;
+        }
+        for (const user of users) {
+            const row = el("button", "picker-row");
+            row.type = "button";
+            row.appendChild(el("span", "picker-name", user.username));
+            row.appendChild(el("span", "picker-key mono", user.key));
+            row.onclick = async () => {
+                try {
+                    await addMembers(event, [user.id], refresh);
+                    closeModal("pickerBackdrop");
+                } catch (e) { toast(e.message, "error"); }
+            };
+            suggestions.appendChild(row);
+        }
+        suggestions.hidden = false;
+    };
 
     const render = () => {
         const query = search.value.trim().toLowerCase();
@@ -41,8 +71,26 @@ export function openPicker(event, refresh) {
 
     search.value = "";
     keyInput.value = "";
+    clearSuggestions();
     search.oninput = render;
     render();
+
+    // live username suggestions for the manual add field (4+ chars)
+    keyInput.oninput = () => {
+        clearTimeout(suggestTimer);
+        const query = keyInput.value.trim().replace(/^@/, "");
+        if (query.length < 4) { clearSuggestions(); return; }
+        suggestTimer = setTimeout(async () => {
+            const seq = ++suggestSeq;
+            try {
+                const data = await api(userSearchUrl(query));
+                if (seq !== suggestSeq) return;
+                renderSuggestions(data.users || []);
+            } catch {
+                clearSuggestions();
+            }
+        }, 250);
+    };
 
     api(friendsUrl())
         .then((data) => { friends = data.friends || []; render(); })

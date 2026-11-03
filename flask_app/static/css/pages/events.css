@@ -298,6 +298,26 @@
 .event-image { max-width: 100%; border-radius: var(--radius-md); border: 1px solid var(--line); }
 .event-caption { font-size: 13px; color: var(--text-muted); }
 
+/* image module settings: hidden native input + styled browse button */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+.file-upload-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+.file-name { font-size: 13px; color: var(--text-muted); }
+
 .location-address { font-size: 14px; margin: 0; }
 .location-note { font-size: 13px; color: var(--text-muted); margin: 0; }
 .location-map-wrap { position: relative; }
@@ -345,6 +365,12 @@
 /* edit mode: the map spans the whole module card, no cap */
 .event-edit .location-map { max-width: none; margin-inline: 0; }
 .location-popup { font-size: 13px; }
+.location-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
 .location-zoom-hint {
     position: absolute;
     right: 10px;
@@ -783,6 +809,7 @@ select.field-input { cursor: pointer; }
     padding: var(--space-4);
     max-width: 480px;
     background: var(--surface-2);
+    margin-block: var(--space-3);
 }
 .doodle-cal-head {
     display: flex;
@@ -1023,6 +1050,13 @@ select.field-input { cursor: pointer; }
     border-color: var(--line);
     background: var(--surface-2);
 }
+
+/* no image and no caption: no empty gray band at all */
+.event-hero-plain {
+    background: transparent;
+    border-bottom: none;
+}
+.event-detail-view .event-hero.event-hero-plain { min-height: 0; }
 
 /* compact doodle — one slim row per option */
 .event-detail-view .doodle-row {

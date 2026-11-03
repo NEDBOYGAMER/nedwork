@@ -14,23 +14,25 @@ state, next steps, and file paths. See Temporary for the etiquette.
 ## Admin
 
 - [ ] **Site settings card** (Settings tab) is a placeholder — "Nothing
-      to configure yet". First real site-wide setting goes there.
-
-(nothing else console-wide is open — phone pass verified 2026-11-03)
+      to configure yet". Deferred 2026-11-03: the first real site-wide
+      setting needs a product decision (announcement banner, maintenance
+      mode, branding, …). Everything else from the 2026-11 TODO round is
+      shipped.
 
 ## Home (Dashboard)
 
-(none — no open items; anything dashboard-wide starts here. The
-Notifications widget shipped 2026-11-03.)
+(none — timer view switching and the oval ring were fixed 2026-11-03)
 
 ## Events
 
-(none — no open items; shipped rounds are in git history)
+(none — templates, create→edit, hero, upload field, doodle spacing, map
+zoom/link-out, transfer-host placement and username suggestions shipped
+2026-11-03)
 
 ## Socials
 
-(none — no open items. Email delivery confirmed live 2026-11-03:
-`RESEND_API_KEY` set in the server env. Mobile pass verified.)
+(none — UI pass shipped 2026-11-03. Email delivery confirmed live
+2026-11-03: `RESEND_API_KEY` set in the server env. Mobile pass verified.)
 
 ## Tasks
 
@@ -47,11 +49,13 @@ not for individual apps — those live under 'Apps catalog' below)
 
 ## Settings
 
-(none — no open items)
+(none — Save now leaves the page; the Notifications panel has one real
+Events toggle backed by `SettingsConfig.notify_events`)
 
 ## Account
 
-(none — no open items)
+(none — Delete account is implemented: purge helper, typed-username
+confirmation, cookie/logout flow, and the admin delete endpoint share it)
 
 ## Apps catalog
 
@@ -128,6 +132,9 @@ Little stuff that doesn't warrant its own section:
 - [ ] **Log out one more time after deploy** with Ctrl+Shift+R first —
       flushes every cached script; confirms the POST + CSRF logout form
       flow end to end (GET /auth/logout now answers 405).
+- [ ] **Apply the new migration on the server.** `SettingsConfig.notify_events`
+      was added in `f3a1c7d9b2e4`; run `python -m flask db upgrade` after
+      pulling so the toggle works (local dev DB is already upgraded).
 
 ## Deliberately accepted tradeoffs (documented, revisit only if annoyed)
 

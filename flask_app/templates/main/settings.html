@@ -244,70 +244,16 @@
 
             <div class="settings-group-label">Email me about</div>
 
-            <div class="setting-item is-placeholder">
+            <div class="setting-item">
                 <div class="setting-item-info">
-                    <h3>Product updates <span class="badge badge-neutral">Coming soon</span></h3>
-                    <p>News about new features and changes.</p>
+                    <h3>Events</h3>
+                    <p>Invitations, date changes, reminders and other event updates.</p>
                 </div>
                 <div class="setting-item-control">
                     <label class="switch">
-                        <input type="checkbox" disabled data-key="notif-updates">
+                        <input type="checkbox" id="notify-events">
                         <span class="switch-track"></span>
                     </label>
-                </div>
-            </div>
-
-            <div class="setting-item is-placeholder">
-                <div class="setting-item-info">
-                    <h3>Direct messages <span class="badge badge-neutral">Coming soon</span></h3>
-                    <p>When someone sends you a message.</p>
-                </div>
-                <div class="setting-item-control">
-                    <label class="switch">
-                        <input type="checkbox" disabled data-key="notif-messages">
-                        <span class="switch-track"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="setting-item is-placeholder">
-                <div class="setting-item-info">
-                    <h3>Nearing your limit <span class="badge badge-neutral">Coming soon</span></h3>
-                    <p>When you're close to a plan or usage limit.</p>
-                </div>
-                <div class="setting-item-control">
-                    <label class="switch">
-                        <input type="checkbox" disabled data-key="notif-near-limit">
-                        <span class="switch-track"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="setting-item is-placeholder">
-                <div class="setting-item-info">
-                    <h3>Push notifications <span class="badge badge-neutral">Coming soon</span></h3>
-                    <p>Get notified on this device, even when it's closed.</p>
-                </div>
-                <div class="setting-item-control">
-                    <label class="switch">
-                        <input type="checkbox" disabled>
-                        <span class="switch-track"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="setting-item is-placeholder">
-                <div class="setting-item-info">
-                    <h3>Digest frequency <span class="badge badge-neutral">Coming soon</span></h3>
-                    <p>How often to send a summary instead of individual emails.</p>
-                </div>
-                <div class="setting-item-control">
-                    <div class="select-dropdown" aria-disabled="true">
-                        <button type="button" class="select-dropdown-trigger" disabled>
-                            <span class="select-dropdown-value">Daily</span>
-                            <span class="icon select-dropdown-caret" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-arrow-down.svg') }}');"></span>
-                        </button>
-                    </div>
                 </div>
             </div>
         </section>
@@ -352,6 +298,24 @@
                 </div>
                 <div class="setting-item-control">
                     <button class="btn btn-secondary btn-sm" type="button" disabled>Connect</button>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-group-label">Danger zone</div>
+                <div class="settings-danger-zone">
+                    <div class="setting-item">
+                        <div class="setting-item-info">
+                            <h3>Delete account</h3>
+                            <p>Permanently delete your account and all associated data.</p>
+                        </div>
+                        <div class="setting-item-control">
+                            <button class="btn btn-danger btn-sm" type="button" id="deleteAccountBtn">
+                                <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-trash.svg') }}'); background-color:#fff;"></span>
+                                Delete account
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -442,24 +406,6 @@
                     <button class="btn btn-secondary btn-sm" type="button" disabled>Add webhook</button>
                 </div>
             </div>
-
-            <div class="settings-group">
-                <div class="settings-group-label">Danger zone</div>
-                <div class="settings-danger-zone">
-                    <div class="setting-item is-placeholder">
-                        <div class="setting-item-info">
-                            <h3>Delete account <span class="badge badge-neutral">Coming soon</span></h3>
-                            <p>Permanently delete your account and all associated data.</p>
-                        </div>
-                        <div class="setting-item-control">
-                            <button class="btn btn-danger btn-sm" type="button" disabled>
-                                <span class="icon" style="--icon:url('{{ url_for('static', filename=icon ~ 'tabler-trash.svg') }}'); background-color:#fff;"></span>
-                                Delete account
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </section>
 
     </main>
@@ -470,6 +416,28 @@
 <div class="settings-actions">
     <a href="/" class="btn btn-secondary">Cancel</a>
     <button id="save-btn" class="btn btn-primary" type="button">Save changes</button>
+</div>
+
+<div class="modal-backdrop" id="deleteAccountBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteAccountTitle">
+        <h3 id="deleteAccountTitle">Delete your account?</h3>
+        <p>
+            This permanently deletes your account and all associated data.
+            Events you host are deleted and your social groups are handed
+            over to another member. This cannot be undone.
+        </p>
+        <div class="field">
+            <label for="deleteAccountConfirm">
+                Type <strong>{{ username }}</strong> to confirm
+            </label>
+            <input id="deleteAccountConfirm" type="text" autocomplete="off">
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="deleteAccountCancel">Cancel</button>
+            <button type="button" class="btn btn-danger" id="deleteAccountConfirmBtn"
+                    data-username="{{ username }}" disabled>Delete account</button>
+        </div>
+    </div>
 </div>
 {% endblock %}
 

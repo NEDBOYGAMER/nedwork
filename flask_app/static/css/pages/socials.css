@@ -28,6 +28,16 @@
     margin: 0;
 }
 
+/* views stack their toolbar, filter and columns with one rhythm */
+.socials-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+.socials-view[hidden] { display: none; }
+/* the page already spaces direct children; don't double-space the tabs */
+.socials-page > .tabs { margin-bottom: 0; }
+
 /* ── toolbar (add-friend / new-group / join-by-code) ────────────────── */
 .socials-toolbar {
     display: flex;
@@ -51,11 +61,8 @@
     align-items: start;
 }
 
+/* the shared .card supplies surface/border/radius/padding/shadow */
 .social-card {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg, 14px);
-    padding: var(--space-3) var(--space-4) var(--space-4);
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
@@ -87,7 +94,7 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-2);
-    border-radius: var(--radius-md, 10px);
+    border-radius: var(--radius-sm);
 }
 .social-row + .social-row { border-top: 1px solid var(--line); }
 .social-row:hover { background: var(--surface-hover); }
@@ -157,7 +164,7 @@
 .group-code-box {
     background: var(--accent-soft);
     border: 1px solid var(--line);
-    border-radius: var(--radius-md, 10px);
+    border-radius: var(--radius-sm);
     padding: var(--space-3) var(--space-4);
 }
 .group-code-row {
@@ -178,7 +185,8 @@
 .socials-modal {
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: var(--radius-lg, 14px);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
     width: min(440px, calc(100vw - 2rem));
     max-height: min(80vh, 720px);
     display: flex;
@@ -214,7 +222,7 @@
 
 /* ── join landing card ──────────────────────────────────────────────── */
 .social-join-card {
-    padding: var(--space-6);
+    padding: var(--space-5);
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
@@ -230,6 +238,7 @@
     margin: 0;
 }
 .social-join-card .hint { margin: 0; }
+.join-code-input { text-transform: uppercase; }
 
 /* ── mobile — single column, touch-sized rows like the events site ──── */
 @media (max-width: 640px) {

@@ -133,15 +133,34 @@ export function settingsImage(root, ctx) {
         root.appendChild(preview);
     }
 
-    // upload from PC
-    const fileInput = el("input", "field-input");
+    // upload from PC — hidden native input + styled browse button; the
+    // chosen filename/status live on the draft so the poll redraw keeps
+    // them (a fresh native input would reset to "no file selected")
+    draft.imageFileName = draft.imageFileName || "";
+    draft.imageStatus = draft.imageStatus || "";
+
+    const fileInput = el("input", "visually-hidden");
     fileInput.type = "file";
+    fileInput.id = `event-image-file-${module.id}`;
     fileInput.accept = "image/png,image/jpeg,image/gif,image/webp";
-    const status = el("p", "hint", "");
+
+    const browse = el("label", "btn btn-secondary btn-sm", "Choose file");
+    browse.htmlFor = fileInput.id;
+
+    const fileName = el("span", "file-name",
+        draft.imageFileName || "No file chosen");
+    const status = el("p", "hint", draft.imageStatus);
+
+    const uploadRow = el("div", "file-upload-row");
+    uploadRow.append(fileInput, browse, fileName);
+
     fileInput.onchange = async () => {
         const file = fileInput.files?.[0];
         if (!file) return;
-        status.textContent = "Uploading…";
+        draft.imageFileName = file.name;
+        draft.imageStatus = "Uploading…";
+        fileName.textContent = draft.imageFileName;
+        status.textContent = draft.imageStatus;
         const body = new FormData();
         body.append("file", file);
         try {
@@ -158,14 +177,17 @@ export function settingsImage(root, ctx) {
                 }
                 preview.src = url;
             }
-            status.textContent = "Uploaded ✓";
+            draft.imageStatus = "Uploaded ✓";
+            status.textContent = draft.imageStatus;
         } catch (e) {
+            draft.imageStatus = "";
             status.textContent = "";
             toast(e.message, "error");
         }
     };
-    root.appendChild(field("Upload image", fileInput,
+    root.appendChild(field("Upload image", uploadRow,
         "PNG, JPEG, GIF or WebP, up to 8 MB."));
+    root.appendChild(status);
 
     // URL as secondary
     const urlInput = textInput(config.url, "…or paste an image URL",
@@ -279,7 +301,7 @@ function buildLocationMap(draft, config) {
     keepMapSized(map);
     liveMaps.push(map);
     // plain scroll scrolls the page; Ctrl+scroll zooms the map
-    ctrlWheelOnly(holder);
+    ctrlWheelOnly(holder, mapDiv);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: "&copy; OpenStreetMap contributors",

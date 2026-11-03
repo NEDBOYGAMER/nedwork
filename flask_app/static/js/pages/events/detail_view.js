@@ -24,7 +24,7 @@
 import { el, evIcon, statusBadge, fmtDate, countdown, toast, confirmDialog } from "./ui.js";
 import { MODULE_META, MODULES } from "./modules/index.js";
 import { startPolling } from "./poller.js";
-import { joinUrl, leaveUrl, transferUrl, api } from "./api.js";
+import { joinUrl, leaveUrl, api } from "./api.js";
 
 let state = null;          // last server snapshot
 let poller = null;
@@ -184,8 +184,12 @@ function renderHero(event, amHost) {
     const imgModule = (state.modules || []).find((m) => m.type === "image");
     const config = imgModule?.config || {};
     const hasImage = !!config.url;
+    const hasCaption = !!config.caption;
 
     const hero = el("header", "event-hero event-header");
+    // no image and no caption: render a plain masthead instead of an
+    // empty gray band
+    if (!hasImage && !hasCaption) hero.classList.add("event-hero-plain");
     if (hasImage) {
         hero.classList.add("event-hero-image");
         const media = el("div", "event-hero-media");
@@ -213,7 +217,7 @@ function renderHero(event, amHost) {
     inner.appendChild(meta);
     scrim.appendChild(inner);
 
-    if (hasImage && config.caption) {
+    if (hasCaption) {
         scrim.appendChild(el("p", "event-hero-caption", config.caption));
     }
 
@@ -273,48 +277,22 @@ function eventSection(module, ctx) {
 /* -- membership actions, page bottom ------------------------------------- */
 
 function renderMemberActions(event, state, me, refresh) {
-    if (!me || event.status === "archived") return null;
+    // hosts transfer the role from the members section; only members
+    // get the page-bottom leave action
+    if (!me || event.status === "archived" || me.role !== "member") return null;
     const section = el("div", "event-member-actions");
-    if (me.role === "member") {
-        const leaveBtn = el("button", "btn btn-secondary",
-            "Leave event");
-        leaveBtn.type = "button";
-        leaveBtn.onclick = async () => {
-            if (!(await confirmDialog(
-                    "Leave this event? Your claims and ride seats are " +
-                    "released."))) return;
-            try {
-                await api(leaveUrl(event.id), { method: "POST" });
-                window.location.href = window.EVENTS_API.baseUrl;
-            } catch (e) { toast(e.message, "error"); }
-        };
-        section.appendChild(leaveBtn);
-    } else {
-        // hosts can't leave — they transfer first
-        const transferBtn = el("button", "btn btn-secondary",
-            "Transfer host");
-        transferBtn.type = "button";
-        transferBtn.onclick = async () => {
-            const others = (state.members || [])
-                .filter((m) => m.role === "member");
-            if (!others.length) {
-                toast("No members to transfer to", "info");
-                return;
-            }
-            const name = prompt("Transfer host to which member?\n" +
-                others.map((m, i) => `${i + 1}. ${m.user.username}`).join("\n"));
-            const idx = Number(name) - 1;
-            if (!name || !others[idx]) return;
-            try {
-                await api(transferUrl(event.id), {
-                    method: "POST",
-                    body: JSON.stringify({ member_id: others[idx].id }),
-                });
-                await refresh();
-            } catch (e) { toast(e.message, "error"); }
-        };
-        section.appendChild(transferBtn);
-    }
+    const leaveBtn = el("button", "btn btn-secondary", "Leave event");
+    leaveBtn.type = "button";
+    leaveBtn.onclick = async () => {
+        if (!(await confirmDialog(
+                "Leave this event? Your claims and ride seats are " +
+                "released."))) return;
+        try {
+            await api(leaveUrl(event.id), { method: "POST" });
+            window.location.href = window.EVENTS_API.baseUrl;
+        } catch (e) { toast(e.message, "error"); }
+    };
+    section.appendChild(leaveBtn);
     return section;
 }
 

@@ -67,7 +67,9 @@
                         <label for="eventTemplate">Template</label>
                         <select id="eventTemplate" name="template">
                             <option value="">Empty event</option>
-                            <option value="movie_night">Movie Night</option>
+                            {% for key, label in event_templates.items() %}
+                                <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                 </div>
@@ -95,12 +97,14 @@
                 </div>
                 <div id="pickerList" class="picker-list" role="listbox"></div>
                 <div class="picker-manual">
-                    <div class="field">
-                        <label for="pickerKey">Not on the list? Add by key or username</label>
+                    <label class="picker-manual-label" for="pickerKey">Not on the list? Add by key or username</label>
+                    <div class="picker-manual-row">
                         <input id="pickerKey" type="text" placeholder="e.g. abc12def9 or username" maxlength="40">
+                        <button type="button" class="btn btn-secondary btn-sm" id="pickerKeyBtn">Add</button>
                     </div>
-                    <button type="button" class="btn btn-secondary btn-sm" id="pickerKeyBtn">Add</button>
                 </div>
+                <div id="pickerSuggestions" class="picker-list picker-suggestions"
+                     role="listbox" hidden></div>
             </div>
             <footer class="event-modal-foot">
                 <button type="button" class="btn btn-secondary" data-action="close-picker">Cancel</button>
@@ -122,8 +126,6 @@
         </div>
     </div>
 
-    <div id="toastContainer"></div>
-
 {% endblock %}
 
 {% block extra_scripts %}
@@ -132,7 +134,9 @@
         window.EVENTS_API = {
             events: "{{ url_for('events.list_events') }}",
             friends: "{{ url_for('socials.list_friends') }}",
+            userSearch: "{{ url_for('socials.search_users') }}",
             event: "{{ url_for('events.event_page', event_id=0) }}",
+            edit: "{{ url_for('events.event_edit_page', event_id=0) }}",
             module: "{{ url_for('events.module_detail', module_id=0) }}",
             item: "{{ url_for('events.item_detail', item_id=0) }}",
             ride: "{{ url_for('events.delete_ride', ride_id=0) }}",

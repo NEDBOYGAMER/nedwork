@@ -64,7 +64,10 @@ export class TimerWidget extends Widget {
 
         this.sound = settings.sound !== false
         this.autorestart = settings.autorestart === true
-        this.view = TIMER_VIEWS.includes(settings.view) ? settings.view : "ring"
+        // legacy configs stored the view at the top level (the settings
+        // modal writes there when the key is absent from settings)
+        const view = settings.view ?? config.view
+        this.view = TIMER_VIEWS.includes(view) ? view : "ring"
 
         this.tick = this.tick.bind(this)
         this.toggle = this.toggle.bind(this)
@@ -121,7 +124,7 @@ export class TimerWidget extends Widget {
 
         if (this.view === "ring") {
             this.ringEl = document.createElement("div")
-            this.ringEl.className = "timer-ring"
+            this.ringEl.className = "timer-ring-dial"
 
             const ringInner = document.createElement("div")
             ringInner.className = "timer-ring-inner"
@@ -327,7 +330,8 @@ export class TimerWidget extends Widget {
         this.autorestart = settings.autorestart === true
         const configured = parseInt(settings.duration, 10)
         this.configuredDuration = Number.isFinite(configured) && configured > 0 ? configured : 0
-        this.view = TIMER_VIEWS.includes(settings.view) ? settings.view : "ring"
+        const view = settings.view ?? this.config.view
+        this.view = TIMER_VIEWS.includes(view) ? view : "ring"
 
         if (before.view !== this.view) {
             this._buildContent()

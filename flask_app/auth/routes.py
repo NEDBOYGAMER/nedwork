@@ -2,6 +2,8 @@ from flask import request, Blueprint, jsonify, render_template, make_response, r
 import re
 from ..models import *
 from .. import db
+from ..account import purge_user
+from .decorators import permission_required, API
 from datetime import *
 
 auth_bp = Blueprint("auth", __name__, static_folder='../static')
@@ -227,6 +229,15 @@ def _perform_logout():
             path="/"
         )
     return response
+
+
+@auth_bp.route("/api/delete_account", methods=["POST"])
+@permission_required("core", API)
+def delete_account(user):
+    """Permanently delete the signed-in user and everything they own."""
+    purge_user(user)
+    db.session.commit()
+    return _perform_logout()
 
 
 @auth_bp.route("/api/logout", methods=["POST"])

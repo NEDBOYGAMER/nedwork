@@ -13,9 +13,10 @@
    - Sizing: .timer-widget is an inline-size container (cqi = widget width).
      Block-axis sizes that must react to card shape use cqh, which falls
      through to the card (grid.css makes .card.widget a size container).
-     The ring is sized BY HEIGHT (aspect-ratio derives the width), so its
-     box can never disagree with itself - the old oval bug came from width
-     and height being set from two different unit systems.
+     The ring is sized BY WIDTH (aspect-ratio derives the height) from the
+     card's container units, so both axes resolve to the same length and
+     the box can never disagree with itself - the oval bug came from a
+     percentage height resolving against an indefinite flex stage.
    - Progress is a single --progress number (0..1) on the widget root; the
      conic sweep, the bar fill and the flush transition all read it.
    ======================================================================== */
@@ -83,12 +84,16 @@
 
 /* ---- ring view ------------------------------------------------------------ */
 
-.timer-ring {
+.timer-ring-dial {
+    /* -dial, not .timer-ring: the widget root also carries a
+       timer-<view> class, so a generic .timer-ring would size and paint
+       the whole widget as well as the dial */
     --timer-ring-thickness: max(4.5cqi, 5px);
-    /* sized by height only; width follows via aspect-ratio, so the box is
-       square by construction. The cqi term handles wide-but-short cards,
-       the percentage term the remaining height of the stage. */
-    height: min(56cqi, 88%);
+    /* width-driven square: cqi tracks the widget width, cqh the card
+       height. Both axes resolve to the same length, so the ring stays a
+       perfect circle in every tier and orientation (wide cards included). */
+    width: min(56cqi, 88cqh);
+    height: auto;
     aspect-ratio: 1;
     position: relative;
     display: grid;
@@ -100,7 +105,7 @@
 }
 
 /* the ring itself: conic sweep of elapsed time over a visible track */
-.timer-ring::before {
+.timer-ring-dial::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -116,16 +121,16 @@
 
 /* the sweep glides between ticks while running (needs @property support;
    browsers without it just jump - same result, less smooth) */
-.timer-widget.is-running .timer-ring::before {
+.timer-widget.is-running .timer-ring-dial::before {
     transition: --progress 1s linear;
 }
 
 /* digits live inside the ring's coordinate system */
-.timer-ring .timer-display {
+.timer-ring-dial .timer-display {
     font-size: clamp(13px, 26cqi, 160px);
 }
 
-.timer-widget.timer-hms .timer-ring .timer-display {
+.timer-widget.timer-hms .timer-ring-dial .timer-display {
     font-size: clamp(11px, 15cqi, 100px);
 }
 
@@ -367,7 +372,7 @@
     background: var(--danger, #ff5c5c);
 }
 
-.timer-widget.timer-done .timer-ring::before,
+.timer-widget.timer-done .timer-ring-dial::before,
 .timer-widget.timer-done .timer-bar-fill {
     animation: timer-pulse 1.6s ease-in-out infinite;
 }
@@ -420,7 +425,7 @@
 /* ---- reduced motion -------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-    .timer-widget.is-running .timer-ring::before,
+    .timer-widget.is-running .timer-ring-dial::before,
     .timer-widget.is-running .timer-bar-fill {
         transition: none;
     }
@@ -431,7 +436,7 @@
 
     .timer-widget.is-running .flip-colon::before,
     .timer-widget.is-running .flip-colon::after,
-    .timer-widget.timer-done .timer-ring::before,
+    .timer-widget.timer-done .timer-ring-dial::before,
     .timer-widget.timer-done .timer-bar-fill {
         animation: none;
     }

@@ -10,6 +10,8 @@ const ev = (id) => `${BASE.events}/${id}`;   // /events/api/events/<id>
 
 export const eventsUrl = () => BASE.events;
 export const friendsUrl = () => BASE.friends;
+export const userSearchUrl = (q) =>
+    `${BASE.userSearch}?q=${encodeURIComponent(q)}`;
 export const upcomingUrl = () => BASE.upcoming;
 export const notificationsUrl = () => BASE.notifications;
 export const notificationsReadUrl = () => BASE.notificationsRead;

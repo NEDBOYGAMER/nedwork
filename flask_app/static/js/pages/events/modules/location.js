@@ -25,6 +25,20 @@ export function renderLocation(root, ctx) {
         iframe.title = "Event location map";
         root.appendChild(iframe);
     }
+    if (hasPoint) {
+        const links = el("div", "location-links");
+        const google = el("a", "btn btn-secondary btn-sm", "Open in Google Maps");
+        google.href = `https://www.google.com/maps/search/?api=1&query=${config.lat},${config.lng}`;
+        google.target = "_blank";
+        google.rel = "noopener noreferrer";
+        const apple = el("a", "btn btn-secondary btn-sm", "Open in Apple Maps");
+        apple.href = `https://maps.apple.com/?ll=${config.lat},${config.lng}` +
+            `&q=${encodeURIComponent(config.address || "Event location")}`;
+        apple.target = "_blank";
+        apple.rel = "noopener noreferrer";
+        links.append(google, apple);
+        root.appendChild(links);
+    }
     if (!config.address && !hasPoint) {
         root.appendChild(el("p", "module-empty", "No location set yet."));
     }
@@ -46,7 +60,7 @@ function renderLeafletMap(root, config) {
         maxZoom: 19,
         attribution: "&copy; OpenStreetMap contributors",
     }).addTo(map);
-    ctrlWheelOnly(holder);
+    ctrlWheelOnly(holder, mapDiv);
 
     const marker = window.L.marker([config.lat, config.lng]).addTo(map);
     marker.bindPopup(locationPopup(config));
@@ -62,13 +76,17 @@ export function keepMapSized(map) {
 
 /* Plain scroll must scroll the page, Ctrl+scroll (or pinch) zooms the
    map: swallow wheel events without Ctrl in the capture phase so they
-   never reach Leaflet's zoom handler. */
-export function ctrlWheelOnly(holder) {
+   never reach Leaflet's zoom handler. Only events over the map itself are
+   swallowed - the holder can be wider than the centered map, and the
+   gutter must keep scrolling the page. */
+export function ctrlWheelOnly(holder, mapEl = holder) {
     holder.addEventListener("wheel", (e) => {
-        if (!e.ctrlKey) e.stopPropagation();
+        if (e.ctrlKey) return;
+        if (!mapEl.contains(e.target)) return;
+        e.stopPropagation();
     }, { capture: true, passive: true });
     const hint = el("span", "location-zoom-hint", "Ctrl + scroll to zoom");
-    holder.appendChild(hint);
+    mapEl.appendChild(hint);
 }
 
 /* popup content as a DOM node — text nodes, no HTML injection */

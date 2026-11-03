@@ -14,8 +14,8 @@ const isEdit = window.EVENT_EDIT_MODE === true;
 initConfirm();
 initPicker();
 initCreateModal((event) => {
-    // jump straight into the fresh draft
-    window.location.href = window.EVENTS_API.event.replace("/0/", `/${event.id}/`);
+    // jump straight into the fresh draft's editor
+    window.location.href = window.EVENTS_API.edit.replace("/0/", `/${event.id}/`);
 });
 
 if (eventId && isEdit) {

@@ -42,13 +42,13 @@
         </div>
 
         <div class="socials-columns">
-            <div class="social-card" id="requestsCol">
+            <div class="card social-card" id="requestsCol">
                 <h2 class="social-card-title">Requests <span class="badge badge-info" id="incomingBadge" hidden>0</span></h2>
                 <ul class="socials-list" id="incomingList"></ul>
                 <h2 class="social-card-title" id="outgoingTitle">Sent</h2>
                 <ul class="socials-list" id="outgoingList"></ul>
             </div>
-            <div class="social-card" id="friendsCol">
+            <div class="card social-card" id="friendsCol">
                 <h2 class="social-card-title">Friends <span class="badge badge-neutral" id="friendsBadge" hidden>0</span></h2>
                 <ul class="socials-list" id="friendsList"></ul>
             </div>
@@ -63,7 +63,7 @@
             </button>
             <div class="input-group has-icon join-group">
                 {{ icon('key', 'icon input-group-icon') }}
-                <input id="joinCodeInput" type="text" placeholder="Join with code" maxlength="8" style="text-transform: uppercase" autocomplete="off">
+                <input id="joinCodeInput" type="text" class="join-code-input" placeholder="Join with code" maxlength="8" autocomplete="off">
             </div>
             <button type="button" class="btn btn-secondary" id="joinCodeBtn">Join</button>
         </div>
@@ -74,11 +74,11 @@
         </div>
 
         <div class="socials-columns">
-            <div class="social-card" id="groupRequestsCol">
+            <div class="card social-card" id="groupRequestsCol">
                 <h2 class="social-card-title">Join requests <span class="badge badge-info" id="groupReqBadge" hidden>0</span></h2>
                 <ul class="socials-list" id="groupReqList"></ul>
             </div>
-            <div class="social-card" id="myGroupsCol">
+            <div class="card social-card" id="myGroupsCol">
                 <h2 class="social-card-title">My groups <span class="badge badge-neutral" id="groupsBadge" hidden>0</span></h2>
                 <ul class="socials-list" id="groupsList"></ul>
             </div>
@@ -144,11 +144,11 @@
             </div>
             <div id="pickerList" class="picker-list" role="listbox"></div>
             <div class="picker-manual">
-                <div class="field">
-                    <label for="pickerKey">Not on the list? Add by key or username</label>
+                <label class="picker-manual-label" for="pickerKey">Not on the list? Add by key or username</label>
+                <div class="picker-manual-row">
                     <input id="pickerKey" type="text" placeholder="e.g. abc12def9 or username" maxlength="40">
+                    <button type="button" class="btn btn-secondary btn-sm" id="pickerKeyBtn">Add</button>
                 </div>
-                <button type="button" class="btn btn-secondary btn-sm" id="pickerKeyBtn">Add</button>
             </div>
         </div>
         <footer class="socials-modal-foot">
@@ -170,8 +170,6 @@
         </footer>
     </div>
 </div>
-
-<div id="toastContainer"></div>
 
 {% endblock %}
 

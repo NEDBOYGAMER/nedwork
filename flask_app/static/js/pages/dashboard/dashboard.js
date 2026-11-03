@@ -5,7 +5,7 @@
 // Also owns the "add widget" modal (Apps / Standard / Other).
 // ---------------------------------------------------------------------------
 
-import { WIDGET_DEFAULTS } from "./widget_default.js";
+import { WIDGET_DEFAULTS, TIMER_VIEWS } from "./widget_default.js";
 import { createWidget } from "./widget_registry.js";
 import { GridManager, DEFAULT_W, DEFAULT_H, uid } from "./grid.js";
 
@@ -386,6 +386,17 @@ function normalizeWidget(widget) {
     if (widget.type === "nextcloud") {
         widget.type = "link"
         if (widget.settings?.title === "Nextcloud") widget.settings.title = ""
+    }
+
+    // timer view used to live at the top level; move it into settings so
+    // the settings modal keeps writing to the same place the widget reads
+    if (widget.type === "timer") {
+        widget.settings = widget.settings || {}
+        if (!TIMER_VIEWS.includes(widget.settings.view)) {
+            widget.settings.view = TIMER_VIEWS.includes(widget.view)
+                ? widget.view
+                : TIMER_VIEWS[0]
+        }
     }
 
     if (widget.type === "app") {

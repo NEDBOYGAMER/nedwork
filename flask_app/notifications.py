@@ -27,6 +27,14 @@ from .notify import _send, RESEND_URL, _REPLY_TO
 
 logger = logging.getLogger("nedwork.notifications")
 
+# Every notification type owned by the Events site. The Settings
+# "Events" toggle gates these (in-app + email) in one place; Socials
+# notifications are deliberately not in this set.
+EVENT_NOTIFICATION_TYPES = frozenset({
+    "event_published", "date_finalized", "date_changed",
+    "member_added", "event_reminder", "ride_cancelled",
+})
+
 
 # ------------------------------------------------------------------ email
 def _email_payload(user, subject, body_text, event):
@@ -64,6 +72,10 @@ def notify_user(user, type, payload=None, email=None, event=None):
     Never raises — a broken notification must never break the action.
     """
     try:
+        if type in EVENT_NOTIFICATION_TYPES:
+            settings = getattr(user, "settings_config", None)
+            if settings is not None and settings.notify_events is False:
+                return
         notification = Notification(
             user_id=user.id,
             type=type,

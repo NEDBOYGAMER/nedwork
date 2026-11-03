@@ -11,8 +11,9 @@
 //     persist when the Save button is pressed. A copy is cached in
 //     localStorage purely so the pre-paint script in base.html can apply
 //     the right theme/accent before first paint on the next page load.
-//   - Notification prefs (email + toggles) have no backend field yet, so
-//     they stay in localStorage only, saved live as they're changed.
+//   - Notification email stays in localStorage (no backend field yet); the
+//     Events toggle is a real SettingsConfig.notify_events column saved
+//     with the rest of the server-backed settings.
 // ==========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -238,6 +239,7 @@ async function init() {
     const accentSoftInput = document.getElementById('accent-soft-picker');
     const accentInkInput = document.getElementById('accent-ink-picker');
     const emailInput = document.querySelector('.notif-email');
+    const notifyEventsToggle = document.getElementById('notify-events');
     const saveBtn = document.getElementById('save-btn');
 
     // =========================
@@ -292,18 +294,14 @@ async function init() {
     });
 
     // =========================
-    // NOTIFICATIONS (client-only, no backend field)
+    // NOTIFICATIONS
+    // (email address stays client-side; the Events toggle is stored in
+    //  SettingsConfig and gates event notifications server-side)
     // =========================
     if (emailInput) {
         emailInput.value = load('email', '');
         emailInput.addEventListener('input', () => save('email', emailInput.value));
     }
-
-    document.querySelectorAll('.switch input[data-key]').forEach(sw => {
-        const key = sw.dataset.key;
-        sw.checked = load(key, 'false') === 'true';
-        sw.addEventListener('change', () => save(key, sw.checked));
-    });
 
     // =========================
     // LOAD SETTINGS FROM SERVER
@@ -339,6 +337,7 @@ async function init() {
             }
 
             setDropdownValue(languageDropdown, s.language);
+            if (notifyEventsToggle) notifyEventsToggle.checked = s.notify_events !== false;
 
             // cache so next page load can pre-paint the right look
             cacheSet('dark_mode', !!s.dark_mode);
@@ -368,7 +367,8 @@ async function init() {
                 accent_color_ink: accentInkInput ? accentInkInput.value : undefined,
                 language: languageDropdown
                     ? languageDropdown.querySelector('.select-dropdown-value').textContent.trim()
-                    : undefined
+                    : undefined,
+                notify_events: notifyEventsToggle ? notifyEventsToggle.checked : undefined
             };
 
             saveBtn.disabled = true;
@@ -387,7 +387,12 @@ async function init() {
                     cacheSet('accent_color', payload.accent_color || '');
                     cacheSet('accent_color_soft', payload.accent_color_soft || '');
                     cacheSet('accent_color_ink', payload.accent_color_ink || '');
-                    showToast('Settings saved');
+                    // leave the page after a successful save, same
+                    // destination as the Cancel button
+                    const cancelHref = document
+                        .querySelector('.settings-actions a.btn-secondary')
+                        ?.getAttribute('href') || '/';
+                    window.location.assign(cancelHref);
                 } else {
                     showToast('Could not save settings', true);
                 }
@@ -396,6 +401,61 @@ async function init() {
                 showToast('Could not save settings', true);
             } finally {
                 saveBtn.disabled = false;
+            }
+        });
+    }
+
+    // =========================
+    // DELETE ACCOUNT
+    // =========================
+    const deleteBtn = document.getElementById('deleteAccountBtn');
+    const deleteBackdrop = document.getElementById('deleteAccountBackdrop');
+    const deleteConfirmInput = document.getElementById('deleteAccountConfirm');
+    const deleteConfirmBtn = document.getElementById('deleteAccountConfirmBtn');
+    const deleteCancelBtn = document.getElementById('deleteAccountCancel');
+
+    if (deleteBtn && deleteBackdrop && deleteConfirmInput &&
+            deleteConfirmBtn && deleteCancelBtn) {
+        const expected = deleteConfirmBtn.dataset.username || '';
+        const closeDelete = () => {
+            deleteBackdrop.classList.remove('open');
+            deleteConfirmInput.value = '';
+            deleteConfirmBtn.disabled = true;
+            deleteCancelBtn.disabled = false;
+        };
+        deleteBtn.addEventListener('click', () => {
+            deleteConfirmInput.value = '';
+            deleteConfirmBtn.disabled = true;
+            deleteBackdrop.classList.add('open');
+            deleteConfirmInput.focus();
+        });
+        deleteCancelBtn?.addEventListener('click', closeDelete);
+        deleteBackdrop.addEventListener('click', (e) => {
+            if (e.target === deleteBackdrop) closeDelete();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && deleteBackdrop.classList.contains('open')) {
+                closeDelete();
+            }
+        });
+        deleteConfirmInput.addEventListener('input', () => {
+            deleteConfirmBtn.disabled =
+                deleteConfirmInput.value.trim() !== expected;
+        });
+        deleteConfirmBtn.addEventListener('click', async () => {
+            deleteConfirmBtn.disabled = true;
+            deleteCancelBtn.disabled = true;
+            try {
+                const res = await fetch('/auth/api/delete_account', {
+                    method: 'POST',
+                });
+                if (!res.ok) throw new Error(`Request failed (${res.status})`);
+                window.location.assign('/auth/login');
+            } catch (err) {
+                console.error('Failed to delete account', err);
+                showToast('Could not delete account', true);
+                deleteConfirmBtn.disabled = false;
+                deleteCancelBtn.disabled = false;
             }
         });
     }

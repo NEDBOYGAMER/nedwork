@@ -22,6 +22,7 @@ from .. import db
 from ..models import *
 from ..auth.decorators import admin_required, API
 from ..permissions import BASE_PERMISSIONS
+from ..account import purge_user
 from ..about.routes import _read, _write, _suggestions_file
 
 admin_bp = Blueprint('admin', __name__, static_folder='../static')
@@ -197,23 +198,16 @@ def api_user_force_logout(user_id):
 @admin_required(API)
 def api_user_delete(user_id):
     """Remove the user completely: the row and ALL their data — sessions,
-    permission links, dashboards + widgets, tasks, app-corner config,
-    settings, apps config (colors/links configs cascade from it), group
-    memberships and friendships. This cannot be undone; the person would
-    have to go through pending approval again."""
+    permissions, dashboards + widgets, tasks, app-corner config, settings,
+    apps config, events, social memberships and friendships. This cannot
+    be undone; the person would have to go through pending approval again."""
     target = User.query.get_or_404(user_id)
+    deleted_username = target.username
 
-    # no ORM cascade on these two — cleaned manually
-    UserGroup.query.filter_by(user_id=target.id).delete(synchronize_session=False)
-    Friendship.query.filter(
-        (Friendship.request_sender_id == target.id) |
-        (Friendship.request_receiver_id == target.id)
-    ).delete(synchronize_session=False)
-
-    db.session.delete(target)
+    purge_user(target)
     db.session.commit()
 
-    return jsonify({"success": True, "deleted": target.username})
+    return jsonify({"success": True, "deleted": deleted_username})
 
 
 @admin_bp.route('/api/users/<int:user_id>/force_password_reset', methods=['POST'])

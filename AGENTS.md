@@ -161,10 +161,16 @@ Never put user data or generated files under `static/` — it is public and
 served as-is (historical bug: suggestions JSON used to live there; runtime
 stores now live in `instance/data/`).
 
-## 7. Current state & pitfalls (2026-10-28)
+## 7. Current state & pitfalls (2026-11-03)
 
-- **Uncommitted work in the tree**: dashboard widget/grid JS+CSS is modified
-  (see `git status`). Don't assume a clean slate; don't revert silently.
+- **Uncommitted work in the tree**: the 2026-11 TODO round (timer, events,
+  socials, settings, notifications, account deletion) is modified but not
+  committed (see `git status`). Don't assume a clean slate; don't revert
+  silently.
+- **Account deletion goes through `flask_app/account.py`** (`purge_user`) —
+  shared by the self-service auth route and the admin delete endpoint.
+  SQLite FKs are off, so every referencing table is cleaned explicitly; add
+  new user-owned tables to that helper.
 - **`controller_tester` and `trivia`** have no `routes.py` — they are served
   purely via the dynamic catalog route. That is a valid pattern, not a bug.
 - **`tierforge/_uploads/`** is an in-package runtime dir (user uploads write
