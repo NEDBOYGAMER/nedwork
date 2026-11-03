@@ -121,11 +121,13 @@ its contents are done or moved to their real section.
 
 Little stuff that doesn't warrant its own section:
 
-- [ ] **HTTPS/proxy scheme.** Cookies are set `secure=...` from
-      `request.is_secure`; login sets `Secure` unconditionally. If
-      nedwork.ch runs behind a TLS-terminating proxy without
-      `X-Forwarded-Proto` handling (ProxyFix), cookie behavior gets
-      inconsistent. Verify the scheme handling on the real host.
+- [ ] **HTTPS/proxy scheme — code side done, one on-host check left.**
+      All cookies are now issued *and* cleared with unconditional
+      `Secure` (no `request.is_secure` sniffing left; verified by
+      `stuff/check_cookie_flags.py`). Remaining: on the real host,
+      confirm after login that every `Set-Cookie` shows `Secure`
+      (session_id, csrf_token, admin_session) and that both logout
+      buttons (site + admin) actually clear them.
 - [ ] **Log out one more time after deploy** with Ctrl+Shift+R first —
       flushes every cached script; confirms the POST + CSRF logout form
       flow end to end (GET /auth/logout now answers 405).

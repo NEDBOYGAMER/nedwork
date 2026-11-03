@@ -141,7 +141,12 @@ def create_app():
                 "csrf_token",
                 secrets.token_hex(32),
                 samesite="Lax",
-                secure=request.is_secure,
+                # Secure unconditionally (fail-closed): the real host is
+                # always HTTPS, and browsers allow Secure cookies on
+                # localhost dev. request.is_secure would depend on
+                # X-Forwarded-Proto handling of the TLS proxy — a
+                # dependency we removed instead of trusting.
+                secure=True,
                 path="/",
             )
 

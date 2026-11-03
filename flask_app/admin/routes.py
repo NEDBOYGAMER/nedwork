@@ -82,14 +82,15 @@ def api_logout():
 
     response = make_response({"success": True})
     # kill the session cookie AND the CSRF double-submit token - a logged
-    # out console leaves nothing behind
+    # out console leaves nothing behind. Clear-flags match the
+    # unconditional Secure both are issued with.
     for name in (ADMIN_COOKIE, "csrf_token"):
         response.set_cookie(
             name,
             "",
             max_age=0,
             httponly=(name == ADMIN_COOKIE),
-            secure=request.is_secure,
+            secure=True,
             samesite="Lax",
             path="/",
         )

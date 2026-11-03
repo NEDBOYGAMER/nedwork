@@ -169,9 +169,12 @@ stores now live in `instance/data/`).
   purely via the dynamic catalog route. That is a valid pattern, not a bug.
 - **`tierforge/_uploads/`** is an in-package runtime dir (user uploads write
   inside the repo tree). Known wart; don't "fix" without discussion.
-- **Session cookies depend on `request.is_secure`** — behind a
-  TLS-terminating proxy, `X-Forwarded-Proto` handling matters
-  (`PROXY_FIX_X_FOR=1` is set in the server's compose). See `TODO.md`.
+- **All cookies are unconditionally `Secure`** (session, csrf, admin —
+  issued *and* cleared; no scheme sniffing left, so `X-Forwarded-Proto`
+  / `PROXY_FIX_X_FOR` no longer matter for cookies). Consequences:
+  fail-closed — over plain HTTP login won't stick; plain-http testing
+  happens via localhost only, where browsers allow Secure cookies.
+  `stuff/check_cookie_flags.py` verifies every issue/clear path.
 - **`requirements.txt` pins drift** from what's actually imported — verify
   imports before adding/removing pins.
 - **Windows dev machine, PowerShell 5.1** — `rg` is not installed; use the

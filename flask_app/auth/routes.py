@@ -219,7 +219,10 @@ def _perform_logout():
             "",
             max_age=0,
             httponly=(name == "session_id"),
-            secure=request.is_secure,
+            # clear-flags match the unconditional Secure the cookies are
+            # issued with (login sets session_id Secure, the CSRF hook
+            # sets csrf_token Secure) so the browser reliably drops them
+            secure=True,
             samesite="Lax",
             path="/"
         )
