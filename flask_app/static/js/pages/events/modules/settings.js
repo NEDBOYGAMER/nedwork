@@ -121,9 +121,8 @@ export function settingsAnnouncement(root, ctx) {
 /* ---- image (upload from PC is primary; URL secondary) ------------------ */
 
 export function settingsImage(root, ctx) {
-    const { module, draft } = ctx;
+    const { module, draft, refresh } = ctx;
     const config = module.config || {};
-    draft.imageCaption = draft.imageCaption ?? config.caption ?? "";
 
     // preview thumbnail
     let preview = null;
@@ -158,7 +157,7 @@ export function settingsImage(root, ctx) {
         const file = fileInput.files?.[0];
         if (!file) return;
         draft.imageFileName = file.name;
-        draft.imageStatus = "Uploading…";
+        draft.imageStatus = "Uploading...";
         fileName.textContent = draft.imageFileName;
         status.textContent = draft.imageStatus;
         const body = new FormData();
@@ -176,9 +175,11 @@ export function settingsImage(root, ctx) {
                     root.insertBefore(preview, root.firstChild);
                 }
                 preview.src = url;
+                draft.imageUrl = url;
             }
-            draft.imageStatus = "Uploaded ✓";
+            draft.imageStatus = "Uploaded";
             status.textContent = draft.imageStatus;
+            if (refresh) await refresh();
         } catch (e) {
             draft.imageStatus = "";
             status.textContent = "";
@@ -190,12 +191,9 @@ export function settingsImage(root, ctx) {
     root.appendChild(status);
 
     // URL as secondary
-    const urlInput = textInput(config.url, "…or paste an image URL",
+    const urlInput = textInput(config.url, "or paste an image URL",
         (v) => { draft.imageUrl = v.trim() || ""; });
     root.appendChild(field("Image URL (secondary)", urlInput));
-    root.appendChild(field("Caption", textInput(draft.imageCaption,
-        "Caption (optional)", (v) => { draft.imageCaption = v; })));
-    root.appendChild(status);
 }
 
 /* ---- location ---------------------------------------------------------- */

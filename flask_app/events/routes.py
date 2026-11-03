@@ -51,7 +51,7 @@ IMAGE_EXT = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
 EVENT_TEMPLATES = {
     "movie_night": [
         {"type": "description", "config": {"text": "", "spacing": "normal"}},
-        {"type": "image",  "config": {"url": "", "caption": ""}},
+        {"type": "image",  "config": {"url": ""}},
         {"type": "location", "config": {"address": "", "note": ""}},
         {"type": "doodle", "config": {"anonymous": False, "deadline": None,
                                       "show_counts": True, "mode": "date"}},
@@ -60,7 +60,7 @@ EVENT_TEMPLATES = {
     ],
     "game_night": [
         {"type": "description", "config": {"text": "", "spacing": "normal"}},
-        {"type": "image",  "config": {"url": "", "caption": ""}},
+        {"type": "image",  "config": {"url": ""}},
         {"type": "location", "config": {"address": "", "note": ""}},
         {"type": "doodle", "config": {"anonymous": False, "deadline": None,
                                       "show_counts": True, "mode": "date"}},
@@ -70,7 +70,7 @@ EVENT_TEMPLATES = {
     ],
     "party": [
         {"type": "description", "config": {"text": "", "spacing": "normal"}},
-        {"type": "image",  "config": {"url": "", "caption": ""}},
+        {"type": "image",  "config": {"url": ""}},
         {"type": "location", "config": {"address": "", "note": ""}},
         {"type": "announcement", "config": {}},
         {"type": "doodle", "config": {"anonymous": False, "deadline": None,
@@ -81,7 +81,7 @@ EVENT_TEMPLATES = {
     ],
     "trip": [
         {"type": "description", "config": {"text": "", "spacing": "normal"}},
-        {"type": "image",  "config": {"url": "", "caption": ""}},
+        {"type": "image",  "config": {"url": ""}},
         {"type": "location", "config": {"address": "", "note": ""}},
         {"type": "announcement", "config": {}},
         {"type": "doodle", "config": {"anonymous": False, "deadline": None,
@@ -964,8 +964,6 @@ def module_content(user, module_id):
     elif module.type == "image":
         if "url" in payload:
             config["url"] = str(payload.get("url") or "")[:500]
-        if "caption" in payload:
-            config["caption"] = str(payload.get("caption") or "")[:200]
     elif module.type == "location":
         if "address" in payload:
             config["address"] = str(payload.get("address") or "")[:300]

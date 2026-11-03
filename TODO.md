@@ -31,8 +31,11 @@ zoom/link-out, transfer-host placement and username suggestions shipped
 
 ## Socials
 
-(none — UI pass shipped 2026-11-03. Email delivery confirmed live
-2026-11-03: `RESEND_API_KEY` set in the server env. Mobile pass verified.)
+- [ ] **Full visual/UI rework.** Must be done on its own, not bundled
+      with other TODOs — it requires full concentration on visuals and
+      UI. The 2026-11-03 pass only fixed tokens/spacing. Email delivery
+      confirmed live 2026-11-03 (`RESEND_API_KEY` set); mobile pass
+      verified.
 
 ## Tasks
 
@@ -49,8 +52,10 @@ not for individual apps — those live under 'Apps catalog' below)
 
 ## Settings
 
-(none — Save now leaves the page; the Notifications panel has one real
-Events toggle backed by `SettingsConfig.notify_events`)
+- [ ] **Password change.** The Account panel still shows a disabled
+      "Coming soon" password row. Wire it to the existing
+      `/auth/api/change_password` (current/new/confirm modal) or a
+      voluntary change-password page.
 
 ## Account
 
@@ -83,7 +88,11 @@ Resurface new function keys only when a feature needs gating.)
 
 ### Links
 
-(none — no open items)
+- [ ] **Saved links open in a new tab.** Clicking a saved link should
+      open the external URL in a new tab (clarified: not
+      `/dashboard/link`). `flask_app/apps/links/app.js` already intends
+      this via `window.open(..., '_blank')` and the card anchor; verify
+      and fix if it does not.
 
 ### Trivia
 

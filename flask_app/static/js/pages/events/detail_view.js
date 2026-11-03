@@ -184,18 +184,16 @@ function renderHero(event, amHost) {
     const imgModule = (state.modules || []).find((m) => m.type === "image");
     const config = imgModule?.config || {};
     const hasImage = !!config.url;
-    const hasCaption = !!config.caption;
 
     const hero = el("header", "event-hero event-header");
-    // no image and no caption: render a plain masthead instead of an
-    // empty gray band
-    if (!hasImage && !hasCaption) hero.classList.add("event-hero-plain");
+    // no image: render a plain masthead instead of an empty gray band
+    if (!hasImage) hero.classList.add("event-hero-plain");
     if (hasImage) {
         hero.classList.add("event-hero-image");
         const media = el("div", "event-hero-media");
         const img = el("img", "event-hero-img");
         img.src = config.url;
-        img.alt = config.caption || "";
+        img.alt = event.title || "";
         media.appendChild(img);
         hero.appendChild(media);
     }
@@ -216,10 +214,6 @@ function renderHero(event, amHost) {
         (event.maybe ? ` · ${event.maybe} maybe` : "")));
     inner.appendChild(meta);
     scrim.appendChild(inner);
-
-    if (hasCaption) {
-        scrim.appendChild(el("p", "event-hero-caption", config.caption));
-    }
 
     hero.appendChild(scrim);
 

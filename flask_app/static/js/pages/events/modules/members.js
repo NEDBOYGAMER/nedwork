@@ -1,7 +1,7 @@
 /* Members module — FIXED (always present, first). View mode: RSVP list
    only — removing people is an edit-mode setting (settingsMembers). */
 import { el, rsvpBadge, toast } from "../ui.js";
-import { rsvpUrl, transferUrl, api } from "../api.js";
+import { rsvpUrl, transferUrl, memberUrl, byKeyUrl, api } from "../api.js";
 
 const RSVP_VALUES = ["attending", "maybe", "cant"];
 

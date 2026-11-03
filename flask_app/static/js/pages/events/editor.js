@@ -381,9 +381,6 @@ function buildModulePayload(module, draft) {
             break;
         case "image": {
             const cfg = {};
-            if (draft.imageCaption !== undefined) {
-                cfg.caption = draft.imageCaption;
-            }
             if (draft.imageUrl !== undefined) {
                 cfg.url = draft.imageUrl;   // pasted URL ("" clears it)
             }

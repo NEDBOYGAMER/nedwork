@@ -161,13 +161,6 @@
 }
 .event-hero-image .event-date { color: #fff; }
 
-.event-hero-caption {
-    margin: var(--space-2) 0 0;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.75);
-}
-.event-hero:not(.event-hero-image) .event-hero-caption { color: var(--text-muted); }
-
 /* the host's Edit pill — quiet glass, reads as furniture, not a CTA */
 .event-edit-btn {
     position: absolute;
