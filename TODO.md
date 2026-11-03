@@ -53,9 +53,6 @@ not for individual apps — those live under 'Apps catalog' below)
 
 (none — no open items)
 
-- The sidenav Account button opens the Settings page with the Account
-  panel activated (`/settings#account`, read by `settings.js`).
-
 ## Apps catalog
 
 Per-app sections. The catalog lives in the DB (admin console Apps tab is
