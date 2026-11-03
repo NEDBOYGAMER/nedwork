@@ -242,6 +242,7 @@ const SECTION_LABELS = {
     bring:       "What to bring",
     rides:       "Getting there",
     location:    "Where",
+    announcement: "Announcement",
     chat:        "Chat",
 };
 

@@ -724,11 +724,12 @@ class Task(db.Model):
 # survive a leave and show as "left".
 
 EVENT_MODULE_TYPES = ("notes", "image", "location", "members",
-                      "doodle", "bring", "rides", "chat")
+                      "doodle", "bring", "rides", "chat", "announcement")
 
 # modules that hold per-event state — only one instance per event allowed
 EVENT_SINGLETON_MODULES = ("notes", "image", "location", "members",
-                           "doodle", "bring", "rides", "chat")
+                           "doodle", "bring", "rides", "chat",
+                           "announcement")
 
 
 class Event(db.Model):
@@ -973,6 +974,7 @@ class Notification(db.Model):
                         nullable=False)
     type = db.Column(db.String(40), nullable=False)
     # "event_published" | "date_finalized" | "date_changed" | "member_added"
+    # | "event_reminder"
     payload = db.Column(db.JSON, nullable=False, default=dict)
     read = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, nullable=False,

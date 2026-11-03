@@ -10,10 +10,11 @@ import { renderDoodle } from "./doodle.js";
 import { renderBring } from "./bring.js";
 import { renderRides } from "./rides.js";
 import { renderChat } from "./chat.js";
+import { renderAnnouncement } from "./announcement.js";
 import {
     settingsDescription, settingsImage, settingsLocation, settingsDoodle,
     settingsBring, settingsChat, settingsTitle, settingsRides,
-    settingsMembers,
+    settingsMembers, settingsAnnouncement,
 } from "./settings.js";
 
 /* View-mode meta: the custom events icon set (ui.js evIcon). Edit mode
@@ -24,6 +25,7 @@ export const MODULE_META = {
     description: { label: "Description",  icon: "file" },
     image:       { label: "Image",        icon: "upload" },
     location:    { label: "Location",     icon: "map-pin" },
+    announcement:{ label: "Announcement", icon: "bell" },
     doodle:      { label: "Dates (Doodle)", icon: "calendar" },
     bring:       { label: "Bring list",   icon: "package" },
     rides:       { label: "Car share",    icon: "heart" },
@@ -31,13 +33,14 @@ export const MODULE_META = {
 };
 
 export const MODULES = {
-    title:       { settings: settingsTitle },
-    description: { render: renderDescription, settings: settingsDescription },
-    image:       { settings: settingsImage },
-    location:    { render: renderLocation, settings: settingsLocation },
-    members:     { render: renderMembers, settings: settingsMembers },
-    doodle:      { render: renderDoodle, settings: settingsDoodle },
-    bring:       { render: renderBring, settings: settingsBring },
-    rides:       { render: renderRides, settings: settingsRides },
-    chat:        { render: renderChat, settings: settingsChat },
+    title:        { settings: settingsTitle },
+    description:  { render: renderDescription, settings: settingsDescription },
+    image:        { settings: settingsImage },
+    location:     { render: renderLocation, settings: settingsLocation },
+    announcement: { render: renderAnnouncement, settings: settingsAnnouncement },
+    members:      { render: renderMembers, settings: settingsMembers },
+    doodle:       { render: renderDoodle, settings: settingsDoodle },
+    bring:        { render: renderBring, settings: settingsBring },
+    rides:        { render: renderRides, settings: settingsRides },
+    chat:         { render: renderChat, settings: settingsChat },
 };

@@ -108,3 +108,71 @@ git pull --rebase
 # Resolve conflicts if necessary
 git push
 ```
+
+---
+
+# Deploying to nedwork.ch
+
+Deploying is the operator's job (agent sessions never push — that rule
+exists because deploys happen from the server, not the dev machine). The
+flow below exists because one stale-code incident happened: 33 modified +
+untracked files sat uncommitted on 2026-11-01, the server kept serving old
+code, and console/gate fixes didn't ship. **A commit is the smallest unit
+that can deploy.**
+
+## 1. Local: commit before you think about deploying
+
+```bash
+git status            # anything uncommitted?
+git add <files>
+git commit -m "..."
+```
+
+The server can only ever run what you've committed (see the "Never push"
+rule in `AGENTS.md`). Uncommitted work is invisible to deployment.
+
+## 2. Server: pull the new commit
+
+```bash
+ssh nedwork
+cd ~/docker/nedwork/app        # the app source is a git repo on the server
+git pull                       # get the committed state
+```
+
+The live database is `nedwork/data/app.db` (bind-mounted, WAL mode) —
+pulling does **not** touch it. `instance/` inside the repo is runtime
+junk on the server; never delete/replace `data/`.
+
+## 3. Server: rebuild + restart the container
+
+The `Dockerfile` runs `waitress-serve --call app:create_app` on port 8000,
+and `app.py`'s `db.create_all()` + `permissions.ensure_all()` bootstrap
+fires at import — i.e. on container start. So restarting the container is
+what applies schema/migration-free seeds:
+
+```bash
+cd ~/docker/nedwork           # where the compose file lives
+docker compose build          # bakes in the new committed code
+docker compose up -d          # recreate the container
+docker compose logs --tail 20 # confirm clean boot (or check the failure)
+```
+
+## 4. Post-deploy smoke
+
+- Ctrl+Shift+R on https://nedwork.ch (flushes the cached JS/CSS; a hard
+  refresh is required or you'll test old assets).
+- Log in and confirm the admin console renders + one version-sensitive
+  page (e.g. the events site or a feature you just changed).
+- Watch for schema drift: if the boot output says a migration is needed,
+  run `flask db upgrade` inside the container before using the site.
+
+## Rollback (if a deploy is bad)
+
+```bash
+ssh nedwork
+cd ~/docker/nedwork/app
+git log --oneline -5           # find the previous good commit
+git checkout <good-sha>        # or: git revert <bad-sha>
+cd ~/docker/nedwork
+docker compose build && docker compose up -d
+```

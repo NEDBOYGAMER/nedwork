@@ -32,6 +32,7 @@ const TYPE_LABELS = {
     member_added:    { label: "Event", slug: "event", message: (p) => `You were added to ${p.title || "an event"}` },
     date_finalized:  { label: "Event", slug: "event", message: (p) => `Date finalized: ${p.title || "event"}` },
     date_changed:    { label: "Event", slug: "event", message: (p) => `Date changed: ${p.title || "event"} — re-confirm` },
+    event_reminder:  { label: "Event", slug: "event", message: (p) => `Starting soon: ${p.title || "event"}` },
     ride_cancelled:  { label: "Event", slug: "event", message: (p) => `A ride was cancelled: ${p.title || "event"}` },
     event:           { label: "Event", slug: "event", message: (p) => p.title || "Event update" },
     friend_request:  { label: "Social", slug: "message", message: (p) => `${p.actor || "Someone"} sent you a friend request` },

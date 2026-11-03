@@ -13,11 +13,12 @@ Triggers in the MVP:
   date_finalized   — doodle finalization set the canonical date
   date_changed     — host edited the canonical date manually
   member_added     — the host added you to an event
+  event_reminder   — 24h-before nudge (scan_reminders, no scheduler)
 """
 import logging
 import os
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import render_template
 
@@ -144,6 +145,43 @@ def event_upcoming_for_user(user):
         .order_by(Event.event_date)
         .all()
     )
+
+
+def scan_reminders(user):
+    """24h-before reminders without a scheduler: piggyback on the
+    notifications fetch (the dashboard widget polls it every minute).
+    One reminder per (user, event) — an existing event_reminder row is
+    the dedupe marker. Never raises; best-effort like everything here."""
+    try:
+        window_start = datetime.now()
+        window_end = datetime.now() + timedelta(hours=26)
+        upcoming = (Event.query
+                    .join(EventMember, EventMember.event_id == Event.id)
+                    .filter(
+                        EventMember.user_id == user.id,
+                        Event.status == "published",
+                        Event.event_date.isnot(None),
+                        Event.event_date >= window_start,
+                        Event.event_date <= window_end,
+                    ).all())
+        sent = {n.payload.get("event_id")
+                for n in Notification.query.filter_by(
+                    user_id=user.id, type="event_reminder").all()}
+        for event in upcoming:
+            if event.id in sent:
+                continue
+            when = event.event_date.strftime("%d.%m.%Y %H:%M")
+            notify_user(
+                user, "event_reminder",
+                payload={"event_id": event.id, "title": event.title},
+                email={"subject": f"Tomorrow: {event.title}",
+                       "body": f"“{event.title}” starts on {when}. "
+                               "Open Events to check the details."},
+                event=event,
+            )
+    except Exception:
+        db.session.rollback()
+        logger.exception("scan_reminders(%s) failed", user.id)
 
 
 def notifications_for_user(user, limit=50):

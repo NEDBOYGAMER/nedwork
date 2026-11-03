@@ -8,36 +8,55 @@ git history — this file keeps only open items.
 
 ---
 
+## Shipped 2026-11-03 (Phase-2 round)
+
+- Events announcements module (`announcement` module type: `text` ≤500 /
+  `tone` ∈ info|important|urgent, SINGLETON; megaphone icon + tones).
+- 24h event reminder — `scan_reminders()` in `notifications.py`,
+  piggybacked on `GET /events/api/notifications` (no scheduler by design).
+- Dashboard Notifications widget (`NotificationsWidget.js`, demo-data
+  fallback when the API is unreachable).
+- Socials mobile pass (≤640px single-column verified via
+  `stuff/socials_shot_mobile.py`).
+- Admin console phone pass — §9 `@media (max-width: 480px)` block plus a
+  `min-width: 0` fix in §8 (grid track couldn't shrink below table
+  min-content → wide tables stretched the page instead of scrolling
+  inside their cards; also fixed the 481–859px range, not just ≤480).
+  Verified by `stuff/admin_shot_mobile.py`, `stuff/check_admin_phone.py`,
+  `stuff/check_admin_breakpoints.py`, `stuff/check_admin_login_phone.py`
+  (no horizontal scroll at 320/390/480/481/700/701/860/1280px; wide
+  tables scroll inside `.admin-card`).
+- Deploy procedure documented in `__docs/git.md` (commit → server pull →
+  rebuild/restart → post-deploy smoke → rollback recipe).
+
+Decisions taken this round: **next function keys** (`tierforge_export`,
+`trivia_host`) wait until real endpoints exist (documentation-only keys
+deferred); **unclaimed-items dashboard nudge** and **notification endpoint
+split** stay parked.
+
 ## Events site
 
 (none — shipped rounds are in git history)
 
 ## Socials site
 
-- [ ] **Socials mobile pass** — the redesign CSS includes single column
-      ≤640px + wrap rows, but it was never screenshot-verified on a
-      phone viewport; do a pass with `socials_shot.py` mobile shots when
-      touching this page again.
 - [ ] **Email delivery on nedwork.ch** — code-side done
       (`notifications.py` reads `RESEND_API_KEY`, sender in `notify.py`);
       purely an operator env task now: set `RESEND_API_KEY` (+ optional
       `NOTIFY_FROM`) in the server env. Without it everything works but
       emails are a silent no-op.
 - [ ] **Phase 2 leftovers (deferred by plan):** unclaimed-items dashboard
-      nudge, 24h reminder scheduler (no scheduler exists), announcements
-      module, notification endpoint split out of the events blueprint when
-      a second site needs notifications.
+      nudge; notification endpoint split out of the events blueprint when
+      a second site needs notifications. (Announcements module + 24h
+      reminder shipped 2026-11-03; there is no scheduler by design.)
 
 ## Colors AI (`colors_ai` function permission)
 
 Frontend concealment is implemented (JS hides the button via
-`/auth/api/who`, server stacks `permission_required("colors_ai")`); the
-open bits:
+`/auth/api/who`, server stacks `permission_required("colors_ai")`).
+Locked-state UX decided 2026-11-03: stay fully Hidden (no disabled
+button/tooltip).
 
-- [ ] **Decide the locked-state UX.** Fully hiding is the current
-      behavior. Alternative: show the button disabled with a tooltip
-      ("needs colors_ai — ask the admin") so users know the feature
-      exists.
 - [ ] **Next function keys.** The pattern (create fn key in Permissions
       tab -> assign under Functions in Apps tab -> stacked decorators in
       the app's routes.py -> `/auth/api/who` concealment) is documented
@@ -47,21 +66,21 @@ open bits:
       and trivia is a static app (no `routes.py` — nothing to guard), so
       these keys have no endpoints to protect yet.
 
-## Static asset caching
+## Apps (candidate ideas)
 
-- [ ] **Deployment procedure.** nedwor.ch served old code until a manual
-      restart once (33 modified + untracked files sat uncommitted at
-      2026-11-01). Decide/fix a commit + pull + restart flow so
-      console/gate fixes actually ship (see `__docs/git.md`).
+**These are NOT meant to be done when "everything from TODO should be
+done" — they are only to be worked on if explicitly mentioned.** They are
+idea candidates, not committed work.
+
+- [ ] **Wordle clone** — word-guessing game app.
+- [ ] **Recipe maker** — recipe helper app.
+- [ ] **QR code generator** — app.
 
 ## Admin console
 
 - [ ] **Site settings card** (Settings tab) is a placeholder — "Nothing
       to configure yet". First real site-wide setting goes there.
-- [ ] **Admin console responsiveness** — wide-screen focus so far (1920px
-      cap, grids at 700/900/1700px); narrow windows only get a rail
-      collapse at ≤860px and 1-col panel stacking ≤700px, no
-      phone-specific rules.
+
 
 ## Deployment / server config
 

@@ -400,6 +400,14 @@ function buildModulePayload(module, draft) {
                 };
             }
             break;
+        case "announcement":
+            if (draft.announcement) {
+                payload.config = {
+                    text: draft.announcement.text || "",
+                    tone: draft.announcement.tone || "info",
+                };
+            }
+            break;
         case "doodle":
             if (draft.doodle) {
                 payload.config = {

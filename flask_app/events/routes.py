@@ -22,7 +22,7 @@ from ..models import *   # Event, EventMember, EventModule, ..., db, User
 from ..auth.decorators import permission_required, PAGE, API
 from ..notifications import (
     notify_user, notify_event_members, notifications_for_user, mark_read,
-    notification_to_dict, event_upcoming_for_user,
+    notification_to_dict, event_upcoming_for_user, scan_reminders,
 )
 
 
@@ -36,9 +36,9 @@ VALID_STATUS = ("draft", "published", "archived")
 VALID_RSVP = ("attending", "maybe", "cant")
 # "members" is FIXED — auto-seeded at create, not addable/removable.
 VALID_MODULE_TYPES = ("description", "image", "location", "doodle",
-                      "bring", "rides", "chat")
+                      "bring", "rides", "chat", "announcement")
 SINGLETON_TYPES = ("description", "image", "location", "doodle",
-                   "bring", "rides", "chat")
+                   "bring", "rides", "chat", "announcement")
 
 MAX_DOODLE_OPTIONS = 20
 MAX_CHAT_LEN = 2000
@@ -850,6 +850,13 @@ def module_detail(user, module_id):
         # the event date lives in the Title module now — a stale doodle
         # deadline key is silently dropped (one source of truth)
         payload["config"].pop("deadline", None)
+        if module.type == "announcement":
+            cfg = payload["config"]
+            if "text" in cfg:
+                cfg["text"] = str(cfg.get("text") or "")[:500]
+            if "tone" in cfg and cfg["tone"] not in ("info", "important",
+                                                     "urgent"):
+                return _deny("unknown announcement tone", 400)
         module.config = {**(module.config or {}), **payload["config"]}
         changed = True
     if "position" in payload and isinstance(payload["position"], int):
@@ -1430,6 +1437,9 @@ def delete_message(user, message_id):
 @events_bp.route('/api/notifications', methods=['GET'])
 @permission_required("core", API)
 def list_notifications(user):
+    # the 24h-reminder scan rides on this poll (the dashboard widget hits
+    # it every minute) — no scheduler exists by design
+    scan_reminders(user)
     rows, unread = notifications_for_user(user)
     return jsonify({
         "notifications": [notification_to_dict(n) for n in rows],

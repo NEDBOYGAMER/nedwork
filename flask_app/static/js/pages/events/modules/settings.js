@@ -85,6 +85,39 @@ export function settingsDescription(root, ctx) {
     root.appendChild(field("Description", textarea));
 }
 
+/* ---- announcement (host banner text, optional tone) -------------------- */
+
+export function settingsAnnouncement(root, ctx) {
+    const { module, draft } = ctx;
+    const config = module.config || {};
+    draft.announcement = draft.announcement || {
+        text: config.text || "",
+        tone: config.tone || "info",
+    };
+    const d = draft.announcement;
+
+    const textarea = el("textarea", "field-input notes-editor");
+    textarea.rows = 3;
+    textarea.placeholder = "e.g. “Venue changed — we're at the back hall”";
+    textarea.value = d.text;
+    textarea.maxLength = 500;
+    textarea.oninput = () => { d.text = textarea.value; };
+    root.appendChild(field("Text", textarea));
+
+    const select = el("select", "field-input");
+    for (const [value, label] of [
+        ["info", "Info (neutral)"], ["important", "Important (accent)"],
+        ["urgent", "Urgent (red)"],
+    ]) {
+        const opt = el("option", null, label);
+        opt.value = value;
+        if (d.tone === value) opt.selected = true;
+        select.appendChild(opt);
+    }
+    select.onchange = () => { d.tone = select.value; };
+    root.appendChild(field("Tone", select));
+}
+
 /* ---- image (upload from PC is primary; URL secondary) ------------------ */
 
 export function settingsImage(root, ctx) {

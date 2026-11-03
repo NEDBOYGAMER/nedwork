@@ -31,7 +31,7 @@ scope for this repo, but read it if your task touches deployment.
 | `instance/` | live SQLite DB (`app.db` + `-wal`/`-shm`), `notify_secret.key`, `instance/data/` runtime JSON | NEVER delete/replace; never commit changes to it |
 | `migrations/` | standard Flask-Migrate/Alembic | schema changes go through `flask db migrate` |
 | `__docs/` | project docs (see §9 doc map) | keep current when things change |
-| `stuff/` | design notes + UI mockups (`.txt`, `designs/*.html`) | not shipped code — don't import from here |
+| `stuff/` | smoke/verification scripts (browser + API smokes, screenshot tools, ES-module link check) | not shipped code — don't import from here |
 | `flask_app/data/apps.json` | seed-only app catalog | see §5 — runtime truth is the DB |
 | `requirements.txt` | Python deps | version pins drift; check actual imports before trusting it |
 | `TODO.md` | open work items + accepted tradeoffs | read it, keep it current |
@@ -199,4 +199,8 @@ stores now live in `instance/data/`).
 | `__docs/git.md` | git workflow for pushing changes |
 | `__docs/server_cheat-sheet.md` | server command reference (ops context) |
 | `__docs/apps.md`, `__docs/tips_and_tricks.md` | currently empty placeholders |
+
+Verified 2026-11-03: `stuff/` was cleaned of one-off screenshots, design
+mockups, and stale notes (recoverable from git history); only smoke/diagnostic
+scripts remain.
 | `TODO.md` | open items + accepted tradeoffs |

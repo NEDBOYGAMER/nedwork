@@ -32,6 +32,7 @@ const EV_ICONS = {
     bring:       "basket",
     rides:       "car",
     location:    "map",
+    announcement: "megaphone",
     chat:        "chat",
     duty:        "clipboard",
 };

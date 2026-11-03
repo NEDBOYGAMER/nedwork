@@ -15,6 +15,7 @@
       2. Rail (brand, nav)   6. Feature blocks (groups, suggestions, matrix, modal)
       3. Main column         7. Empty states & misc
       4. Controls            8. Narrow windows
+      9. Phones
 */
 
 
@@ -1194,9 +1195,185 @@ body::before,
 
     .admin-main {
         padding: var(--space-4, 16px);
+        /* grid items default to min-width:auto — without this the 1fr
+           track can't shrink below a table's min-content, stretching the
+           page instead of letting .admin-card's overflow-x scroll */
+        min-width: 0;
     }
 
     .admin-changelog-form {
         grid-template-columns: 1fr;
+    }
+}
+
+
+/* ---- 9. Phones (≤480px) ---- */
+
+/* the 64px rail from §8 stays as a left column — collapsing it to a top
+   strip would need markup the console doesn't have — but everything else
+   tightens to phone proportions */
+@media (max-width: 480px) {
+    /* main column: phone gutters instead of the 32/48px desktop padding
+       (min-width: 0 comes from the §8 block, which also covers ≤480px) */
+    .admin-main {
+        padding: var(--space-4, 16px) var(--space-3, 12px) var(--space-5, 24px);
+    }
+
+    .admin-header {
+        margin-bottom: var(--space-4, 16px);
+    }
+
+    .admin-header h1 {
+        font-size: 17px;
+    }
+
+    .admin-card {
+        padding: var(--space-3, 12px);
+    }
+
+    /* toolbars / add-forms: smaller gaps, fields go full-width rows */
+    .admin-add-form,
+    .admin-toolbar {
+        gap: 8px;
+    }
+
+    .admin-add-form > .btn,
+    .admin-add-form > .admin-field,
+    .admin-toolbar > .admin-field,
+    .admin-toolbar .btn {
+        flex: 1 1 100%;
+    }
+
+    .admin-add-form > .btn,
+    .admin-toolbar .btn {
+        margin-left: 0;
+    }
+
+    .admin-toolbar .admin-field--grow {
+        max-width: none;
+    }
+
+    .admin-toolbar .btn,
+    .admin-add-form > .btn {
+        justify-content: center;
+    }
+
+    /* changelog form already stacks at ≤860px; tighten its rhythm */
+    .admin-changelog-form {
+        gap: 8px;
+    }
+
+    .admin-changelog-form .admin-form-foot .btn {
+        width: 100%;
+    }
+
+    /* segmented control: wrap instead of overflow on 5 tags */
+    .admin-segments {
+        display: flex;
+        flex-wrap: wrap;
+        border-radius: var(--a-radius);
+    }
+
+    .admin-segments .segment {
+        flex: 1 1 auto;
+        border-right: 1px solid var(--a-line);
+        border-bottom: 1px solid var(--a-line);
+    }
+
+    .admin-segments .segment:last-child {
+        border-right: 1px solid var(--a-line);
+    }
+
+    /* tables: smaller type + tighter cells; the .admin-card overflow-x
+       still scrolls anything genuinely wide */
+    .admin-table {
+        font-size: 12px;
+    }
+
+    .admin-table td {
+        padding: 8px 6px;
+    }
+
+    .admin-table th {
+        padding: 0 6px 6px;
+        font-size: 9.5px;
+    }
+
+    .admin-table .cell-muted {
+        font-size: 11px;
+        word-break: break-word;
+    }
+
+    /* action columns stop hugging the right edge — buttons wrap inline */
+    .admin-shell th.th-actions,
+    .admin-shell td.td-actions {
+        text-align: left;
+    }
+
+    .admin-actions {
+        justify-content: flex-start;
+    }
+
+    /* section heads: let the hint take the full row */
+    .admin-section-head {
+        gap: 8px;
+    }
+
+    /* app cards: stack the head rows (thumb | name over link), delete
+       under the name, link/description inputs full width */
+    .app-box-head {
+        grid-template-columns: 48px minmax(0, 1fr);
+    }
+
+    .app-box-head .app-thumb {
+        grid-row: 1;
+        width: 48px;
+        height: 48px;
+    }
+
+    .app-box-headactions {
+        grid-row: auto;
+        grid-column: 2;
+        justify-self: end;
+    }
+
+    .app-box-linkrow input[type="text"] {
+        max-width: none;
+        flex: 1 1 auto;
+    }
+
+    .app-box-descrow {
+        flex-wrap: wrap;
+    }
+
+    .app-box-descrow .btn {
+        flex: 1 1 100%;
+    }
+
+    .app-panel-plusrow input[type="text"] {
+        max-width: none;
+    }
+
+    /* group member row: select takes the row, Add button underneath */
+    .group-member-row {
+        flex-wrap: wrap;
+    }
+
+    .group-member-row select {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .group-member-row .btn {
+        flex: 1 1 100%;
+    }
+
+    /* inline permission editor + password modal on phone widths */
+    .perm-desc-edit input[type="text"] {
+        max-width: none;
+    }
+
+    .pw-modal-card {
+        width: calc(100% - 24px);
     }
 }

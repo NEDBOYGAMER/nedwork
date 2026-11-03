@@ -951,6 +951,27 @@ select.field-input { cursor: pointer; }
 }
 .event-detail-view .event-description .module-empty { margin: 0; }
 
+/* ── announcement module ─────────────────────────────────────────────── */
+/* one bold callout; the tone picks the color, the text carries it */
+.announcement-box {
+    border-left: 3px solid var(--line-strong, var(--line));
+    background: var(--surface-2);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    padding: var(--space-3) var(--space-4);
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0;
+    white-space: pre-wrap;
+}
+.announcement-box.announcement-important {
+    border-left-color: var(--accent);
+    background: var(--accent-soft);
+}
+.announcement-box.announcement-urgent {
+    border-left-color: var(--danger);
+    background: var(--danger-soft, rgba(229, 72, 77, 0.12));
+}
+
 /* ── hero image integration ──────────────────────────────────────────── */
 /* the picture doesn't end at a hard line — the scrim blends the image
    into the page background and the title steps into the picture */
