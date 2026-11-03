@@ -29,10 +29,10 @@ git history — this file keeps only open items.
 - Deploy procedure documented in `__docs/git.md` (commit → server pull →
   rebuild/restart → post-deploy smoke → rollback recipe).
 
-Decisions taken this round: **next function keys** (`tierforge_export`,
-`trivia_host`) wait until real endpoints exist (documentation-only keys
-deferred); **unclaimed-items dashboard nudge** and **notification endpoint
-split** stay parked.
+Decisions taken this round: **unclaimed-items dashboard nudge** and
+**notification endpoint split** stay parked. (Candidate function keys
+`tierforge_export` / `trivia_host` removed from TODO — nothing to guard
+yet; the `colors_ai` mechanism is complete.)
 
 ## Events site
 
@@ -55,16 +55,9 @@ split** stay parked.
 Frontend concealment is implemented (JS hides the button via
 `/auth/api/who`, server stacks `permission_required("colors_ai")`).
 Locked-state UX decided 2026-11-03: stay fully Hidden (no disabled
-button/tooltip).
-
-- [ ] **Next function keys.** The pattern (create fn key in Permissions
-      tab -> assign under Functions in Apps tab -> stacked decorators in
-      the app's routes.py -> `/auth/api/who` concealment) is documented
-      in the console guide. Candidates mentioned: `tierforge_export`,
-      `trivia_host`. Only `colors_ai` exists today. Code check: tierforge
-      endpoints currently guard only with the `tierforge` *access* key,
-      and trivia is a static app (no `routes.py` — nothing to guard), so
-      these keys have no endpoints to protect yet.
+button/tooltip). Function-key mechanism is complete and proven; the
+`tierforge_export` / `trivia_host` candidate keys were removed from TODO
+(no endpoints to guard — resurface when a feature needs gating).
 
 ## Apps (candidate ideas)
 
