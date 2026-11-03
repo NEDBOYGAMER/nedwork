@@ -30,9 +30,10 @@ git history — this file keeps only open items.
   rebuild/restart → post-deploy smoke → rollback recipe).
 
 Decisions taken this round: **unclaimed-items dashboard nudge** and
-**notification endpoint split** stay parked. (Candidate function keys
-`tierforge_export` / `trivia_host` removed from TODO — nothing to guard
-yet; the `colors_ai` mechanism is complete.)
+**notification endpoint split** dropped outright (2026-11-03); email
+delivery confirmed live (`RESEND_API_KEY` set in the server env).
+(Candidate function keys `tierforge_export` / `trivia_host` removed from
+TODO — nothing to guard yet; the `colors_ai` mechanism is complete.)
 
 ## Events site
 
@@ -40,15 +41,8 @@ yet; the `colors_ai` mechanism is complete.)
 
 ## Socials site
 
-- [ ] **Email delivery on nedwork.ch** — code-side done
-      (`notifications.py` reads `RESEND_API_KEY`, sender in `notify.py`);
-      purely an operator env task now: set `RESEND_API_KEY` (+ optional
-      `NOTIFY_FROM`) in the server env. Without it everything works but
-      emails are a silent no-op.
-- [ ] **Phase 2 leftovers (deferred by plan):** unclaimed-items dashboard
-      nudge; notification endpoint split out of the events blueprint when
-      a second site needs notifications. (Announcements module + 24h
-      reminder shipped 2026-11-03; there is no scheduler by design.)
+(none — shipped rounds are in git history; email delivery confirmed live
+2026-11-03 — `RESEND_API_KEY` set in the server env)
 
 ## Colors AI (`colors_ai` function permission)
 
