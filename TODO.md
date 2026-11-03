@@ -73,7 +73,7 @@ idea candidates, not committed work.
 
 - [ ] **HTTPS/proxy scheme.** Cookies are set `secure=...` from
       `request.is_secure`; login sets `Secure` unconditionally. If
-      nedwor.ch runs behind a TLS-terminating proxy without
+       nedwork.ch runs behind a TLS-terminating proxy without
       `X-Forwarded-Proto` handling (ProxyFix), cookie behavior gets
       inconsistent. Verify the scheme handling on the real host.
 - [ ] **Log out one more time after deploy** with Ctrl+Shift+R first —
