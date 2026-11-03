@@ -1,79 +1,130 @@
 # nedwork — open TODOs
 
-Things deferred, passed off, or noticed-but-not-fixed. Newest context first
-per item. Working assumption: the DB-backed app catalog (apps tab) is the
-source of truth; `flask_app/data/apps.json` is seed-only. Shipped rounds
-(events MVP + UI rounds 1–6, socials, admin console, app corner) are in
-git history — this file keeps only open items.
+Open items only, newest context first per entry. Shipped rounds are in git
+history — this file never keeps completed work. Working assumption: the
+DB-backed app catalog is the source of truth; `flask_app/data/apps.json`
+is seed-only.
+
+**If the AI is forced to quit mid-task:** dump everything unfinished into
+the Temporary section at the bottom instead of leaving it lost — including
+state, next steps, and file paths. See Temporary for the etiquette.
 
 ---
 
-## Shipped 2026-11-03 (Phase-2 round)
+## Admin
 
-- Events announcements module (`announcement` module type: `text` ≤500 /
-  `tone` ∈ info|important|urgent, SINGLETON; megaphone icon + tones).
-- 24h event reminder — `scan_reminders()` in `notifications.py`,
-  piggybacked on `GET /events/api/notifications` (no scheduler by design).
-- Dashboard Notifications widget (`NotificationsWidget.js`, demo-data
-  fallback when the API is unreachable).
-- Socials mobile pass (≤640px single-column verified via
-  `stuff/socials_shot_mobile.py`).
-- Admin console phone pass — §9 `@media (max-width: 480px)` block plus a
-  `min-width: 0` fix in §8 (grid track couldn't shrink below table
-  min-content → wide tables stretched the page instead of scrolling
-  inside their cards; also fixed the 481–859px range, not just ≤480).
-  Verified by `stuff/admin_shot_mobile.py`, `stuff/check_admin_phone.py`,
-  `stuff/check_admin_breakpoints.py`, `stuff/check_admin_login_phone.py`
-  (no horizontal scroll at 320/390/480/481/700/701/860/1280px; wide
-  tables scroll inside `.admin-card`).
-- Deploy procedure documented in `__docs/git.md` (commit → server pull →
-  rebuild/restart → post-deploy smoke → rollback recipe).
+- [ ] **Site settings card** (Settings tab) is a placeholder — "Nothing
+      to configure yet". First real site-wide setting goes there.
 
-Decisions taken this round: **unclaimed-items dashboard nudge** and
-**notification endpoint split** dropped outright (2026-11-03); email
-delivery confirmed live (`RESEND_API_KEY` set in the server env).
-(Candidate function keys `tierforge_export` / `trivia_host` removed from
-TODO — nothing to guard yet; the `colors_ai` mechanism is complete.)
+(nothing else console-wide is open — phone pass verified 2026-11-03)
 
-## Events site
+## Home (Dashboard)
 
-(none — shipped rounds are in git history)
+(none — no open items; anything dashboard-wide starts here. The
+Notifications widget shipped 2026-11-03.)
 
-## Socials site
+## Events
 
-(none — shipped rounds are in git history; email delivery confirmed live
-2026-11-03 — `RESEND_API_KEY` set in the server env)
+(none — no open items; shipped rounds are in git history)
 
-## Colors AI (`colors_ai` function permission)
+## Socials
 
-Frontend concealment is implemented (JS hides the button via
-`/auth/api/who`, server stacks `permission_required("colors_ai")`).
-Locked-state UX decided 2026-11-03: stay fully Hidden (no disabled
-button/tooltip). Function-key mechanism is complete and proven; the
-`tierforge_export` / `trivia_host` candidate keys were removed from TODO
-(no endpoints to guard — resurface when a feature needs gating).
+(none — no open items. Email delivery confirmed live 2026-11-03:
+`RESEND_API_KEY` set in the server env. Mobile pass verified.)
 
-## Apps (candidate ideas)
+## Tasks
+
+(none — no open items)
+
+## Apps (App Corner)
+
+(none — no open items; this section is for the app-corner grid page itself,
+not for individual apps — those live under 'Apps catalog' below)
+
+## About
+
+(none — no open items)
+
+## Settings
+
+(none — no open items)
+
+## Account
+
+(no open items, but note the known gap below)
+
+- Account sidenav button currently does nothing (`/account` route
+  commented out; no account page exists). Revisit only if annoyed —
+  also listed under accepted tradeoffs.
+
+## Apps catalog
+
+Per-app sections. The catalog lives in the DB (admin console Apps tab is
+the runtime truth); ids are a stable contract — never renumber or reuse.
+
+### TierForge
+
+(none — no open items)
+
+### Colors
+
+(none — no open items. Status: the `colors_ai` function key is the proven
+reference for the whole function-permission mechanism — server-stacked
+decorator + `/auth/api/who` UI concealment, locked state fully hidden.
+Resurface new function keys only when a feature needs gating.)
+
+### TownClaim
+
+(none — no open items)
+
+### Controller Tester
+
+(none — no open items)
+
+### Links
+
+(none — no open items)
+
+### Trivia
+
+(none — no open items)
+
+### Timetable
+
+(none — no open items)
+
+## Ideas
 
 **These are NOT meant to be done when "everything from TODO should be
-done" — they are only to be worked on if explicitly mentioned.** They are
-idea candidates, not committed work.
+done" — they are only to be worked on if explicitly mentioned.** Idea
+candidates, not committed work.
+
+### General
+
+Site-wide ideas that are not an app: nudge flows, UX overhauls,
+infrastructure quality-of-life. Currently empty.
+
+### App ideas
 
 - [ ] **Wordle clone** — word-guessing game app.
 - [ ] **Recipe maker** — recipe helper app.
 - [ ] **QR code generator** — app.
 
-## Admin console
+## Temporary
 
-- [ ] **Site settings card** (Settings tab) is a placeholder — "Nothing
-      to configure yet". First real site-wide setting goes there.
+**This section exists so that if the AI is forced to quit mid-task, it
+must write everything unfinished here** — full state, what was done,
+what remains, and exact file paths — instead of leaving work lost.
+Treat it as scratch: expected empty at session start, clear it out once
+its contents are done or moved to their real section.
 
+### Small things
 
-## Deployment / server config
+Little stuff that doesn't warrant its own section:
 
 - [ ] **HTTPS/proxy scheme.** Cookies are set `secure=...` from
       `request.is_secure`; login sets `Secure` unconditionally. If
-       nedwork.ch runs behind a TLS-terminating proxy without
+      nedwork.ch runs behind a TLS-terminating proxy without
       `X-Forwarded-Proto` handling (ProxyFix), cookie behavior gets
       inconsistent. Verify the scheme handling on the real host.
 - [ ] **Log out one more time after deploy** with Ctrl+Shift+R first —
@@ -90,5 +141,5 @@ idea candidates, not committed work.
 - `ensure_permissions()` re-asserts canonical kinds on boot
   (BASE_PERMISSIONS are seed-owned; a manual kind change to
   core/tierforge/colors_ai is reverted on restart).
-- Account button in the sidenav currently does nothing (`/account`
-  route commented out; no account page exists).
+- Account sidenav button does nothing (`/account` route commented out;
+  no account page exists — cross-referenced in the Account section).
