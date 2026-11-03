@@ -85,8 +85,15 @@ body.no-sidenav #content {
     font-weight: 500;
 }
 
-/* Logout is an <a> so it stays a plain navigation (stale-JS-proof) */
-a.nav-item {
+/* Logout is a form-POST (CSRF token in a hidden field) so a stray
+   third-party link can never log the user out; styled to look like any
+   other nav item */
+.nav-item-form {
+    display: block;
+    margin: 0;
+}
+
+.nav-item-form .nav-item {
     display: block;
     box-sizing: border-box;
     text-decoration: none;

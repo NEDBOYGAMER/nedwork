@@ -100,17 +100,19 @@ def catalog_for(user):
 
 # --------------------------------------------------------------- bootstrap
 def ensure_permissions():
-    """Create the seeded Permission rows and keep their canonical values
-    (description, kind) in sync — BASE_PERMISSIONS is owned by the seed."""
+    """Seed the base Permission rows — create-missing only. The DB is
+    authoritative after first boot: kinds (and non-empty descriptions)
+    of existing rows are never rewritten, so a deliberate console edit
+    survives every restart. New function keys belong under the console's
+    Functions section; the Apps-tab/Functions chip separation is what
+    keeps accidental kind changes from happening in the first place."""
     for name, (description, kind) in BASE_PERMISSIONS.items():
         perm = Permission.query.filter_by(name=name).first()
         if perm is None:
             db.session.add(Permission(name=name, description=description, kind=kind))
-        else:
-            if not perm.description:
-                perm.description = description
-            if perm.kind != kind:
-                perm.kind = kind
+            continue
+        if not perm.description:
+            perm.description = description
     db.session.commit()
 
 

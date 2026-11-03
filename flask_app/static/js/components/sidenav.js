@@ -47,14 +47,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    /* The account button opens the Settings page with the Account panel
+       activated (settings.js reads the #account hash on load). */
     document.getElementById("account-btn")?.addEventListener("click", () => {
         closeMobileNav();
-        // window.location.href = "/account";
+        window.location.href = "/settings#account";
     });
 
-    /* Logout is a plain <a href="/auth/logout"> in the markup on purpose:
-       native navigation cannot be broken by a stale cached copy of this
-       script, and the server clears the cookies in that same chain. */
+    /* Logout is a server-rendered form-POST in the markup (CSRF token in
+       a hidden field): no JS involved on the logout path, and a stray
+       third-party link can no longer end the session (GET answers 405). */
 
     /* ── Mobile drawer ─────────────────────────────────────────────── */
 

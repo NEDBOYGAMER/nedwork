@@ -96,10 +96,15 @@ def create_app():
             return
         cookie_token = request.cookies.get("csrf_token", "")
         header_token = request.headers.get("X-CSRF-Token", "")
+        form_token = request.form.get("csrf_token", "")
+        # double-submit: cookie must match either the header (csrf.js
+        # fetch/XHR patch) or a server-rendered form field (plain HTML
+        # forms, e.g. the sidenav logout — no JS involved)
+        supplied = header_token or form_token
         if not (
             cookie_token
-            and header_token
-            and hmac.compare_digest(cookie_token, header_token)
+            and supplied
+            and hmac.compare_digest(cookie_token, supplied)
         ):
             return jsonify({"error": "CSRF token missing or invalid"}), 403
 

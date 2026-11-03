@@ -22,7 +22,10 @@
         <button class="nav-item" id="settings-btn" title="Settings">Settings</button>
         {% if nav_logged_in %}
         <button class="nav-item" id="account-btn" title="Account{% if nav_username %}: {{ nav_username }}{% endif %}">Account</button>
-        <a class="nav-item danger" href="/auth/logout">Logout</a>
+        <form method="post" action="/auth/logout" class="nav-item-form">
+            <input type="hidden" name="csrf_token" value="{{ request.cookies.get('csrf_token', '') }}">
+            <button type="submit" class="nav-item danger">Logout</button>
+        </form>
         {% else %}
         <button class="nav-item" id="login-btn">Login</button>
         {% endif %}

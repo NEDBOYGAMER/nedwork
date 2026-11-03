@@ -55,15 +55,27 @@ async function init() {
         const navItems = document.querySelectorAll('.settings-nav-item');
         const panels = document.querySelectorAll('.settings-panel');
 
+        function showPanel(target) {
+            const match = document.querySelector(`.settings-nav-item[data-panel="${target}"]`);
+            if (!match) return false;
+            navItems.forEach(n => n.classList.toggle('active', n === match));
+            panels.forEach(p => p.classList.toggle('active', p.dataset.panel === target));
+            // Give the browser a frame to render the panel, then measure.
+            requestAnimationFrame(positionAllThumbs);
+            return true;
+        }
+
         navItems.forEach(item => {
-            item.addEventListener('click', () => {
-                const target = item.dataset.panel;
-                navItems.forEach(n => n.classList.toggle('active', n === item));
-                panels.forEach(p => p.classList.toggle('active', p.dataset.panel === target));
-                // Give the browser a frame to render the panel, then measure.
-                requestAnimationFrame(positionAllThumbs);
-            });
+            item.addEventListener('click', () => showPanel(item.dataset.panel));
         });
+
+        // Deep links: /settings#account (the sidenav Account button) opens
+        // the account panel directly; a missing or unknown hash keeps the
+        // markup's default (the first, already-active panel).
+        const requested = window.location.hash.replace('#', '');
+        if (requested && !showPanel(requested)) {
+            console.warn(`Unknown settings panel in hash: ${requested}`);
+        }
     }
 
 // =========================

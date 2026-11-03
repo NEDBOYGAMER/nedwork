@@ -49,10 +49,12 @@ scope for this repo, but read it if your task touches deployment.
    must run `flask db upgrade`
 
 Central request hooks in `flask_app/__init__.py` (don't reimplement these):
-- **CSRF**: all POST/PUT/PATCH/DELETE need matching `csrf_token` cookie +
-  `X-CSRF-Token` header (exempt list: login/register/admin-login/HMAC-token
-  pages). `static/js/global/csrf.js` does the client half — it is injected
-  into every HTML page automatically.
+- **CSRF**: all POST/PUT/PATCH/DELETE need a `csrf_token` cookie plus the
+  matching token as `X-CSRF-Token` header OR `csrf_token` form field (the
+  server accepts either double-submit path; the logout button uses the
+  form path, fetch calls use the header). Exempt list: login/register/
+  admin-login/HMAC-token pages. `static/js/global/csrf.js` does the
+  fetch client half — it is injected into every HTML page automatically.
 - **PWA head tags** injected into every `</head>`.
 - **`no-store`** on HTML responses while logged in (cache/logout bug class —
   do not defeat this).
@@ -73,10 +75,18 @@ Central request hooks in `flask_app/__init__.py` (don't reimplement these):
 - Permission rows have a `kind`: **`access`** = gate to *open* an app/page;
   **`function`** = gate to *one feature inside* an app (checked by that
   endpoint's own decorator, never counted as open-requirement).
+- **The DB is authoritative after first boot**: `ensure_permissions()` is
+  create-missing-only and never rewrites kinds/descriptions of existing
+  rows. There is deliberately NO kind switcher anywhere — the section a
+  key lives in (App permissions vs Functions, admin Permissions tab)
+  decides its kind; rekindling = delete + recreate (PATCH refuses kind
+  changes, DELETE refuses base rows / granted rows). `stuff/check_permissions_boot.py` verifies all of this.
 - Currently seeded: `core` (access — everything not gated further),
   `tierforge` (access), `colors_ai` (function — Colors AI feature only).
 - Apps not in the catalog default to `["core"]`; **empty permission list =
-  public page**. Unknown names are treated as `access`.
+  public page**. Function-kind links are filtered out of open
+  requirements (gating follows the live DB kind). Unknown names are
+  treated as `access`.
 - Enforcement via decorators in `flask_app/auth/decorators.py`:
   `login_required`, `permission_required`, `admin_required`. They inject
   `user=user` into the view — protected views take `user` or `**kwargs`.
@@ -170,9 +180,8 @@ stores now live in `instance/data/`).
   app and exercising the affected routes.
 - **`instance/app.db-wal`/`-shm`** exist because of SQLite WAL mode; they
   are runtime artifacts.
-- Full open-items list: `TODO.md`. Accepted tradeoffs (logout link CSRF,
-  admin session model, etc.) are documented there — don't relitigate
-  without reading it first.
+- Full open-items list: `TODO.md` (accepted-tradeoffs section is currently
+  empty) — don't relitigate resolved decisions without reading the history.
 
 ## 8. Conventions
 

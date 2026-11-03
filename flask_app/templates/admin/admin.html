@@ -195,40 +195,41 @@
         #}
     </section>
 
-    <!-- 3. Permissions — ONE unified manager: keys, descriptions, and the
-         apps (from the app store catalog) that use each key -->
+    <!-- 3. Permissions — TWO sections by kind: access keys (app
+         permissions) vs function keys (single features). The section a
+         key is created in decides its kind; switching means delete +
+         recreate under the other section (deliberate friction). -->
     <section id="tab-permissions" class="admin-section" hidden>
         <div class="card admin-card">
             <div class="admin-section-head">
                 <div>
-                    <h3>Permissions</h3>
+                    <h3>App permissions</h3>
                     <p class="hint">
-                        Where permission keys are <b>created</b>. Assigning them
-                        happens in the Apps tab (app access + functions) and the
-                        Users/Groups tabs (people). The guide below explains
-                        how it all fits together.
+                        <b>Access keys</b> — they gate <b>opening an app</b>.
+                        Assigning happens in the Apps tab under "Requires to
+                        open"; granting to people in the Users/Groups tabs.
+                        A key's kind never flips: delete it and recreate it
+                        under the other section (delete refuses while the
+                        key is still granted or app-linked).
                     </p>
                 </div>
             </div>
 
-            <form class="admin-add-form" id="permAddForm">
+            <form class="admin-add-form perm-add-form" id="permAddAccessForm" data-kind="access">
                 <div class="admin-field">
-                    <label for="permNewKey">Key</label>
-                    <input type="text" id="permNewKey" placeholder="files.read"
+                    <label for="permAccessKey">Key</label>
+                    <input type="text" name="key" id="permAccessKey" placeholder="files.read"
                            autocomplete="off" spellcheck="false" required>
                 </div>
                 <div class="admin-field admin-field--grow">
-                    <label for="permNewDesc">Description</label>
-                    <input type="text" id="permNewDesc" placeholder="What this permission allows"
+                    <label for="permAccessDesc">Description</label>
+                    <input type="text" name="description" id="permAccessDesc" placeholder="What this access key allows"
                            autocomplete="off">
                 </div>
-                <div class="admin-field admin-field--check">
-                    <label for="permNewKind"><input type="checkbox" id="permNewKind"> Function key</label>
-                </div>
-                <button class="btn btn-primary" type="submit">Add permission</button>
+                <button class="btn btn-primary" type="submit">Add access key</button>
             </form>
 
-            <table class="admin-table" id="permTable">
+            <table class="admin-table" id="permAccessTable">
                 <thead>
                     <tr>
                         <th scope="col">Permission</th>
@@ -239,9 +240,53 @@
                 <tbody></tbody>
             </table>
 
-            <p class="admin-empty" id="permEmpty" hidden>No permission types yet — add the first one above.</p>
+            <p class="admin-empty" id="permAccessEmpty" hidden>No access keys yet — add the first one above.</p>
 
             <p class="hint admin-error" id="permError" hidden></p>
+        </div>
+
+        <div class="card admin-card">
+            <div class="admin-section-head">
+                <div>
+                    <h3>Functions</h3>
+                    <p class="hint">
+                        <b>Function keys</b> — they gate <b>one feature inside
+                        an app</b>, never the app itself (the server filters
+                        them out of open requirements by design). Assign in
+                        the Apps tab under "Functions". Same kind rule: no
+                        flipping — delete + recreate under App permissions.
+                    </p>
+                </div>
+            </div>
+
+            <form class="admin-add-form perm-add-form" id="permAddFunctionForm" data-kind="function">
+                <div class="admin-field">
+                    <label for="permFnKey">Key</label>
+                    <input type="text" name="key" id="permFnKey" placeholder="colors_ai"
+                           autocomplete="off" spellcheck="false" required>
+                </div>
+                <div class="admin-field admin-field--grow">
+                    <label for="permFnDesc">Description</label>
+                    <input type="text" name="description" id="permFnDesc" placeholder="Which feature this key gates"
+                           autocomplete="off">
+                </div>
+                <button class="btn btn-primary" type="submit">Add function key</button>
+            </form>
+
+            <table class="admin-table" id="permFnTable">
+                <thead>
+                    <tr>
+                        <th scope="col">Permission</th>
+                        <th scope="col">Permits</th>
+                        <th scope="col" class="th-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <p class="admin-empty" id="permFnEmpty" hidden>No function keys yet — add the first one above.</p>
+
+            <p class="hint admin-error" id="permFnError" hidden></p>
         </div>
 
         <!-- 3b. Cookbook: a separate collapsible panel BELOW everything else
@@ -254,15 +299,18 @@
                     <p><b>How permissions work here (living doc - kept up to date
                        as the console changes):</b></p>
                     <ol>
-                        <li><b>Keys are created HERE (Permissions tab).</b> A key has
+                        <li><b>Keys are created HERE (Permissions tab), under
+                            the section that matches their kind.</b> A key has
                             a name, a description and a <b>kind</b>:
                             <ul>
-                                <li><b>Access key</b> - gates <b>opening an app</b>.
+                                <li><b>Access key</b> (App permissions
+                                    section) - gates <b>opening an app</b>.
                                     Assigned in the Apps tab under "Requires to
                                     open"; the app then needs it (any-of next to
                                     the app's other access keys). tierforge is
                                     the example: hold it and TierForge opens.</li>
-                                <li><b>Function key</b> - gates <b>one feature inside
+                                <li><b>Function key</b> (Functions
+                                    section) - gates <b>one feature inside
                                     an app</b>, never the app itself. Shown in the
                                     Apps tab under "Functions" (colors_ai is the
                                     example). The feature's own code enforces it;
@@ -270,6 +318,14 @@
                                     A function key can never lock anyone out of
                                     an app - the server filters it out of the
                                     open requirement by design.</li>
+                                <li><b>Kinds never flip.</b> The section a key
+                                    is created in decides its kind; there is
+                                    deliberately no kind switcher. To rekindle
+                                    a key, delete it and recreate it under the
+                                    other section (delete refuses while it is
+                                    still granted or app-linked) - this makes
+                                    accidental kind changes as unlikely as
+                                    they should be.</li>
                             </ul></li>
                         <li><b>Keys get assigned in the Apps tab.</b> One card per
                             app: title, link, types, description, tile image
@@ -339,15 +395,16 @@ document.getElementById('upload-btn').style.display =
             </tr>
 
           Inline editor row (Edit pressed): description <input> + Save/Cancel
-          -> PATCH /admin/api/permissions/<key> {description} (the same
-          endpoint also accepts {kind} for access <-> function, guarded
-          server-side).
+          -> PATCH /admin/api/permissions/<key> {description}. The kind is
+          NOT editable (server refuses kind changes): the section a key
+          lives in decides it; rekindling = delete + recreate elsewhere.
 
           Loads: GET /admin/api/permissions (keys, kind, descriptions,
-          users/groups, apps). Unlink chip -> POST
+          users/groups, apps) and splits rows into #permAccessTable /
+          #permFnTable by kind. Unlink chip -> POST
           /admin/api/apps/<slug>/permissions {permission, granted:false}.
-          Hide #permTable and show #permEmpty when there are no keys;
-          #permError on failures.
+          Hide a table + show its #permAccessEmpty/#permFnEmpty when empty;
+          #permError (access) / #permFnError (functions) on failures.
         #}
     </section>
 

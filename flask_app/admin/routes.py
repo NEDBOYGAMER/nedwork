@@ -279,9 +279,12 @@ def api_permission_create():
 @admin_bp.route('/api/permissions/<name>', methods=['PATCH'])
 @admin_required(API)
 def api_permission_update(name):
-    """Edit the description and/or the kind. Switching function -> access
-    is refused while app links exist: they would instantly become open
-    requirements (any-of) — unlink first."""
+    """Edit the description. The kind is deliberately NOT editable here:
+    the Permissions-tab section a key was created in decides it, and
+    rekindling means delete + recreate under the other section. That
+    closes both accidental kind edits AND the silent lock/unlock flips
+    an in-use kind change would cause (function->access turns links into
+    open requirements; access->function would silently un-lock apps)."""
     perm = Permission.query.filter_by(name=name).first()
     if perm is None:
         return jsonify({"error": "Unknown permission"}), 404
@@ -296,17 +299,13 @@ def api_permission_update(name):
 
     if "kind" in data:
         kind = (data.get("kind") or "").strip()
-        if kind not in ("access", "function"):
-            return jsonify({"error": "kind must be 'access' or 'function'"}), 400
         current = perm.kind or "access"
         if kind != current:
-            if current == "function" and perm.app_permissions:
-                names = ", ".join(l.app.name for l in perm.app_permissions)
-                return jsonify({
-                    "error": f"{name} is still listed under {names} - remove those Functions entries before making it an access key"
-                }), 409
-            perm.kind = kind
-            changes["kind"] = kind
+            return jsonify({
+                "error": "Permission kinds are fixed - the section a key "
+                         "was created in decides it. Delete the key and "
+                         "recreate it under the other section instead"
+            }), 400
 
     db.session.commit()
     return jsonify({

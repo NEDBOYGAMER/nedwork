@@ -51,11 +51,10 @@ not for individual apps — those live under 'Apps catalog' below)
 
 ## Account
 
-(no open items, but note the known gap below)
+(none — no open items)
 
-- Account sidenav button currently does nothing (`/account` route
-  commented out; no account page exists). Revisit only if annoyed —
-  also listed under accepted tradeoffs.
+- The sidenav Account button opens the Settings page with the Account
+  panel activated (`/settings#account`, read by `settings.js`).
 
 ## Apps catalog
 
@@ -128,18 +127,11 @@ Little stuff that doesn't warrant its own section:
       `X-Forwarded-Proto` handling (ProxyFix), cookie behavior gets
       inconsistent. Verify the scheme handling on the real host.
 - [ ] **Log out one more time after deploy** with Ctrl+Shift+R first —
-      flushes every cached script; confirms the `<a href="/auth/logout">`
-      flow end to end.
+      flushes every cached script; confirms the POST + CSRF logout form
+      flow end to end (GET /auth/logout now answers 405).
 
 ## Deliberately accepted tradeoffs (documented, revisit only if annoyed)
 
-- GET `/auth/logout` link: weaker logout-CSRF than POST (third-party
-  link can log you out — annoyance only). Chosen for stale-JS immunity.
-- Admin session: browser-session cookie + 15-min sliding idle — the
-  practical equivalent of "password again on every reopen"; per-tab
-  re-login is not server-enforceable.
-- `ensure_permissions()` re-asserts canonical kinds on boot
-  (BASE_PERMISSIONS are seed-owned; a manual kind change to
-  core/tierforge/colors_ai is reverted on restart).
-- Account sidenav button does nothing (`/account` route commented out;
-  no account page exists — cross-referenced in the Account section).
+(none at the moment — the GET-logout, admin-session, permission-kind
+reseeding, and dead-account-button tradeoffs were resolved in the 2026-11
+session; history keeps the reasoning.)

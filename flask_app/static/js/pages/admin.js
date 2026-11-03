@@ -144,7 +144,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("pendingRefresh")?.addEventListener("click", loadPending);
     document.getElementById("pendingDenyAll")?.addEventListener("click", denyAllPending);
 
-    document.getElementById("permAddForm")?.addEventListener("submit", (e) => addPermission(e.target));
+    document.querySelectorAll(".perm-add-form").forEach((form) => {
+        form.addEventListener("submit", (e) => addPermission(e.target));
+    });
     document.getElementById("appAddForm")?.addEventListener("submit", (e) => createApp(e.target));
     document.getElementById("groupAddForm")?.addEventListener("submit", createGroup);
     document.getElementById("changelogForm")?.addEventListener("submit", (e) => addChangelog(e.target));
@@ -459,77 +461,92 @@ async function loadPermissions() {
 }
 
 function renderPermissions(permRows) {
-    const table = document.getElementById("permTable");
-    const tbody = table.querySelector("tbody");
-    tbody.innerHTML = "";
+    const access = permRows.filter((r) => (r.kind || "access") !== "function");
+    const fns = permRows.filter((r) => (r.kind || "access") === "function");
 
-    permRows.forEach((row) => {
-        const isFn = (row.kind || "access") === "function";
-        const tr = el("tr", { data: { perm: row.name } });
+    const sections = [
+        { table: document.getElementById("permAccessTable"),
+          empty: document.getElementById("permAccessEmpty"), rows: access },
+        { table: document.getElementById("permFnTable"),
+          empty: document.getElementById("permFnEmpty"), rows: fns },
+    ];
 
-        // key + description + fn badge + holders
-        const idCell = el("td");
-        const keyLine = el("div", { class: "username" }, el("code", {}, row.name));
-        if (isFn) keyLine.append(el("span", {
-            class: "badge accent fn-badge",
-            title: "Function key - gates one feature inside an app, never app access",
-        }, "fn"));
-        idCell.append(keyLine);
-        idCell.append(el("div", {
-            class: "hint",
-            data: { desc: row.description || "", kind: row.kind || "access" },
-        }, row.description || "- (no description)"));
-        const holders = el("div", { class: "chip-row", style: "margin-top:4px" });
-        if (row.users.length) holders.append(el("span", { class: "badge" }, `${row.users.length} user(s)`));
-        if (row.groups.length) holders.append(el("span", { class: "badge" }, `${row.groups.length} group(s)`));
-        if (row.users.length || row.groups.length) idCell.appendChild(holders);
-        tr.appendChild(idCell);
-
-        // permits: which apps list this key (unlink only - assignment lives in Apps)
-        const appCell = el("td");
-        const chipRow = el("div", { class: "chip-row" });
-        row.apps.forEach((appName) => {
-            const chip = el("span", { class: "chip" });
-            chip.append(document.createTextNode(appName));
-            chip.append(el("button", {
-                type: "button",
-                title: `Stop requiring ${row.name} for ${appName}`,
-                onclick: () => {
-                    const app = appNameToSlug(appName);
-                    if (app) toggleAppPermission(app, row.name, false);
-                },
-            }, "\u00d7"));
-            chipRow.appendChild(chip);
-        });
-        if (row.apps.length === 0) {
-            chipRow.append(el("span", { class: "hint" }, "- nothing -"));
-        }
-        appCell.appendChild(chipRow);
-        tr.appendChild(appCell);
-
-        // actions
-        const actionCell = el("td", { class: "td-actions" });
-        const actions = el("div", { class: "admin-actions" });
-        actions.append(el("button", {
-            type: "button",
-            class: "btn",
-            title: "Edit description and kind (inline)",
-            onclick: () => editPermission(tr, row),
-        }, "\u270e Edit"));
-        actions.append(el("button", {
-            type: "button",
-            class: "btn btn-danger",
-            title: "Delete this permission (it must not be granted anywhere)",
-            onclick: () => deletePermission(row),
-        }, "Delete"));
-        actionCell.appendChild(actions);
-        tr.appendChild(actionCell);
-
-        tbody.appendChild(tr);
+    sections.forEach((s) => {
+        if (!s.table) return;
+        const tbody = s.table.querySelector("tbody");
+        tbody.innerHTML = "";
+        s.rows.forEach((row) => tbody.appendChild(buildPermRow(row)));
+        s.table.hidden = s.rows.length === 0;
+        if (s.empty) s.empty.hidden = s.rows.length !== 0;
     });
+}
 
-    table.hidden = permRows.length === 0;
-    document.getElementById("permEmpty").hidden = permRows.length !== 0;
+/* one permissions row (shared by both sections — the section decides the
+   kind, there is no kind switcher; only the description is editable) */
+function buildPermRow(row) {
+    const isFn = (row.kind || "access") === "function";
+    const errorId = isFn ? "permFnError" : "permError";
+    const tr = el("tr", { data: { perm: row.name } });
+
+    // key + description + fn badge + holders
+    const idCell = el("td");
+    const keyLine = el("div", { class: "username" }, el("code", {}, row.name));
+    if (isFn) keyLine.append(el("span", {
+        class: "badge accent fn-badge",
+        title: "Function key - gates one feature inside an app, never app access",
+    }, "fn"));
+    idCell.append(keyLine);
+    idCell.append(el("div", {
+        class: "hint",
+        data: { desc: row.description || "" },
+    }, row.description || "- (no description)"));
+    const holders = el("div", { class: "chip-row", style: "margin-top:4px" });
+    if (row.users.length) holders.append(el("span", { class: "badge" }, `${row.users.length} user(s)`));
+    if (row.groups.length) holders.append(el("span", { class: "badge" }, `${row.groups.length} group(s)`));
+    if (row.users.length || row.groups.length) idCell.appendChild(holders);
+    tr.appendChild(idCell);
+
+    // permits: which apps list this key (unlink only - assignment lives in Apps)
+    const appCell = el("td");
+    const chipRow = el("div", { class: "chip-row" });
+    row.apps.forEach((appName) => {
+        const chip = el("span", { class: "chip" });
+        chip.append(document.createTextNode(appName));
+        chip.append(el("button", {
+            type: "button",
+            title: `Stop requiring ${row.name} for ${appName}`,
+            onclick: () => {
+                const app = appNameToSlug(appName);
+                if (app) toggleAppPermission(app, row.name, false, errorId);
+            },
+        }, "\u00d7"));
+        chipRow.appendChild(chip);
+    });
+    if (row.apps.length === 0) {
+        chipRow.append(el("span", { class: "hint" }, "- nothing -"));
+    }
+    appCell.appendChild(chipRow);
+    tr.appendChild(appCell);
+
+    // actions
+    const actionCell = el("td", { class: "td-actions" });
+    const actions = el("div", { class: "admin-actions" });
+    actions.append(el("button", {
+        type: "button",
+        class: "btn",
+        title: "Edit description (kind is fixed by the section - rekindle = delete + recreate)",
+        onclick: () => editPermission(tr, row, errorId),
+    }, "\u270e Edit"));
+    actions.append(el("button", {
+        type: "button",
+        class: "btn btn-danger",
+        title: "Delete this permission (it must not be granted anywhere)",
+        onclick: () => deletePermission(row, errorId),
+    }, "Delete"));
+    actionCell.appendChild(actions);
+    tr.appendChild(actionCell);
+
+    return tr;
 }
 
 function appNameToSlug(name) {
@@ -537,44 +554,47 @@ function appNameToSlug(name) {
     return hit ? hit.slug : null;
 }
 
-async function toggleAppPermission(slug, permission, granted) {
+async function toggleAppPermission(slug, permission, granted, errorId = "permError") {
     const res = await api(`/admin/api/apps/${encodeURIComponent(slug)}/permissions`, {
         body: { permission, granted },
     });
     if (!res.ok || !res.data.success) {
-        setError("permError", res.data.error || "failed");
+        setError(errorId, res.data.error || "failed");
         return;
     }
-    setError("permError", "");
+    setError(errorId, "");
     toast(`${permission} ${granted ? "now required by" : "no longer required by"} ${slug}`);
     loadPermissions();
 }
 
 async function addPermission(form) {
-    const key = document.getElementById("permNewKey")?.value.trim();
-    const description = document.getElementById("permNewDesc")?.value.trim();
-    const isFn = document.getElementById("permNewKind")?.checked;
+    const isFn = form.dataset.kind === "function";
+    const errorId = isFn ? "permFnError" : "permError";
+    const key = form.querySelector('input[name="key"]')?.value.trim();
+    const description = form.querySelector('input[name="description"]')?.value.trim();
     if (!key) return;
 
     const res = await api("/admin/api/permissions", {
-        body: { key, description, kind: isFn ? "function" : "access" },
+        body: { key, description, kind: form.dataset.kind },
     });
     if (!res.ok || !res.data.success) {
-        setError("permError", res.data.error || "Failed");
+        setError(errorId, res.data.error || "Failed");
         if (res.status === 400) form.reportValidity && form.reportValidity();
         return;
     }
 
-    document.getElementById("permNewKey").value = "";
-    document.getElementById("permNewDesc").value = "";
+    form.querySelectorAll('input[name="key"], input[name="description"]')
+        .forEach((input) => (input.value = ""));
+    setError(errorId, "");
     toast(isFn
         ? `Function key ${key} added - assign it in the Apps tab under Functions`
-        : `Permission ${key} added - assign it in the Apps tab`);
+        : `Access key ${key} added - assign it in the Apps tab under "Requires to open"`);
     loadPermissions();
 }
 
-/* inline editor: description + kind switch - data-desc/data-kind hold originals */
-function editPermission(tr, row) {
+/* inline editor: description only - the kind is fixed by the section the
+   key lives in (rekindling = delete + recreate, a deliberate move) */
+function editPermission(tr, row, errorId = "permError") {
     if (tr.querySelector(".perm-desc-edit")) return;
 
     const cell = tr.children[0];
@@ -582,7 +602,6 @@ function editPermission(tr, row) {
     if (!hint) return;
 
     const originalDesc = hint.dataset.desc || "";
-    const originalKind = hint.dataset.kind || "access";
 
     const input = el("input", {
         type: "text",
@@ -592,19 +611,10 @@ function editPermission(tr, row) {
     input.value = originalDesc;
     input.style.maxWidth = "300px";
 
-    const kindCheck = el("input", { type: "checkbox", id: "perm-edit-kind" });
-    kindCheck.checked = originalKind === "function";
-    const kindLabel = el("label", {
-        for: "perm-edit-kind",
-        class: "hint",
-        style: "white-space:nowrap",
-    });
-    kindLabel.append(kindCheck, document.createTextNode(" Function key"));
-
     hint.hidden = true;
 
     const box = el("div", { class: "perm-desc-edit" });
-    box.append(input, kindLabel, el("button", {
+    box.append(input, el("button", {
         type: "button",
         class: "btn",
         onclick: save,
@@ -619,16 +629,15 @@ function editPermission(tr, row) {
 
     async function save() {
         const description = input.value.trim();
-        const kind = kindCheck.checked ? "function" : "access";
         const res = await api(`/admin/api/permissions/${encodeURIComponent(row.name)}`, {
             method: "PATCH",
-            body: { description, kind },
+            body: { description },
         });
         if (!res.ok || !res.data.success) {
-            setError("permError", res.data.error || "Failed");
+            setError(errorId, res.data.error || "Failed");
             return;
         }
-        setError("permError", "");
+        setError(errorId, "");
         toast(`${row.name} updated`);
         loadPermissions();
     }
@@ -639,11 +648,11 @@ function editPermission(tr, row) {
     }
 }
 
-async function deletePermission(row) {
+async function deletePermission(row, errorId = "permError") {
     if (!confirm(`Delete the permission "${row.name}"? It must not be granted anywhere.`)) return;
     const res = await api(`/admin/api/permissions/${encodeURIComponent(row.name)}`, { method: "DELETE" });
     if (!res.ok || !res.data.success) {
-        setError("permError", res.data.error || "Failed");
+        setError(errorId, res.data.error || "Failed");
         return;
     }
     toast("Permission deleted");

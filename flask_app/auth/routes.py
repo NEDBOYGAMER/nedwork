@@ -228,14 +228,15 @@ def _perform_logout():
 
 @auth_bp.route("/api/logout", methods=["POST"])
 def logout():
-    """API logout (fetch-based callers). The sidenav uses the plain GET
-    route below: native navigation cannot be broken by stale cached JS."""
+    """API logout (fetch-based callers; csrf.js adds the X-CSRF-Token
+    header). The sidenav uses the form-POST route below."""
     return _perform_logout()
 
 
-@auth_bp.route("/logout", methods=["GET"])
+@auth_bp.route("/logout", methods=["POST"])
 def logout_page():
-    """GET logout for the sidenav link. Slightly weaker CSRF-wise than the
-    POST endpoint (a third-party link could log you out - an annoyance,
-    never a data risk), but immune to every cached-JS failure mode."""
+    """Form-POST logout for the sidenav (CSRF token rides in a hidden
+    form field — server-rendered, no JS involved). GET never logs out:
+    a stray third-party link can't end the session anymore; it answers
+    405 instead."""
     return _perform_logout()
