@@ -31,7 +31,7 @@ _CSRF_METHODS = ("POST", "PUT", "PATCH", "DELETE")
 # One number for every password-setting path (register, change-password,
 # admin console) so the rules can't drift apart. Length only: length beats
 # a composition checklist, and users are not asked to spell it out.
-MIN_PASSWORD_LENGTH = 10
+MIN_PASSWORD_LENGTH = 4
 
 # While a user still owes a password change (bootstrapped admin first
 # login, or admin-forced reset), EVERYTHING except the change-password
@@ -49,9 +49,12 @@ def create_app():
     os.makedirs(app.instance_path, exist_ok=True)
     app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(app.instance_path, 'app.db')}"
     # nginx in front of this app allows 20 GB per request; cap every route
-    # here. The one upload that legitimately needs more (tierforge batches)
-    # raises request.max_content_length inside its own view.
+    # here. The two uploads that legitimately need more raise the limit for
+    # themselves in lift_upload_cap() below.
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+    # request.max_content_length = None falls back to the config above, so
+    # "no limit" has to be spelled out as a number:
+    upload_max = 20 * 1024 ** 3   # nginx client_max_body_size 20g
 
     db.init_app(app)
 
@@ -96,6 +99,17 @@ def create_app():
             "nav_logged_in": getattr(g, "nav_logged_in", False),
             "nav_username": getattr(g, "nav_username", ""),
         }
+
+    @app.before_request
+    def lift_upload_cap():
+        # These two uploads deliberately exceed the global 16 MB cap (nginx
+        # still enforces client_max_body_size). It has to be lifted here:
+        # csrf_protect() below parses the form body, and the limit is
+        # enforced at parse time — raising it inside the view would be too
+        # late for anything over 16 MB.
+        if request.endpoint in ("tierforge.upload_images",
+                                "colors.palette_from_image"):
+            request.max_content_length = upload_max
 
     @app.before_request
     def csrf_protect():

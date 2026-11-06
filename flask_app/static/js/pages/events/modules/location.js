@@ -4,13 +4,28 @@
    settings (address + search + draggable marker) live in settings.js. */
 import { el } from "../ui.js";
 
+/* Compose the attendee-facing address line from the structured parts
+   captured at geocode time: "Street HouseNumber, Town" (street first).
+   Older events only have the flat `address` string — callers fall back
+   to that. */
+export function composeAddress(config) {
+    const c = config || {};
+    const streetLine = [c.street, c.houseNumber]
+        .map((part) => String(part || "").trim())
+        .filter(Boolean)
+        .join(" ");
+    const town = String(c.town || "").trim();
+    return [streetLine, town].filter(Boolean).join(", ");
+}
+
 export function renderLocation(root, ctx) {
     const config = ctx.module.config || {};
     if (config.note) {
         root.appendChild(el("p", "location-note", config.note));
     }
-    if (config.address) {
-        root.appendChild(el("p", "location-address", config.address));
+    const address = composeAddress(config) || config.address || "";
+    if (address) {
+        root.appendChild(el("p", "location-address", address));
     }
     const hasPoint = Number.isFinite(config.lat) && Number.isFinite(config.lng);
     if (hasPoint && window.L) {
@@ -33,13 +48,13 @@ export function renderLocation(root, ctx) {
         google.rel = "noopener noreferrer";
         const apple = el("a", "btn btn-secondary btn-sm", "Open in Apple Maps");
         apple.href = `https://maps.apple.com/?ll=${config.lat},${config.lng}` +
-            `&q=${encodeURIComponent(config.address || "Event location")}`;
+            `&q=${encodeURIComponent(address || "Event location")}`;
         apple.target = "_blank";
         apple.rel = "noopener noreferrer";
         links.append(google, apple);
         root.appendChild(links);
     }
-    if (!config.address && !hasPoint) {
+    if (!address && !hasPoint) {
         root.appendChild(el("p", "module-empty", "No location set yet."));
     }
 }
@@ -164,9 +179,10 @@ function addMapLock(map, mapEl) {
 export function locationPopup(config) {
     const box = document.createElement("div");
     box.className = "location-popup";
-    if (config.address) {
+    const address = composeAddress(config) || config.address || "";
+    if (address) {
         const a = document.createElement("strong");
-        a.textContent = config.address;
+        a.textContent = address;
         box.appendChild(a);
     }
     if (config.note) {

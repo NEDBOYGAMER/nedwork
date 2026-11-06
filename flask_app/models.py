@@ -819,7 +819,7 @@ class EventModule(db.Model):
     # content-only modules keep their data here:
     #   notes    {text, spacing}
     #   image    {url, caption}
-    #   location {address, lat, lng, note}
+    #   location {address, street, houseNumber, town, lat, lng, note}
     #   doodle   {anonymous, deadline, show_counts} — deadline as iso str
 
     event = db.relationship("Event", back_populates="modules")

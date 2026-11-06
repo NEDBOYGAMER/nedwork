@@ -391,6 +391,9 @@ function buildModulePayload(module, draft) {
             if (draft.location) {
                 payload.config = {
                     address: draft.location.address || "",
+                    street: draft.location.street || "",
+                    houseNumber: draft.location.houseNumber || "",
+                    town: draft.location.town || "",
                     lat: draft.location.lat ?? null,
                     lng: draft.location.lng ?? null,
                     note: draft.location.note || "",

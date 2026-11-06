@@ -98,8 +98,6 @@ AI_API_URL = "https://chat.nedwork.ch/api/chat/completions"
 # config error instead of shipping a key in the repo
 AI_API_KEY = os.environ.get("COLORS_AI_API_KEY", "")
 AI_MODEL = os.environ.get("COLORS_AI_MODEL", "colorpalette-generator")
-MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB
-MAX_IMAGE_PIXELS = 50_000_000      # decompression-bomb guard
 
 
 def _clamp_color_count(value, default=5):
@@ -124,8 +122,12 @@ def _sniff_mime(image_bytes):
     return None
 
 
-def _prepare_image(image_bytes):
+def _prepare_image(file):
     """Normalize any uploaded image into a compact JPEG.
+
+    Decoded from the upload stream (never buffered whole) and re-encoded
+    down to 1024px, so the AI payload — and the price of the call — is the
+    same no matter how large the original was.
 
     The working Python test always sends 'data:image/jpeg;base64,...'.
     Forwarding the browser's raw mime (webp/png/octet-stream) is what made
@@ -135,10 +137,7 @@ def _prepare_image(image_bytes):
     """
     if HAS_PIL:
         try:
-            img = Image.open(io.BytesIO(image_bytes))
-            # header-only bomb guard: never decode an absurd bitmap locally
-            if img.width * img.height > MAX_IMAGE_PIXELS:
-                raise ValueError("image dimensions too large")
+            img = Image.open(file.stream)
             img = ImageOps.exif_transpose(img)   # respect EXIF orientation
             img = img.convert("RGB")             # drop alpha/CMYK quirks
             img.thumbnail((1024, 1024))          # cap size, shrink payload
@@ -146,8 +145,11 @@ def _prepare_image(image_bytes):
             img.save(buf, format="JPEG", quality=85)
             return "image/jpeg", buf.getvalue()
         except Exception:
-            pass  # fall through to magic-byte sniffing on the raw bytes
+            file.stream.seek(0)                  # retry on the raw bytes
 
+    image_bytes = file.read()
+    if not image_bytes:
+        raise ValueError("Uploaded image is empty")
     mime = _sniff_mime(image_bytes)
     if mime == "image/jpeg":
         return "image/jpeg", image_bytes     # exactly the test case
@@ -369,16 +371,10 @@ def palette_from_image(user):
 
     number = _clamp_color_count(request.form.get("number"))
 
-    image_bytes = file.read()
-    if not image_bytes:
-        return jsonify({"error": "Uploaded image is empty"}), 400
-    if len(image_bytes) > MAX_IMAGE_BYTES:
-        return jsonify({"error": "Image too large (max 10 MB)"}), 400
-
-    # normalise to JPEG (or pass through JPEG/PNG) so the request has
-    # exactly the same shape as the working Python test
+    # normalise/downscale to JPEG so the request has exactly the same
+    # shape (and the same cost) as the working Python test
     try:
-        mime_type, image_bytes = _prepare_image(image_bytes)
+        mime_type, image_bytes = _prepare_image(file)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 

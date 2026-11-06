@@ -520,8 +520,8 @@ async function init() {
                 showPwError('Please fill in all fields.');
                 return;
             }
-            if (next.length < 10) {
-                showPwError('New password must be at least 10 characters.');
+            if (next.length < 4) {
+                showPwError('New password must be at least 4 characters.');
                 return;
             }
             if (next !== pwConfirm.value) {

@@ -10,7 +10,7 @@ import {
     inviteUrl, transferUrl, finalizeUrl, resetVotesUrl, api,
 } from "../api.js";
 import { openPicker } from "../picker.js";
-import { setupMapInteraction, keepMapSized } from "./location.js";
+import { setupMapInteraction, keepMapSized, composeAddress } from "./location.js";
 
 /* ---- shared helpers -------------------------------------------------- */
 
@@ -209,24 +209,20 @@ async function nominatimSearch(query) {
     return results?.[0] || null;
 }
 
-/* Locale-aware address from the structured Nominatim fields
-   (addressdetails=1) — not display_name, whose first parts are the POI
-   name ("Brandenburger Tor, 1 …"). German-speaking regions (de/at/ch)
-   use "Street number, City"; elsewhere "number Street, City". Falls
-   back through the city/town/village ladder, omits the house number
-   when absent. */
-function shortAddress(hit) {
+/* Structured address from the Nominatim fields (addressdetails=1) — not
+   display_name, whose first parts are the POI name ("Brandenburger Tor,
+   1 …"). The town is the smallest locality present (village > town >
+   municipality > suburb > city), so a place inside a town never shows
+   the bigger city name. */
+function structuredAddress(hit) {
     const a = hit?.address || {};
     const street = a.road || a.pedestrian || a.footway || "";
-    const num = a.house_number || "";
-    const city = a.city || a.town || a.village || a.municipality
-        || a.suburb || "";
-    const german = ["de", "at", "ch", "li"].includes(
-        (a.country_code || "").toLowerCase());
-    const streetPart = german ? `${street} ${num}` : `${num} ${street}`;
-    const parts = [streetPart.trim(), city].filter(Boolean);
-    return parts.length ? parts.join(", ")
-        : (hit.display_name || "").split(",").slice(0, 2).join(",").trim();
+    const houseNumber = a.house_number || "";
+    const town = a.village || a.town || a.municipality || a.suburb
+        || a.city || "";
+    const display = composeAddress({ street, houseNumber, town })
+        || (hit.display_name || "").split(",").slice(0, 2).join(",").trim();
+    return { street, houseNumber, town, display };
 }
 
 // maps created by the settings card — a redraw (reorder/poll refresh)
@@ -241,6 +237,8 @@ export function settingsLocation(root, ctx) {
     draft.location = draft.location || {
         address: config.address || "", note: config.note || "",
         lat: config.lat ?? null, lng: config.lng ?? null,
+        street: config.street || "", houseNumber: config.houseNumber || "",
+        town: config.town || "",
     };
 
     for (const m of liveMaps.splice(0)) {
@@ -310,9 +308,10 @@ function buildLocationMap(draft, config) {
     const popupFor = () => {
         const box = document.createElement("div");
         box.className = "location-popup";
-        if (draft.location.address) {
+        const address = composeAddress(draft.location) || draft.location.address;
+        if (address) {
             const a = document.createElement("strong");
-            a.textContent = draft.location.address;
+            a.textContent = address;
             box.appendChild(a);
             box.appendChild(document.createElement("br"));
         }
@@ -368,9 +367,13 @@ function buildLocationMap(draft, config) {
         try {
             const hit = await nominatimSearch(query);
             if (!hit) { status.textContent = "Nothing found — try other words."; return; }
-            draft.location.address = shortAddress(hit);
+            const parts = structuredAddress(hit);
+            draft.location.street = parts.street;
+            draft.location.houseNumber = parts.houseNumber;
+            draft.location.town = parts.town;
+            draft.location.address = parts.display;
             setPoint(parseFloat(hit.lat), parseFloat(hit.lon));
-            input.value = draft.location.address;
+            input.value = parts.display;
             status.textContent = "Found — pin placed. Drag to fine-tune.";
         } catch (e) {
             status.textContent = e.message;

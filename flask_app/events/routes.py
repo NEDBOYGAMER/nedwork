@@ -969,6 +969,12 @@ def module_content(user, module_id):
     elif module.type == "location":
         if "address" in payload:
             config["address"] = str(payload.get("address") or "")[:300]
+        if "street" in payload:
+            config["street"] = str(payload.get("street") or "")[:200]
+        if "houseNumber" in payload:
+            config["houseNumber"] = str(payload.get("houseNumber") or "")[:20]
+        if "town" in payload:
+            config["town"] = str(payload.get("town") or "")[:200]
         if "lat" in payload or "lng" in payload:
             try:
                 config["lat"] = float(payload.get("lat"))

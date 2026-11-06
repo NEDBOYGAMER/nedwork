@@ -85,10 +85,7 @@ THUMB_QUALITY = 78
 FULL_MAX_DIM = 2400
 FULL_QUALITY = 90
 
-MAX_IMAGE_BYTES = 15 * 1024 * 1024  # 15 MB per uploaded file
-MAX_IMAGE_COUNT = 30               # per request (the UI sends one batch)
-MAX_BATCH_BYTES = 150 * 1024 * 1024  # whole multipart body cap
-MAX_IMAGE_PIXELS = 50_000_000      # decompression-bomb guard
+MAX_IMAGE_PIXELS = 50_000_000      # decompression-bomb guard (decode only)
 IMAGE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 
 # ------------------------------------------------------------------
@@ -171,32 +168,20 @@ def upload_images(user):
     if not HAS_PIL:
         return jsonify({"error": "Pillow is not installed on the server"}), 500
 
-    # this is the one route allowed above the global 16 MB cap
-    request.max_content_length = MAX_BATCH_BYTES + 1024 * 1024
-
     files = request.files.getlist("images")
     if not files:
         return jsonify({"error": "No images uploaded"}), 400
-    if len(files) > MAX_IMAGE_COUNT:
-        return jsonify({"error": f"Too many images in one upload (max {MAX_IMAGE_COUNT})"}), 413
 
     user_dir = _user_dir(user)
     results = []
     errors = []
-    total = 0
 
     for file in files:
         original_name = file.filename or "image"
         try:
-            if total > MAX_BATCH_BYTES:
-                raise ValueError("upload batch too large")
-            # bounded read: never buffer more than one file's cap
-            raw = file.read(MAX_IMAGE_BYTES + 1)
+            raw = file.read()
             if not raw:
                 raise ValueError("empty file")
-            if len(raw) > MAX_IMAGE_BYTES:
-                raise ValueError("file too large (max 15 MB)")
-            total += len(raw)
 
             full_bytes = _normalize_to_jpeg(raw, FULL_MAX_DIM, FULL_QUALITY)
             thumb_bytes = _normalize_to_jpeg(raw, THUMB_MAX_DIM, THUMB_QUALITY)
