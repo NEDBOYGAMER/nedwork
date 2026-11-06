@@ -1,10 +1,25 @@
 from flask import request, Blueprint, jsonify, render_template, make_response, redirect, url_for
 import re
+from markupsafe import escape
 from ..models import *
 from .. import db
+from .. import MIN_PASSWORD_LENGTH
 from ..account import purge_user
 from .decorators import permission_required, API
+from . import throttle
 from datetime import *
+
+
+def _too_many(seconds):
+    """429 with a Retry-After header — same message as a wrong password
+    would be a lie, so the caller is told plainly to wait."""
+    response = jsonify({
+        "success": False,
+        "error": "Too many failed attempts — try again later"
+    }), 429
+    resp = make_response(*response)
+    resp.headers["Retry-After"] = str(max(1, seconds))
+    return resp
 
 auth_bp = Blueprint("auth", __name__, static_folder='../static')
 
@@ -51,10 +66,10 @@ def register():
             "error": "Username must be 3-32 characters: letters, numbers, dots, underscores or dashes"
         }), 400
 
-    if len(password) < 8:
+    if len(password) < MIN_PASSWORD_LENGTH:
         return jsonify({
             "success": False,
-            "error": "Password must be at least 8 characters"
+            "error": f"Password must be at least {MIN_PASSWORD_LENGTH} characters"
         }), 400
 
     # the admin is not a user ("reserved") — nobody can register it or
@@ -90,13 +105,17 @@ def register():
     # fire-and-forget admin notification (a mail problem must never
     # delay or break this response)
     try:
-        from ..notify import make_token, notify
-        link = f"{request.host_url}notify/pending/{pending.id}?t={make_token(pending.id)}"
+        from ..notify import make_token, notify, base_url
+        link = f"{base_url()}notify/pending/{pending.id}?t={make_token(pending.id)}"
         when = pending.requested_at.strftime("%d.%m.%Y %H:%M") if pending.requested_at else ""
+        # every user-supplied field is escaped: this body is HTML mail
+        safe_user = escape(username)
+        safe_email = escape(email)
+        when_txt = escape(when)
         notify(
             f"New registration request: {username}",
-            f"<p><b>{username}</b> ({email}) requested access on {when}.</p>"
-            f"<p><a href=\"{link}\" style=\"display:inline-block;padding:14px 26px;"
+            f"<p><b>{safe_user}</b> ({safe_email}) requested access on {when_txt}.</p>"
+            f"<p><a href=\"{escape(link)}\" style=\"display:inline-block;padding:14px 26px;"
             f"background:#2E7D46;color:#ffffff;border-radius:12px;"
             f"font-weight:700;text-decoration:none;\">Open request</a></p>",
             f"{username} ({email}) requested access on {when}.\n"
@@ -118,9 +137,18 @@ def login():
     if not data or 'username' not in data or 'password' not in data:
         return jsonify({"success": False, "error": "Missing username or password"}), 400
 
-    user = User.query.filter_by(username=data["username"]).first()
+    username = data["username"]
+    ip = throttle.client_ip(request)
+    wait = throttle.retry_after("user", ip, username)
+    if wait:
+        return _too_many(wait)
+
+    user = User.query.filter_by(username=username).first()
 
     if not user or not user.check_password(data["password"]):
+        if not throttle.fail("user", ip, username):
+            return _too_many(throttle.retry_after("user", ip, username))
+
         pending = PendingLogin.query.filter_by(
             name=data["username"]
         ).first() if data.get("username") else None
@@ -132,6 +160,8 @@ def login():
             }), 403
 
         return jsonify({"success": False, "error": "User doesnt exist or password is wrong"}), 401
+
+    throttle.clear("user", username)
 
     session = Session(
         user_id = user.id,
@@ -193,11 +223,18 @@ def change_password():
         return jsonify({"success": False, "error": "Current password is wrong"}), 400
 
     new_password = data.get("new_password") or ""
-    if len(new_password) < 8:
-        return jsonify({"success": False, "error": "Password must be at least 8 characters"}), 400
+    if len(new_password) < MIN_PASSWORD_LENGTH:
+        return jsonify({"success": False,
+                        "error": f"Password must be at least {MIN_PASSWORD_LENGTH} characters"}), 400
 
     user.set_password(new_password)
     user.must_change_password = False
+    # a password change ends every other session: a stolen cookie must not
+    # outlive the reset. This session survives so the user isn't bounced.
+    db.session.query(Session).filter(
+        Session.user_id == user.id,
+        Session.session_id != request.cookies.get("session_id"),
+    ).delete(synchronize_session=False)
     db.session.commit()
 
     return jsonify({"success": True})

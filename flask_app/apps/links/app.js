@@ -171,7 +171,7 @@ function renderTagFilters() {
   let html = `<div class="tag-filter ${activeTag === '__all__' ? 'active' : ''}" data-tag="__all__">All</div>`;
   allTags.forEach(t => {
     const count = links.filter(l => l.tags.includes(t)).length;
-    html += `<div class="tag-filter ${activeTag === t ? 'active' : ''}" data-tag="${t}">${t} (${count})</div>`;
+    html += `<div class="tag-filter ${activeTag === t ? 'active' : ''}" data-tag="${escHtml(t)}">${escHtml(t)} (${count})</div>`;
   });
   tagFilterBar.innerHTML = html;
 
@@ -216,18 +216,19 @@ function renderLinks() {
     const domain = getDomain(l.url);
     const favicon = getFaviconFallback(l.url);
     const tagsHtml = l.tags.map(t =>
-      `<span class="tag-pill" data-tag="${t}">${t}</span>`
+      `<span class="tag-pill" data-tag="${escHtml(t)}">${escHtml(t)}</span>`
     ).join('');
     const titleAttr = l.desc ? ` title="${escHtml(l.desc)}"` : '';
 
     html += `
-      <div class="link-card" data-id="${l.id}" data-url="${escHtml(l.url)}" tabindex="0" role="link"${titleAttr}>
+      <div class="link-card" data-id="${l.id}"${titleAttr}>
+        <a class="link-card-hit" href="${escHtml(l.url)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${escHtml(l.title)} in a new tab"></a>
         <div class="link-icon">
           ${favicon ? `<img src="${favicon}" alt="" style="width:14px;height:14px;border-radius:3px;" onerror="this.parentElement.textContent='🔗'">` : '🔗'}
         </div>
         <div class="link-main">
           <span class="link-title">${escHtml(l.title)}</span>
-          <a href="${escHtml(l.url)}" target="_blank" rel="noopener" class="link-url" onclick="event.stopPropagation()">${escHtml(domain)}</a>
+          <span class="link-url">${escHtml(domain)}</span>
         </div>
         <div class="link-meta">${tagsHtml}</div>
         <span class="link-date">${timeAgo(l.createdAt)}</span>
@@ -240,20 +241,6 @@ function renderLinks() {
   });
 
   linkListEl.innerHTML = html;
-
-  linkListEl.querySelectorAll('.link-card').forEach(el => {
-    const open = () => window.open(el.dataset.url, '_blank', 'noopener');
-    el.addEventListener('click', (e) => {
-      if (e.target.closest('.link-actions') || e.target.closest('.tag-pill') || e.target.closest('.link-url')) return;
-      open();
-    });
-    el.addEventListener('keydown', (e) => {
-      if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.link-actions, .tag-pill, .link-url')) {
-        e.preventDefault();
-        open();
-      }
-    });
-  });
 
   linkListEl.querySelectorAll('.tag-pill').forEach(el => {
     el.addEventListener('click', (e) => {
@@ -277,10 +264,12 @@ function renderLinks() {
   updateStats();
 }
 
+// quotes are escaped too: this output also lands inside attributes
+// (data-tag="…", title="…"), where an unescaped " would end the attribute
 function escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
 }
 
 // ---- CRUD (all persisted through the backend) ----

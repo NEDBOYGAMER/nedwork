@@ -1,9 +1,10 @@
 import io
 import os
 import re
+import shutil
 import uuid
 
-from flask import Blueprint, request, jsonify, redirect, url_for, send_file, abort
+from flask import Blueprint, request, jsonify, redirect, url_for, send_file, abort, current_app
 
 try:
     from PIL import Image, ImageOps
@@ -43,10 +44,35 @@ tierforge_bp = Blueprint('tierforge', __name__)
 # / exported .tierforge file) — this module is deliberately a dumb image
 # store: upload in, thumbnail + full out, delete on request.
 # ------------------------------------------------------------------
-UPLOAD_ROOT = os.environ.get(
-    "TIERFORGE_UPLOAD_ROOT",
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "_uploads"),
-)
+# Under instance/data/ (private) — NOT next to this file: the app folder is
+# shared with the /apps/<name>/<file> route, so uploads there would be
+# readable without the tierforge permission. Resolved lazily because the
+# blueprint is imported before an app context exists.
+_UPLOAD_ROOT_ENV = os.environ.get("TIERFORGE_UPLOAD_ROOT")
+
+
+def _upload_root():
+    return _UPLOAD_ROOT_ENV or os.path.join(
+        current_app.instance_path, "data", "tierforge_uploads")
+
+
+def _migrate_legacy_uploads():
+    """The old location was inside this package (publicly reachable).
+    Move any leftover files to the private root once, at first use."""
+    legacy = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_uploads")
+    if not os.path.isdir(legacy):
+        return
+    root = _upload_root()
+    os.makedirs(root, exist_ok=True)
+    for name in os.listdir(legacy):
+        src, dst = os.path.join(legacy, name), os.path.join(root, name)
+        try:
+            if os.path.exists(dst):
+                shutil.rmtree(src) if os.path.isdir(src) else os.remove(src)
+            else:
+                shutil.move(src, dst)
+        except OSError:
+            pass
 
 # Thumbnails are what gets painted for every card, on every render and
 # every drag — keep them small. "Full" is only decoded one image at a
@@ -60,15 +86,18 @@ FULL_MAX_DIM = 2400
 FULL_QUALITY = 90
 
 MAX_IMAGE_BYTES = 15 * 1024 * 1024  # 15 MB per uploaded file
+MAX_IMAGE_COUNT = 30               # per request (the UI sends one batch)
+MAX_BATCH_BYTES = 150 * 1024 * 1024  # whole multipart body cap
+MAX_IMAGE_PIXELS = 50_000_000      # decompression-bomb guard
 IMAGE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
-
 
 # ------------------------------------------------------------------
 # helpers
 # ------------------------------------------------------------------
 
 def _user_dir(user):
-    path = os.path.join(UPLOAD_ROOT, str(user.id))
+    _migrate_legacy_uploads()
+    path = os.path.join(_upload_root(), str(user.id))
     os.makedirs(path, exist_ok=True)
     return path
 
@@ -99,6 +128,9 @@ def _normalize_to_jpeg(image_bytes, max_dim, quality):
     path in this module to reason about, instead of two.
     """
     img = Image.open(io.BytesIO(image_bytes))
+    # decompression-bomb guard: a tiny file can decode to a huge bitmap
+    if img.width * img.height > MAX_IMAGE_PIXELS:
+        raise ValueError("image dimensions too large")
     img = ImageOps.exif_transpose(img)
 
     if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
@@ -139,22 +171,32 @@ def upload_images(user):
     if not HAS_PIL:
         return jsonify({"error": "Pillow is not installed on the server"}), 500
 
+    # this is the one route allowed above the global 16 MB cap
+    request.max_content_length = MAX_BATCH_BYTES + 1024 * 1024
+
     files = request.files.getlist("images")
     if not files:
         return jsonify({"error": "No images uploaded"}), 400
+    if len(files) > MAX_IMAGE_COUNT:
+        return jsonify({"error": f"Too many images in one upload (max {MAX_IMAGE_COUNT})"}), 413
 
     user_dir = _user_dir(user)
     results = []
     errors = []
+    total = 0
 
     for file in files:
         original_name = file.filename or "image"
         try:
-            raw = file.read()
+            if total > MAX_BATCH_BYTES:
+                raise ValueError("upload batch too large")
+            # bounded read: never buffer more than one file's cap
+            raw = file.read(MAX_IMAGE_BYTES + 1)
             if not raw:
                 raise ValueError("empty file")
             if len(raw) > MAX_IMAGE_BYTES:
                 raise ValueError("file too large (max 15 MB)")
+            total += len(raw)
 
             full_bytes = _normalize_to_jpeg(raw, FULL_MAX_DIM, FULL_QUALITY)
             thumb_bytes = _normalize_to_jpeg(raw, THUMB_MAX_DIM, THUMB_QUALITY)

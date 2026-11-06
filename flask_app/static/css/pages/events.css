@@ -1146,3 +1146,69 @@ select.field-input { cursor: pointer; }
 }
 
 
+
+/* -- mobile (≤768px) — final overrides ---------------------------------
+   These live at the end on purpose: several base rules above (the edit
+   card grid, the map ratio, the floating detail header) would otherwise
+   win the cascade over earlier media blocks. */
+@media (max-width: 768px) {
+    /* All-events list: the fixed hamburger would otherwise cover the
+       page title — clear it like app_corner.css / socials.css do. */
+    body.events-list-page .events-header {
+        padding-top: calc(64px + env(safe-area-inset-top, 0px));
+    }
+
+    /* Event detail/edit pages hide the hamburger: "All events" is the
+       way back. The floating view header no longer reserves room for
+       the toggle, so the back button sits on the normal content gutter. */
+    body.events-detail-page .sidenav-toggle { display: none; }
+    body.events-detail-page .events-page:has(.event-detail-view) .events-header {
+        padding-left: var(--space-3);
+        padding-right: var(--space-3);
+    }
+
+    /* Edit mode: one card per row — nothing sits next to anything. */
+    .edit-module-list { grid-template-columns: 1fr; }
+
+    /* Map: shorter than the square desktop treatment. Zoom +/- buttons
+       are omitted by JS on phones; this is the safety net. */
+    .location-map { aspect-ratio: 4 / 3; }
+    .location-map .leaflet-control-zoom { display: none; }
+
+    /* While locked, override Leaflet's touch-action: none so a vertical
+       swipe over the map scrolls the page instead of doing nothing. */
+    .location-map.is-map-locked { touch-action: pan-y !important; }
+}
+
+/* -- map lock (mobile only) --------------------------------------------
+   A transparent overlay swallows the first tap: the map only starts
+   panning/zooming after the user explicitly activates it, and the next
+   page scroll locks it again. Events over the overlay are stopped, not
+   prevented — vertical page scrolling keeps working. */
+.location-map-lock {
+    position: absolute;
+    inset: 0;
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(8, 8, 10, 0.06);
+    border-radius: inherit;
+    touch-action: pan-y;
+    cursor: pointer;
+}
+.location-map-lock.is-unlocked { display: none; }
+.location-map-lock-hint {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    background: rgba(12, 12, 16, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    color: #fff;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    pointer-events: none;
+}
+@media (min-width: 769px) {
+    .location-map-lock { display: none; }
+}

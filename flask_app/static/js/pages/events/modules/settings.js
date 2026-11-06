@@ -7,10 +7,10 @@
 import { el, icon, iconBtn, toast, fmtDate, confirmDialog, rsvpBadge } from "../ui.js";
 import {
     eventUrl, moduleUrl, memberUrl, moduleContentUrl, imageUploadUrl,
-    inviteUrl, finalizeUrl, resetVotesUrl, api,
+    inviteUrl, transferUrl, finalizeUrl, resetVotesUrl, api,
 } from "../api.js";
 import { openPicker } from "../picker.js";
-import { ctrlWheelOnly, keepMapSized } from "./location.js";
+import { setupMapInteraction, keepMapSized } from "./location.js";
 
 /* ---- shared helpers -------------------------------------------------- */
 
@@ -298,8 +298,7 @@ function buildLocationMap(draft, config) {
     L.control.zoom({ position: "bottomleft" }).addTo(map);
     keepMapSized(map);
     liveMaps.push(map);
-    // plain scroll scrolls the page; Ctrl+scroll zooms the map
-    ctrlWheelOnly(holder, mapDiv);
+    setupMapInteraction(map, holder, mapDiv);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: "&copy; OpenStreetMap contributors",
@@ -395,6 +394,7 @@ function buildLocationMap(draft, config) {
 
 export function settingsMembers(root, ctx) {
     const { event, state, refresh } = ctx;
+    const others = (state.members || []).filter((m) => m.role !== "host");
     const row = el("div", "host-actions-row");
     const addBtn = el("button", "btn btn-secondary btn-sm", "Add members");
     addBtn.type = "button";
@@ -414,13 +414,34 @@ export function settingsMembers(root, ctx) {
         } catch (e) { toast(e.message, "error"); }
     };
     row.appendChild(inviteBtn);
+
+    // handover is a host setting — it lives here in edit mode, not in the
+    // attendee-facing members section
+    if (others.length) {
+        const transferBtn = el("button", "btn btn-secondary btn-sm",
+            "Transfer host");
+        transferBtn.type = "button";
+        transferBtn.onclick = async () => {
+            const name = prompt("Transfer host to which member?\n" +
+                others.map((m, i) => `${i + 1}. ${m.user.username}`).join("\n"));
+            const idx = Number(name) - 1;
+            if (!name || !others[idx]) return;
+            try {
+                await api(transferUrl(event.id), {
+                    method: "POST",
+                    body: JSON.stringify({ member_id: others[idx].id }),
+                });
+                await refresh();
+            } catch (e) { toast(e.message, "error"); }
+        };
+        row.appendChild(transferBtn);
+    }
     root.appendChild(row);
     root.appendChild(el("p", "hint",
         "New members join as “pending” and pick their RSVP in view mode."));
 
     // removal lives here (edit mode) — the attendee-facing list in view
     // mode stays read-only info
-    const others = (state.members || []).filter((m) => m.role !== "host");
     if (others.length) {
         const list = el("ul", "member-list edit-member-list");
         for (const member of others) {

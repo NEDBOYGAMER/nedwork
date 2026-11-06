@@ -28,6 +28,11 @@ _CSRF_EXEMPT = {"auth.login", "auth.register", "admin.api_login",
 # Methods that change state on the server.
 _CSRF_METHODS = ("POST", "PUT", "PATCH", "DELETE")
 
+# One number for every password-setting path (register, change-password,
+# admin console) so the rules can't drift apart. Length only: length beats
+# a composition checklist, and users are not asked to spell it out.
+MIN_PASSWORD_LENGTH = 10
+
 # While a user still owes a password change (bootstrapped admin first
 # login, or admin-forced reset), EVERYTHING except the change-password
 # page, its API and logout is locked behind a redirect.
@@ -43,6 +48,10 @@ def create_app():
     app = Flask(__name__, instance_relative_config=True)
     os.makedirs(app.instance_path, exist_ok=True)
     app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(app.instance_path, 'app.db')}"
+    # nginx in front of this app allows 20 GB per request; cap every route
+    # here. The one upload that legitimately needs more (tierforge batches)
+    # raises request.max_content_length inside its own view.
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
     db.init_app(app)
 
@@ -119,6 +128,19 @@ def create_app():
             path.startswith("/static/") or path.startswith("/apps/")
         ):
             response.headers["Cache-Control"] = "no-cache"
+        return response
+
+    @app.after_request
+    def security_headers(response):
+        """Baseline hardening. CSP is deliberately not set: the pages rely
+        on inline <script>/onclick and many third-party hosts (fonts, maps,
+        widgets), so a real policy is its own piece of work."""
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy",
+                                    "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy", "geolocation=(), microphone=(), camera=()")
         return response
 
     @app.after_request

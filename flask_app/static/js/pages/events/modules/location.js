@@ -60,7 +60,7 @@ function renderLeafletMap(root, config) {
         maxZoom: 19,
         attribution: "&copy; OpenStreetMap contributors",
     }).addTo(map);
-    ctrlWheelOnly(holder, mapDiv);
+    setupMapInteraction(map, holder, mapDiv);
 
     const marker = window.L.marker([config.lat, config.lng]).addTo(map);
     marker.bindPopup(locationPopup(config));
@@ -74,19 +74,90 @@ export function keepMapSized(map) {
     new ResizeObserver(() => map.invalidateSize()).observe(map.getContainer());
 }
 
+const MOBILE_MAP_QUERY = "(max-width: 768px)";
+
+export function mapIsMobile() {
+    return window.matchMedia(MOBILE_MAP_QUERY).matches;
+}
+
+/* Wire the two map interaction models:
+   - desktop: plain scroll scrolls the page, Ctrl+scroll zooms the map;
+   - phones: the map starts locked behind a transparent overlay. The first
+     tap activates it; the next page scroll locks it again. This keeps a
+     normal vertical swipe scrolling the page instead of panning the map. */
+export function setupMapInteraction(map, holder, mapEl = holder) {
+    guardWheel(holder, mapEl);
+    addMapLock(map, mapEl);
+    if (!mapIsMobile()) addZoomHint(mapEl);
+}
+
 /* Plain scroll must scroll the page, Ctrl+scroll (or pinch) zooms the
    map: swallow wheel events without Ctrl in the capture phase so they
    never reach Leaflet's zoom handler. Only events over the map itself are
    swallowed - the holder can be wider than the centered map, and the
    gutter must keep scrolling the page. */
-export function ctrlWheelOnly(holder, mapEl = holder) {
+function guardWheel(holder, mapEl) {
     holder.addEventListener("wheel", (e) => {
         if (e.ctrlKey) return;
         if (!mapEl.contains(e.target)) return;
         e.stopPropagation();
     }, { capture: true, passive: true });
+}
+
+function addZoomHint(mapEl) {
     const hint = el("span", "location-zoom-hint", "Ctrl + scroll to zoom");
     mapEl.appendChild(hint);
+}
+
+/* Mobile lock overlay: a transparent full-map layer that keeps every
+   pointer/touch event away from Leaflet until the user taps it. Then it
+   gets out of the way; a page scroll brings it back. */
+function addMapLock(map, mapEl) {
+    const overlay = el("div", "location-map-lock");
+    overlay.setAttribute("role", "button");
+    overlay.setAttribute("tabindex", "0");
+    overlay.setAttribute("aria-label", "Tap to interact with the map");
+    overlay.appendChild(el("span", "location-map-lock-hint",
+        "Tap to interact"));
+
+    // swallow map gestures without preventing page scroll (touch-action
+    // is pan-y on the overlay) — the first tap must not pan the map,
+    // drop the edit pin or open the marker popup
+    for (const type of ["mousedown", "touchstart", "pointerdown", "wheel",
+        "click", "dblclick"]) {
+        overlay.addEventListener(type, (e) => e.stopPropagation());
+    }
+
+    // Leaflet sets touch-action: none on the container while drag/zoom
+    // handlers are active — flip it back to pan-y so swipes over the
+    // locked map still scroll the page.
+    mapEl.classList.add("is-map-locked");
+
+    const unlock = () => {
+        overlay.classList.add("is-unlocked");
+        overlay.setAttribute("aria-hidden", "true");
+        mapEl.classList.remove("is-map-locked");
+    };
+    const lock = () => {
+        overlay.classList.remove("is-unlocked");
+        overlay.removeAttribute("aria-hidden");
+        mapEl.classList.add("is-map-locked");
+    };
+    overlay.addEventListener("click", unlock);
+    overlay.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            unlock();
+        }
+    });
+
+    const onScroll = () => {
+        if (overlay.classList.contains("is-unlocked")) lock();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    map.on("unload", () => window.removeEventListener("scroll", onScroll));
+
+    mapEl.appendChild(overlay);
 }
 
 /* popup content as a DOM node — text nodes, no HTML injection */

@@ -445,11 +445,16 @@ input[type="radio"] {
     margin-bottom: var(--space-4);
 }
 
+/* .tab is used on both <div> and <button> — reset the UA button chrome so
+   a button tab doesn't render as a grey box */
 .tab {
     padding: 10px 2px;
+    font-family: var(--font-body);
     font-size: 14px;
     font-weight: 500;
     color: var(--text-muted);
+    background: none;
+    border: none;
     cursor: pointer;
     position: relative;
 }
@@ -1250,4 +1255,9 @@ input[type="range"]:disabled {
 
 .btn-icon {
     padding: 10px;
+}
+/* Mobile: no toast popups. On phones they cover the bottom-right corner
+   (and the events edit save bar) without adding much over in-page state. */
+@media (max-width: 768px) {
+    .toast-container { display: none; }
 }

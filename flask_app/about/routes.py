@@ -100,6 +100,12 @@ def api_delete_update(item_id):
 
 @about_bp.route('/api/suggestions', methods=['POST'])
 def api_add_suggestion():
+    # public, unauthenticated, and every submission sends a mail — cap it
+    # per IP with the login limiter's counters (same 15-min window)
+    from ..auth import throttle
+    if not throttle.fail("suggestion", throttle.client_ip(request), ""):
+        return jsonify(error='Too many submissions — try again later'), 429
+
     data = request.get_json(force=True, silent=True) or {}
 
     # honeypot: bots fill every field — pretend success, store nothing
@@ -130,22 +136,26 @@ def api_add_suggestion():
 
     # fire-and-forget admin notification (bots/honeypot never reach this)
     try:
-        from ..notify import notify
+        from ..notify import notify, base_url
+        from markupsafe import escape
+        console = f"{base_url()}admin"
+        # the form is public: every field is attacker-controlled, so it is
+        # escaped before going anywhere near the HTML body
         preview = item['how_why'] or ''
         notify(
             f"New suggestion: {item['type']} from {name}",
-            f"<p><b>{name}</b>"
-            + (f" &middot; {item['area']}" if item['area'] else "")
-            + f" &middot; {item['created_at']}</p>"
-            + f"<p>{item['what']}</p>"
-            + (f"<p><i>{preview}</i></p>" if preview else "")
-            + f"<p><a href=\"{request.host_url}admin\" "
+            f"<p><b>{escape(name)}</b>"
+            + (f" &middot; {escape(item['area'])}" if item['area'] else "")
+            + f" &middot; {escape(item['created_at'])}</p>"
+            + f"<p>{escape(item['what'])}</p>"
+            + (f"<p><i>{escape(preview)}</i></p>" if preview else "")
+            + f"<p><a href=\"{escape(console)}\" "
             + "style=\"display:inline-block;padding:14px 26px;background:#2E7D46;"
             + "color:#ffffff;border-radius:12px;font-weight:700;"
             + "text-decoration:none;\">Open console</a></p>",
             f"{name}" + (f" - {item['area']}" if item['area'] else "")
             + f" - {item['created_at']}\n\n{item['what']}\n\n{preview}\n\n"
-            f"Console: {request.host_url}admin",
+            f"Console: {console}",
         )
     except Exception:
         pass

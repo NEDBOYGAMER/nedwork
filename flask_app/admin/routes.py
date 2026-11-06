@@ -19,8 +19,10 @@ from flask import Blueprint, render_template, jsonify, request, make_response, c
 import sqlalchemy as sa
 
 from .. import db
+from .. import MIN_PASSWORD_LENGTH
 from ..models import *
 from ..auth.decorators import admin_required, API
+from ..auth import throttle
 from ..permissions import BASE_PERMISSIONS
 from ..account import purge_user
 from ..about.routes import _read, _write, _suggestions_file
@@ -28,6 +30,15 @@ from ..about.routes import _read, _write, _suggestions_file
 admin_bp = Blueprint('admin', __name__, static_folder='../static')
 
 ADMIN_COOKIE = "admin_session"
+
+
+def _too_many(seconds):
+    resp = make_response(jsonify({
+        "success": False,
+        "error": "Too many failed attempts — try again later"
+    }), 429)
+    resp.headers["Retry-After"] = str(max(1, seconds))
+    return resp
 
 
 # ------------------------------------------------------------------ auth
@@ -47,10 +58,19 @@ def admin_page():
 def api_login():
     """Password-only login: the console has exactly one operator identity
     (single fixed credential row)."""
+    ip = throttle.client_ip(request)
+    wait = throttle.retry_after("admin", ip, "admin")
+    if wait:
+        return _too_many(wait)
+
     data = request.get_json(silent=True) or {}
     credential = AdminCredential.query.get(1)
     if credential is None or not credential.check_password(data.get("password") or ""):
+        if not throttle.fail("admin", ip, "admin"):
+            return _too_many(throttle.retry_after("admin", ip, "admin"))
         return jsonify({"success": False, "error": "Wrong password"}), 401
+
+    throttle.clear("admin", "admin")
 
     session = AdminSession(
         session_id=secrets.token_urlsafe(32),
@@ -111,8 +131,8 @@ def api_change_password():
         return jsonify({"error": "Current password is wrong"}), 403
 
     new = data.get("new_password") or ""
-    if len(new) < 8:
-        return jsonify({"error": "New password must be at least 8 characters"}), 400
+    if len(new) < MIN_PASSWORD_LENGTH:
+        return jsonify({"error": f"New password must be at least {MIN_PASSWORD_LENGTH} characters"}), 400
 
     credential.set_password(new)
     AdminSession.query.delete()
@@ -444,8 +464,9 @@ def _image_file_for(image_value):
 
 
 def _sniff_image_ext(data: bytes):
-    """File-type from magic bytes; svg is detected as text. Returns the
-    canonical extension or None for anything we do not accept."""
+    """File-type from magic bytes. Returns the canonical extension or None
+    for anything we do not accept. SVG is refused on purpose: served from
+    /static it renders as a document and runs scripts on our origin."""
     if data[:3] == b"\xff\xd8\xff":
         return ".jpg"
     if data[:8] == b"\x89PNG\r\n\x1a\n":
@@ -454,9 +475,6 @@ def _sniff_image_ext(data: bytes):
         return ".gif"
     if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
         return ".webp"
-    head = data[:512].lstrip()
-    if head.startswith(b"<?xml") or head.startswith(b"<svg"):
-        return ".svg"
     return None
 
 
@@ -627,7 +645,7 @@ def api_app_image(slug):
 
     ext = _sniff_image_ext(data)
     if ext is None:
-        return jsonify({"error": "Unsupported image type (use PNG, JPEG, GIF, WebP or SVG)"}), 400
+        return jsonify({"error": "Unsupported image type (use PNG, JPEG, GIF or WebP)"}), 400
 
     filename = f"{app.slug}{ext}"
     filepath = os.path.join(_apps_img_dir(), filename)

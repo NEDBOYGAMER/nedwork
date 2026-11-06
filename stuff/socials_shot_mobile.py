@@ -72,7 +72,7 @@ with sync_playwright() as p:
     m.click("[data-view='groups']"); time.sleep(0.6)
     m.screenshot(path=os.path.join(out, "socials_mobile_groups.png"),
                  full_page=True)
-    m.click("#groupsList .social-row .btn"); time.sleep(0.6)
+    m.click("#groupsList .group-tile .btn"); time.sleep(0.6)
     m.screenshot(path=os.path.join(out, "socials_mobile_group_detail.png"))
     b.close()
 print("mobile shots saved")

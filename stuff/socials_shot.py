@@ -73,7 +73,7 @@ with sync_playwright() as p:
     page.click("[data-view='groups']"); time.sleep(0.6)
     page.screenshot(path=os.path.join(out, "socials_groups.png"), full_page=True)
     # group detail modal
-    page.click("#groupsList .social-row .btn"); time.sleep(0.6)
+    page.click("#groupsList .group-tile .btn"); time.sleep(0.6)
     page.screenshot(path=os.path.join(out, "socials_group_detail.png"))
     page.keyboard.press("Escape"); time.sleep(0.3)
 

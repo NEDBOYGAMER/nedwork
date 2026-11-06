@@ -11,6 +11,24 @@ state, next steps, and file paths. See Temporary for the etiquette.
 
 ---
 
+## Security (operator actions outstanding)
+
+- [ ] **Rotate `COLORS_AI_API_KEY`.** It was hardcoded in
+      `flask_app/apps/colors/routes.py` and that file was downloadable
+      from `/apps/colors/routes.py` until 2026-11-06. The code now reads
+      the key from the env only (no fallback); set it on the server.
+- [ ] **Purge the old key from git history** (`git filter-repo` / BFG)
+      once rotated. History rewrite + force-push is the operator's call.
+- Fixed 2026-11-06 (no action): app asset allowlist (source/JSON/
+      dotfiles no longer served), tierforge uploads moved under
+      `instance/data/`, login + admin-login throttling, session
+      invalidation on password change, TownClaim seat tokens, escaped
+      email bodies, canonical `SITE_BASE_URL` links, 7-day expiry on
+      emailed decision tokens, upload/pixel caps, SVG refused for tile
+      image uploads, suggestion-form rate limit, baseline security
+      headers, dependency pins bumped (Flask 3.1.3, Pillow 13.0.0,
+      requests 2.33.0).
+
 ## Admin
 
 - [ ] **Site settings card** (Settings tab) is a placeholder — "Nothing
@@ -31,11 +49,12 @@ zoom/link-out, transfer-host placement and username suggestions shipped
 
 ## Socials
 
-- [ ] **Full visual/UI rework.** Must be done on its own, not bundled
-      with other TODOs — it requires full concentration on visuals and
-      UI. The 2026-11-03 pass only fixed tokens/spacing. Email delivery
-      confirmed live 2026-11-03 (`RESEND_API_KEY` set); mobile pass
-      verified.
+(none — full visual rework shipped 2026-11-04: hero with live counts,
+pill view switcher, person tiles with per-name avatar hues, group tiles,
+composer action bars. Root cause of the "buttons don't render" report was
+the shared `.tab` rule lacking a UA-button reset, now fixed in
+`ui-elements.css`. Email delivery confirmed live 2026-11-03
+(`RESEND_API_KEY` set).)
 
 ## Tasks
 
@@ -52,10 +71,9 @@ not for individual apps — those live under 'Apps catalog' below)
 
 ## Settings
 
-- [ ] **Password change.** The Account panel still shows a disabled
-      "Coming soon" password row. Wire it to the existing
-      `/auth/api/change_password` (current/new/confirm modal) or a
-      voluntary change-password page.
+(none — password change is implemented: Account panel "Change" button
+opens a current/new/confirm modal posting to `/auth/api/change_password`,
+shipped 2026-11-04)
 
 ## Account
 
@@ -80,7 +98,9 @@ Resurface new function keys only when a feature needs gating.)
 
 ### TownClaim
 
-(none — no open items)
+(Open: the 2026-11-06 security round gives every seat a server-issued
+`player_token`; towns created before it have no token stored, so their
+seats can no longer act. Restart any such town — no migration for it.)
 
 ### Controller Tester
 
@@ -88,11 +108,11 @@ Resurface new function keys only when a feature needs gating.)
 
 ### Links
 
-- [ ] **Saved links open in a new tab.** Clicking a saved link should
-      open the external URL in a new tab (clarified: not
-      `/dashboard/link`). `flask_app/apps/links/app.js` already intends
-      this via `window.open(..., '_blank')` and the card anchor; verify
-      and fix if it does not.
+(none — link cards now contain a real `.link-card-hit` anchor
+(`target="_blank"`, stretched over the whole card, actions/tag pills
+layered above via z-index); click, Enter, ctrl/middle-click and
+context-menu all open the external URL in a new tab natively. Shipped
+2026-11-04.)
 
 ### Trivia
 

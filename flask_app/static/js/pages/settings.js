@@ -459,4 +459,100 @@ async function init() {
             }
         });
     }
+
+    // =========================
+    // CHANGE PASSWORD
+    // =========================
+    const pwBtn = document.getElementById('changePasswordBtn');
+    const pwBackdrop = document.getElementById('changePasswordBackdrop');
+    const pwCurrent = document.getElementById('pwCurrent');
+    const pwNew = document.getElementById('pwNew');
+    const pwConfirm = document.getElementById('pwConfirm');
+    const pwError = document.getElementById('pwError');
+    const pwSaveBtn = document.getElementById('pwSave');
+    const pwCancelBtn = document.getElementById('pwCancel');
+
+    if (pwBtn && pwBackdrop && pwCurrent && pwNew && pwConfirm &&
+            pwError && pwSaveBtn && pwCancelBtn) {
+        const closePw = () => {
+            pwBackdrop.classList.remove('open');
+            pwCurrent.value = '';
+            pwNew.value = '';
+            pwConfirm.value = '';
+            pwError.hidden = true;
+            pwError.textContent = '';
+            pwSaveBtn.disabled = false;
+        };
+        const showPwError = (msg) => {
+            pwError.textContent = msg;
+            pwError.hidden = false;
+        };
+        pwBtn.addEventListener('click', () => {
+            pwCurrent.value = '';
+            pwNew.value = '';
+            pwConfirm.value = '';
+            pwError.hidden = true;
+            pwError.textContent = '';
+            pwBackdrop.classList.add('open');
+            pwCurrent.focus();
+        });
+        pwCancelBtn.addEventListener('click', closePw);
+        pwBackdrop.addEventListener('click', (e) => {
+            if (e.target === pwBackdrop) closePw();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && pwBackdrop.classList.contains('open')) {
+                closePw();
+            }
+        });
+        [pwCurrent, pwNew, pwConfirm].forEach((el) => {
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    pwSaveBtn.click();
+                }
+            });
+        });
+        pwSaveBtn.addEventListener('click', async () => {
+            const current = pwCurrent.value;
+            const next = pwNew.value;
+            if (!current || !next) {
+                showPwError('Please fill in all fields.');
+                return;
+            }
+            if (next.length < 10) {
+                showPwError('New password must be at least 10 characters.');
+                return;
+            }
+            if (next !== pwConfirm.value) {
+                showPwError('New passwords do not match.');
+                return;
+            }
+            pwSaveBtn.disabled = true;
+            pwCancelBtn.disabled = true;
+            try {
+                const res = await fetch('/auth/api/change_password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        current_password: current,
+                        new_password: next,
+                    }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    showPwError(data.error || 'Could not change password.');
+                } else {
+                    closePw();
+                    showToast('Password changed');
+                }
+            } catch (err) {
+                console.error('Failed to change password', err);
+                showPwError('Could not change password.');
+            } finally {
+                pwSaveBtn.disabled = false;
+                pwCancelBtn.disabled = false;
+            }
+        });
+    }
 }

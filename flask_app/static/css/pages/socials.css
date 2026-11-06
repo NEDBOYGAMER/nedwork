@@ -1,122 +1,299 @@
-/* Socials page — friends + groups. Follows the global style ruleset:
-   .card / .btn / .modal patterns, space-* tokens, badge colors, the
-   global .avatar. Visual language mirrors the events site (cards on a
-   page-level surface, accent-tinted initials, hairline rows inside
-   cards). Everything here is socials-scoped — no shared file is themed
-   by this file. */
+/* Socials page — friends + groups.
+
+   Layout is a feed, not a form: a hero with live counts, a pill switcher,
+   then blocks that each answer one question ("who's waiting on you",
+   "who do you know", "what are you in"). People are square-ish tiles in a
+   responsive grid so a long friend list reads as a roster instead of a
+   table. Every person's avatar carries their own hue (set from the
+   username in JS) — that per-person colour is the one loud thing on the
+   page, everything else stays on the shared tokens.
+
+   Only tokens from colors.css / ui-elements.css are used here; no shared
+   file is themed by this one. */
 
 .socials-page {
-    max-width: 960px;
+    max-width: 1040px;
     margin: 0 auto;
-    padding: var(--space-5) var(--space-5) var(--space-8);
+    padding: var(--space-6) var(--space-5) var(--space-8);
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-5);
 }
 
-.socials-header {
+/* ── hero ───────────────────────────────────────────────────────────── */
+.socials-hero {
     display: flex;
-    align-items: baseline;
+    align-items: flex-end;
     justify-content: space-between;
-    gap: var(--space-3);
+    gap: var(--space-5);
     flex-wrap: wrap;
 }
-.socials-header h1 { margin: 0; }
+
+.socials-hero h1 {
+    font-size: 40px;
+    letter-spacing: -0.02em;
+    margin: 0 0 var(--space-1);
+}
+
 .socials-subtitle {
     color: var(--text-muted);
     font-size: 14px;
     margin: 0;
 }
 
-/* views stack their toolbar, filter and columns with one rhythm */
+.socials-stats {
+    display: flex;
+    gap: var(--space-2);
+    margin: 0;
+}
+
+.social-stat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-4);
+    min-width: 86px;
+}
+
+.social-stat dt {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.social-stat dd {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.2;
+}
+
+/* ── view switcher ──────────────────────────────────────────────────── */
+.socials-switch {
+    display: inline-flex;
+    align-self: flex-start;
+    gap: 2px;
+    padding: 3px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+}
+
+.socials-switch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    padding: 9px 20px;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+}
+.socials-switch-btn:hover { color: var(--text); }
+.socials-switch-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 0 0 1px var(--line);
+}
+
+/* ── views ──────────────────────────────────────────────────────────── */
 .socials-view {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-6);
 }
 .socials-view[hidden] { display: none; }
-/* the page already spaces direct children; don't double-space the tabs */
-.socials-page > .tabs { margin-bottom: 0; }
 
-/* ── toolbar (add-friend / new-group / join-by-code) ────────────────── */
-.socials-toolbar {
+/* ── composer (the one action at the top of each view) ──────────────── */
+.socials-composer {
+    padding: var(--space-4) var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.socials-composer-label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.socials-composer-row {
     display: flex;
     gap: var(--space-2);
     flex-wrap: wrap;
     align-items: center;
 }
-.socials-toolbar .input-group { flex: 1 1 220px; max-width: 420px; }
-.socials-toolbar .btn { flex-shrink: 0; }
+.socials-composer-row .input-group { flex: 1 1 260px; }
+.socials-composer-row .btn { flex-shrink: 0; }
 
-/* client-side filter row — one per view, above the columns */
-.socials-filter {
-    max-width: 340px;
+.socials-join {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    margin-left: auto;
+}
+.socials-join .input-group { width: 180px; }
+.join-code-input {
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+    letter-spacing: 1px;
+}
+/* uppercase the typed code, not the placeholder */
+.join-code-input::placeholder {
+    text-transform: none;
+    letter-spacing: normal;
+    font-family: var(--font-body);
 }
 
-/* ── card columns ───────────────────────────────────────────────────── */
-.socials-columns {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: var(--space-4);
-    align-items: start;
-}
-
-/* the shared .card supplies surface/border/radius/padding/shadow */
-.social-card {
+/* ── blocks ─────────────────────────────────────────────────────────── */
+.socials-block {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-3);
     min-width: 0;
 }
+/* display:flex above would otherwise beat the UA's [hidden] rule */
+.socials-block[hidden] { display: none; }
 
-.social-card-title {
+.socials-block-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.socials-block-title {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    font-size: 14px;
+    font-family: var(--font-body);
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-muted);
-    margin: var(--space-1) 0 var(--space-1);
+    margin: 0;
 }
-.social-card-title .badge { font-size: 11px; }
+.socials-block-title .badge { font-size: 11px; padding: 2px 8px; }
 
-/* ── rows (friend / member / group) — hairline list inside the card ─── */
-.socials-list {
-    display: flex;
-    flex-direction: column;
+.socials-filter { max-width: 260px; }
+.socials-filter input { padding-top: 7px; padding-bottom: 7px; font-size: 13px; }
+
+/* ── people grid ────────────────────────────────────────────────────── */
+.socials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: var(--space-3);
     margin: 0;
     padding: 0;
     list-style: none;
 }
+.socials-grid-wide { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 
-.social-row {
+/* a person tile */
+.person-tile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    box-shadow: var(--shadow);
+    min-width: 0;
+    transition: border-color .15s ease;
+}
+.person-tile:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.person-tile[hidden] { display: none; }
+
+.person-tile-top {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    padding: var(--space-3) var(--space-2);
-    border-radius: var(--radius-sm);
+    min-width: 0;
 }
-.social-row + .social-row { border-top: 1px solid var(--line); }
-.social-row:hover { background: var(--surface-hover); }
 
-.social-row .avatar { width: 36px; height: 36px; font-size: 14px; }
+.person-tile-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
 
 .social-name {
-    font-weight: 500;
+    font-size: 15px;
+    font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .social-key {
+    font-family: var(--font-mono);
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: 11px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.social-row-info {
+.person-tile-actions {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    margin-top: auto;
+}
+.person-tile-actions .btn { flex: 1; justify-content: center; }
+.person-tile-actions .btn-ghost-icon { flex: 0 0 auto; }
+
+/* ── avatar — per-person hue, set inline by socials.js ──────────────── */
+.avatar-person {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    flex-shrink: 0;
+    background: color-mix(in srgb, hsl(var(--hue, 262) 62% 58%) 20%, var(--surface-2));
+    color: color-mix(in srgb, hsl(var(--hue, 262) 58% 52%) 78%, var(--text));
+}
+
+/* ── compact list (requests, sent, pending) ─────────────────────────── */
+.socials-list {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    margin: 0;
+    padding: var(--space-1) var(--space-2);
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+}
+.socials-list:empty { display: none; }
+
+.socials-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-2);
+    border-radius: var(--radius-sm);
+    min-width: 0;
+}
+.socials-row + .socials-row { border-top: 1px solid var(--line); }
+.socials-row:hover { background: var(--surface-hover); }
+.socials-row[hidden] { display: none; }
+
+.socials-row-info {
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -124,40 +301,93 @@
     min-width: 0;
 }
 
-.social-row-meta {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-shrink: 0;
-}
-
-.social-actions {
+.socials-row-actions {
     display: flex;
     gap: var(--space-2);
     align-items: center;
     flex-shrink: 0;
 }
 
-.module-empty {
-    color: var(--text-muted);
-    font-size: 13px;
-    padding: var(--space-2) 0;
-    margin: 0;
+/* ── group tile ─────────────────────────────────────────────────────── */
+.group-tile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    box-shadow: var(--shadow);
+    min-width: 0;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    transition: border-color .15s ease;
+}
+.group-tile:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.group-tile[hidden] { display: none; }
+
+.group-tile .avatar-person {
+    border-radius: var(--radius-sm);
+    width: 46px;
+    height: 46px;
 }
 
-/* group card rows carry a bigger presence: name + desc + count */
-.social-row.group-row { padding: var(--space-3) var(--space-2); }
-.group-row .avatar {
-    background: var(--surface-2);
-    color: var(--text-secondary, var(--text));
+.group-tile-top {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+.group-tile-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+.group-tile-name {
     font-size: 15px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
-.group-row-desc {
+.group-tile-desc {
     color: var(--text-muted);
     font-size: 12px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+.group-tile-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+    margin-top: auto;
+}
+.group-tile-open { margin-left: auto; }
+.group-tile-count {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* ── empty state ────────────────────────────────────────────────────── */
+.module-empty {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0;
+    padding: var(--space-5) var(--space-2);
+    text-align: center;
+}
+.socials-grid .module-empty {
+    grid-column: 1 / -1;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-md);
 }
 
 /* ── group detail modal ─────────────────────────────────────────────── */
@@ -181,6 +411,12 @@
 }
 .group-code-box .btn-ghost-icon { color: var(--text-muted); }
 
+.socials-modal-body .socials-list {
+    box-shadow: none;
+    border: none;
+    padding: 0;
+}
+
 /* ── modals (mirror the events .event-modal sizing) ─────────────────── */
 .socials-modal {
     background: var(--surface);
@@ -203,7 +439,7 @@
     padding: var(--space-4) var(--space-5);
     border-bottom: 1px solid var(--line);
 }
-.socials-modal-head h2 { margin: 0; font-size: 16px; }
+.socials-modal-head h2 { margin: 0; font-size: 18px; }
 
 .socials-modal-body {
     padding: var(--space-4) var(--space-5);
@@ -222,7 +458,7 @@
 
 /* ── join landing card ──────────────────────────────────────────────── */
 .social-join-card {
-    padding: var(--space-5);
+    padding: var(--space-6);
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
@@ -231,22 +467,45 @@
     width: 100%;
     margin: var(--space-6) auto 0;
 }
-.social-join-card h1 { margin: 0; font-size: 22px; }
+.social-join-card h1 { margin: 0; font-size: 32px; }
 .join-group-title {
-    font-size: 18px;
+    font-size: 20px;
+    font-family: var(--font-display);
     font-weight: 600;
     margin: 0;
 }
 .social-join-card .hint { margin: 0; }
-.join-code-input { text-transform: uppercase; }
 
-/* ── mobile — single column, touch-sized rows like the events site ──── */
+/* ── mobile ─────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .socials-page { padding-top: calc(64px + env(safe-area-inset-top, 0px)); }
+}
+
 @media (max-width: 640px) {
-    .socials-page { padding: var(--space-4) var(--space-4) var(--space-7); }
-    .socials-columns { grid-template-columns: 1fr; gap: var(--space-3); }
-    .socials-toolbar .input-group { max-width: none; }
-    .socials-filter { max-width: none; }
-    .social-row { gap: var(--space-2); padding: var(--space-3) var(--space-1); }
-    .social-row .avatar { width: 32px; height: 32px; font-size: 13px; }
-    .social-row-meta { flex-direction: column; align-items: flex-end; gap: var(--space-1); }
+    .socials-page {
+        padding-left: var(--space-4);
+        padding-right: var(--space-4);
+        padding-bottom: var(--space-7);
+        gap: var(--space-4);
+    }
+    .socials-hero h1 { font-size: 32px; }
+    .socials-stats { width: 100%; }
+    .social-stat { flex: 1; min-width: 0; padding: var(--space-2) var(--space-3); }
+    .socials-switch { align-self: stretch; }
+    .socials-switch-btn { flex: 1; justify-content: center; }
+
+    .socials-join { margin-left: 0; width: 100%; }
+    .socials-join .input-group { flex: 1; width: auto; }
+    .socials-composer-row > .btn { width: 100%; justify-content: center; }
+
+    .socials-grid,
+    .socials-grid-wide { grid-template-columns: 1fr; }
+    .socials-filter { max-width: none; width: 100%; }
+    .socials-block-head { flex-direction: column; align-items: stretch; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .person-tile,
+    .group-tile,
+    .socials-switch-btn { transition: none; }
 }

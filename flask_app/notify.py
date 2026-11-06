@@ -24,6 +24,7 @@ import logging
 import os
 import secrets
 import threading
+import time
 from pathlib import Path
 
 import requests
@@ -33,6 +34,17 @@ logger = logging.getLogger("nedwork.notify")
 
 RESEND_URL = "https://api.resend.com/emails"
 _REPLY_TO = "rico.fleming01@gmail.com"
+
+
+# ------------------------------------------------------------------- links
+def base_url() -> str:
+    """Canonical site URL for links inside emails.
+
+    Never request.host_url: the Host header is client-controlled, so it
+    would let a crafted registration request point our token-bearing
+    approval link at someone else's server.
+    """
+    return os.environ.get("SITE_BASE_URL", "https://nedwork.ch").rstrip("/") + "/"
 
 
 # ------------------------------------------------------------------ tokens
@@ -50,20 +62,37 @@ def _secret() -> bytes:
         return path.read_bytes().strip()
 
 
-def make_token(pending_id) -> str:
-    """HMAC-SHA256 hex digest binding the token to this pending id."""
+TOKEN_TTL = 7 * 24 * 3600   # an emailed decision link dies after a week
+
+
+def _sign(pending_id, ts) -> str:
     return hmac.new(
         _secret(),
-        f"pending:{pending_id}".encode("utf-8"),
+        f"pending:{pending_id}:{ts}".encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
 
 
+def make_token(pending_id) -> str:
+    """HMAC-SHA256 over the pending id plus its issue timestamp, as
+    "<ts>.<hex>". The timestamp bounds how long an emailed link works."""
+    ts = int(time.time())
+    return f"{ts}.{_sign(pending_id, ts)}"
+
+
 def token_ok(pending_id, token) -> bool:
-    """Constant-time token check; anything missing/tampered fails."""
+    """Constant-time token check; anything missing/tampered/expired fails."""
     if not token:
         return False
-    return hmac.compare_digest(make_token(pending_id), str(token))
+    try:
+        ts_s, sig = str(token).split(".", 1)
+        ts = int(ts_s)
+    except ValueError:
+        return False
+    # reject far-future stamps too (a clock-skewed signer is not us)
+    if time.time() - ts > TOKEN_TTL or ts - time.time() > 60:
+        return False
+    return hmac.compare_digest(_sign(pending_id, ts), sig)
 
 
 # ------------------------------------------------------------------- mail

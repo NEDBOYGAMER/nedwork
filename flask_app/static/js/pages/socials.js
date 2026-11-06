@@ -1,8 +1,9 @@
 /* Socials page — friends + social groups. Two tabs over one API surface
-   (window.SOCIALS_API). Shares the global .modal / .tabs patterns and the
-   events ui.js helpers (el, iconBtn, toast, confirmDialog). Cards +
-   avatars visual language; client-side filter per tab; group detail has
-   an add-member friend picker (batch endpoint) and code rotation. */
+   (window.SOCIALS_API). Shares the global .modal patterns and the events
+   ui.js helpers (el, iconBtn, toast, confirmDialog). People render as
+   tiles in a grid, groups as wide tiles; requests/pending stay as compact
+   rows. Each person's avatar gets a hue derived from their name so a list
+   is scannable at a glance. */
 import { el, iconBtn, toast, openModal, closeModal, confirmDialog, initConfirm } from "./events/ui.js";
 
 const BASE = window.SOCIALS_API || {};
@@ -29,7 +30,19 @@ const groupMemberUrl = (id, mid) => `${BASE.groups}/${id}/members/${mid}`;
 const initials = (name) =>
     (name || "?").trim().slice(0, 2).toUpperCase();
 
-const avatar = (name) => el("span", "avatar", initials(name));
+/* stable hue per name — same person, same colour, every visit */
+function hueFor(name) {
+    let h = 0;
+    for (const ch of name || "") h = (h * 31 + ch.codePointAt(0)) % 360;
+    return h;
+}
+
+const avatar = (name) => {
+    const node = el("span", "avatar-person", initials(name));
+    node.style.setProperty("--hue", hueFor(name));
+    node.setAttribute("aria-hidden", "true");
+    return node;
+};
 
 const roleBadge = (role) =>
     el("span", "badge " + (role === "owner" ? "badge-accent"
@@ -43,14 +56,26 @@ function applyFilter(list, query, attrName) {
     }
 }
 
+/* hero counters — friends view and groups view load separately, so keep
+   the last known numbers and re-render both from one place */
+const counts = { friends: 0, requests: 0, groups: 0 };
+
+function renderCounts() {
+    for (const [key, id] of [["friends", "statFriends"], ["requests", "statRequests"],
+                             ["groups", "statGroups"]]) {
+        const node = document.getElementById(id);
+        if (node) node.textContent = counts[key];
+    }
+}
+
 /* ── tabs ──────────────────────────────────────────────────────────── */
 function initTabs() {
     const nav = document.getElementById("socials-nav");
     if (!nav) return;
     const views = { friends: "friendsView", groups: "groupsView" };
-    nav.querySelectorAll(".tab").forEach((tab) => {
+    nav.querySelectorAll("[data-view]").forEach((tab) => {
         tab.onclick = () => {
-            nav.querySelectorAll(".tab").forEach((t) => {
+            nav.querySelectorAll("[data-view]").forEach((t) => {
                 t.classList.toggle("active", t === tab);
                 t.setAttribute("aria-selected", String(t === tab));
             });
@@ -77,24 +102,28 @@ async function loadFriends() {
     outgoing.innerHTML = "";
     friends.innerHTML = "";
 
+    counts.friends = data.friends.length;
+    counts.requests = data.incoming.length;
+    renderCounts();
+
     const inBadge = document.getElementById("incomingBadge");
     inBadge.hidden = !data.incoming.length;
     inBadge.textContent = data.incoming.length;
     const outBadge = document.getElementById("friendsBadge");
     outBadge.hidden = !data.friends.length;
     outBadge.textContent = data.friends.length;
-    document.getElementById("outgoingTitle").style.display =
-        data.outgoing.length ? "" : "none";
+    document.getElementById("outgoingBlock").hidden = !data.outgoing.length;
+    document.getElementById("requestsBlock").hidden = !data.incoming.length;
 
     for (const u of data.incoming) {
-        const row = el("li", "social-row");
+        const row = el("li", "socials-row");
         row.dataset.username = u.username;
         row.appendChild(avatar(u.username));
-        const info = el("div", "social-row-info");
+        const info = el("div", "socials-row-info");
         info.appendChild(el("span", "social-name", u.username));
-        info.appendChild(el("span", "social-key mono", u.key));
+        info.appendChild(el("span", "social-key", u.key));
         row.appendChild(info);
-        const actions = el("div", "social-actions");
+        const actions = el("div", "socials-row-actions");
         const accept = el("button", "btn btn-sm btn-primary", "Accept");
         accept.type = "button";
         accept.onclick = async () => {
@@ -118,15 +147,12 @@ async function loadFriends() {
         row.appendChild(actions);
         incoming.appendChild(row);
     }
-    if (!data.incoming.length) {
-        incoming.appendChild(el("p", "module-empty", "No open requests."));
-    }
 
     for (const u of data.outgoing) {
-        const row = el("li", "social-row");
+        const row = el("li", "socials-row");
         row.dataset.username = u.username;
         row.appendChild(avatar(u.username));
-        const info = el("div", "social-row-info");
+        const info = el("div", "socials-row-info");
         info.appendChild(el("span", "social-name", u.username));
         info.appendChild(el("span", "badge badge-info", "Pending"));
         row.appendChild(info);
@@ -143,13 +169,16 @@ async function loadFriends() {
     }
 
     for (const u of data.friends) {
-        const row = el("li", "social-row");
-        row.dataset.username = u.username;
-        row.appendChild(avatar(u.username));
-        const info = el("div", "social-row-info");
+        const tile = el("li", "person-tile");
+        tile.dataset.username = u.username;
+        const top = el("div", "person-tile-top");
+        top.appendChild(avatar(u.username));
+        const info = el("div", "person-tile-info");
         info.appendChild(el("span", "social-name", u.username));
-        info.appendChild(el("span", "social-key mono", u.key));
-        row.appendChild(info);
+        info.appendChild(el("span", "social-key", u.key));
+        top.appendChild(info);
+        tile.appendChild(top);
+        const actions = el("div", "person-tile-actions");
         const del = iconBtn("trash", `Remove ${u.username} as friend`);
         del.onclick = async () => {
             if (!(await confirmDialog(`Remove ${u.username} from your friends?`))) return;
@@ -159,17 +188,19 @@ async function loadFriends() {
                 loadFriends();
             } catch (e) { toast(e.message, "error"); }
         };
-        row.appendChild(del);
-        friends.appendChild(row);
+        actions.appendChild(del);
+        tile.appendChild(actions);
+        friends.appendChild(tile);
     }
     if (!data.friends.length) {
-        friends.appendChild(el("p", "module-empty",
+        friends.appendChild(el("li", "module-empty",
             "No friends yet — send a request above."));
     }
 
-    applyFilter(incoming, filterInput("friendsFilter").value, "username");
-    applyFilter(outgoing, filterInput("friendsFilter").value, "username");
-    applyFilter(friends, filterInput("friendsFilter").value, "username");
+    const q = filterInput("friendsFilter").value;
+    applyFilter(incoming, q, "username");
+    applyFilter(outgoing, q, "username");
+    applyFilter(friends, q, "username");
 }
 
 const filterInput = (id) => document.getElementById(id);
@@ -227,22 +258,26 @@ async function loadGroups() {
     reqList.innerHTML = "";
     groupsList.innerHTML = "";
 
+    counts.groups = data.groups.length;
+    renderCounts();
+
     const reqBadge = document.getElementById("groupReqBadge");
     reqBadge.hidden = !data.requests.length;
     reqBadge.textContent = data.requests.length;
     const gBadge = document.getElementById("groupsBadge");
     gBadge.hidden = !data.groups.length;
     gBadge.textContent = data.groups.length;
+    document.getElementById("groupRequestsBlock").hidden = !data.requests.length;
 
     for (const r of data.requests) {
-        const row = el("li", "social-row");
+        const row = el("li", "socials-row");
         row.dataset.username = r.username;
         row.appendChild(avatar(r.username));
-        const info = el("div", "social-row-info");
+        const info = el("div", "socials-row-info");
         info.appendChild(el("span", "social-name", r.username));
         info.appendChild(el("span", "social-key", r.group_name));
         row.appendChild(info);
-        const actions = el("div", "social-actions");
+        const actions = el("div", "socials-row-actions");
         const accept = el("button", "btn btn-sm btn-primary", "Accept");
         accept.type = "button";
         accept.onclick = async () => {
@@ -267,37 +302,38 @@ async function loadGroups() {
         row.appendChild(actions);
         reqList.appendChild(row);
     }
-    if (!data.requests.length) {
-        reqList.appendChild(el("p", "module-empty", "No open join requests."));
-    }
 
     for (const g of data.groups) {
-        const row = el("li", "social-row group-row");
-        row.dataset.username = g.name;
-        row.appendChild(avatar(g.name));
-        const info = el("div", "social-row-info");
-        info.appendChild(el("span", "social-name", g.name));
-        const meta = el("span", "social-key");
-        if (g.description) meta.appendChild(el("span", "group-row-desc", g.description + " · "));
-        meta.appendChild(el("span", "mono",
-            `${g.member_count} member${g.member_count === 1 ? "" : "s"}`));
-        info.appendChild(meta);
-        row.appendChild(info);
-        const metaRight = el("div", "social-row-meta");
+        const tile = el("li", "group-tile");
+        tile.dataset.username = g.name;
+        const top = el("div", "group-tile-top");
+        top.appendChild(avatar(g.name));
+        const info = el("div", "group-tile-info");
+        info.appendChild(el("span", "group-tile-name", g.name));
+        if (g.description) info.appendChild(el("span", "group-tile-desc", g.description));
+        top.appendChild(info);
+        tile.appendChild(top);
+
+        const meta = el("div", "group-tile-meta");
         if (g.my_status === "pending") {
-            metaRight.appendChild(el("span", "badge badge-info", "Pending"));
+            meta.appendChild(el("span", "badge badge-info", "Pending"));
         } else if (g.my_role) {
-            metaRight.appendChild(roleBadge(g.my_role));
+            meta.appendChild(roleBadge(g.my_role));
         }
-        const open = el("button", "btn btn-sm btn-secondary", "Open");
+        meta.appendChild(el("span", "group-tile-count",
+            `${g.member_count} member${g.member_count === 1 ? "" : "s"}`));
+
+        // the whole tile is the target; the Open button keeps it keyboard-
+        // reachable and bubbles into the same handler
+        const open = el("button", "btn btn-sm btn-secondary group-tile-open", "Open");
         open.type = "button";
-        open.onclick = () => openGroupDetail(g);
-        metaRight.appendChild(open);
-        row.appendChild(metaRight);
-        groupsList.appendChild(row);
+        meta.appendChild(open);
+        tile.appendChild(meta);
+        tile.onclick = () => openGroupDetail(g);
+        groupsList.appendChild(tile);
     }
     if (!data.groups.length) {
-        groupsList.appendChild(el("p", "module-empty",
+        groupsList.appendChild(el("li", "module-empty",
             "No groups yet — create one or join with a code."));
     }
 
@@ -373,15 +409,15 @@ async function openGroupDetail(g) {
 
     const list = el("ul", "socials-list group-member-list");
     for (const m of active) {
-        const row = el("li", "social-row");
+        const row = el("li", "socials-row");
         row.dataset.username = m.username;
         row.appendChild(avatar(m.username));
-        const info = el("div", "social-row-info");
+        const info = el("div", "socials-row-info");
         info.appendChild(el("span", "social-name", m.username));
         row.appendChild(info);
-        const meta = el("div", "social-row-meta");
+        const meta = el("div", "socials-row-actions");
         meta.appendChild(roleBadge(m.role));
-        const actions = el("div", "social-actions");
+        const actions = el("div", "socials-row-actions");
         if (amOwner && m.role !== "owner") {
             const toggleRole = el("button", "btn btn-sm btn-secondary",
                 m.role === "admin" ? "Demote" : "Make admin");
@@ -430,7 +466,7 @@ async function openGroupDetail(g) {
         list.appendChild(row);
     }
     if (!active.length) {
-        list.appendChild(el("p", "module-empty", "No members yet."));
+        list.appendChild(el("li", "module-empty", "No members yet."));
     }
     body.appendChild(list);
 
@@ -438,17 +474,17 @@ async function openGroupDetail(g) {
     // (the server withholds pending rows from non-admins' awareness anyway
     // — pending are listed for all readers of the detail, so gate the UI)
     if (pending.length) {
-        const reqHead = el("h3", "social-card-title", "Join requests");
+        const reqHead = el("h3", "socials-block-title", "Join requests");
         body.appendChild(reqHead);
         const reqList = el("ul", "socials-list");
         for (const m of pending) {
-            const row = el("li", "social-row");
+            const row = el("li", "socials-row");
             row.dataset.username = m.username;
             row.appendChild(avatar(m.username));
-            const info = el("div", "social-row-info");
+            const info = el("div", "socials-row-info");
             info.appendChild(el("span", "social-name", m.username));
             row.appendChild(info);
-            const actions = el("div", "social-actions");
+            const actions = el("div", "socials-row-actions");
             if (amAdminish) {
                 const accept = el("button", "btn btn-sm btn-primary", "Accept");
                 accept.type = "button";
@@ -480,7 +516,7 @@ async function openGroupDetail(g) {
 
     // admins add members straight from their friends list
     if (amAdminish) {
-        const addRow = el("div", "social-actions");
+        const addRow = el("div", "socials-row-actions");
         const addBtn = el("button", "btn btn-sm btn-secondary", "Add members");
         addBtn.type = "button";
         addBtn.onclick = () => openGroupPicker(g);
@@ -489,7 +525,7 @@ async function openGroupDetail(g) {
     }
 
     // my own escape hatches
-    const mine = el("div", "social-actions");
+    const mine = el("div", "socials-row-actions");
     if (me && me.role !== "owner") {
         const leave = el("button", "btn btn-sm btn-danger", "Leave group");
         leave.type = "button";
@@ -527,7 +563,6 @@ let pickerGroup = null;
 
 function openGroupPicker(g) {
     pickerGroup = g;
-    const backdrop = document.getElementById("pickerBackdrop");
     const list = document.getElementById("pickerList");
     const search = document.getElementById("pickerSearch");
     const keyInput = document.getElementById("pickerKey");
@@ -694,4 +729,8 @@ initFriendAdd();
 initGroupCreate();
 initJoinByCode();
 initPicker();
-if (document.getElementById("friendAddBtn")) loadFriends();
+renderCounts();
+if (document.getElementById("friendAddBtn")) {
+    loadFriends();
+    loadGroups();   // the hidden view still feeds the hero counters
+}

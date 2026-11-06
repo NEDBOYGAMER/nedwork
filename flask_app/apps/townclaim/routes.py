@@ -17,6 +17,7 @@ import json
 import os
 import random
 import re
+import secrets
 import threading
 import time
 import string as _string
@@ -214,9 +215,32 @@ def new_game(code):
 
 def new_player(pid, name, color, token):
     return {"id": pid, "name": name, "color": color, "token": token,
+            # secrets, not the cosmetic token above: proves this caller
+            # controls this seat (returned only to the client that sat down)
+            "player_token": secrets.token_urlsafe(24),
             "money": cfg()["starting_money"], "position": 0,
             "jail_turns": None, "bankrupt": False, "is_host": False,
             "get_out_of_jail": 0}
+
+
+def _acting_player(game, data):
+    """Resolve (player, None) or (None, error_response).
+
+    Every state-changing route used to trust whatever player_id the client
+    sent, so knowing a game code was enough to act as anyone. The seat is
+    now proven by the server-issued player_token from create/join — per
+    seat, not per account, because several people legitimately play the
+    same town from one browser.
+    """
+    pid = data.get("player_id")
+    supplied = data.get("player_token") or ""
+    player = player_by(game, pid)
+    if player is None:
+        return None, (jsonify({"error": "Unknown player."}), 403)
+    expected = player.get("player_token") or ""
+    if not expected or not supplied or not secrets.compare_digest(expected, supplied):
+        return None, (jsonify({"error": "Not your seat."}), 403)
+    return player, None
 
 
 # --------------------------------------------------------------------------
@@ -541,7 +565,9 @@ def public_state(game, viewer_id=None):
         "code": game["code"],
         "status": game["status"],
         "round": game["round"],
-        "players": game["players"],
+        # player_token is a per-seat secret — never ship it to anyone
+        "players": [{k: v for k, v in p.items() if k != "player_token"}
+                    for p in game["players"]],
         "board": [game["board"][k] for k in sorted(game["board"])],
         "turn_player_id": cp["id"] if cp else None,
         "dice": game["dice"],
@@ -587,7 +613,8 @@ def create_game():
         GAMES[code] = game
         _save_game(game)
         log(game, f"{name} founded a new town.")
-    return jsonify({"code": code, "player_id": pid})
+    return jsonify({"code": code, "player_id": pid,
+                    "player_token": player["player_token"]})
 
 
 @townclaim_bp.route("/join", methods=["POST"])
@@ -614,7 +641,8 @@ def join_game():
         game["players"].append(player)
         _save_game(game)
         log(game, f"{name} joined the town.")
-    return jsonify({"code": code, "player_id": pid})
+    return jsonify({"code": code, "player_id": pid,
+                    "player_token": player["player_token"]})
 
 
 @townclaim_bp.route("/start", methods=["POST"])
@@ -627,8 +655,10 @@ def start_game():
         game = get_game(code)
         if not game:
             return jsonify({"error": "Unknown town."}), 404
-        player = next((p for p in game["players"] if p["id"] == pid), None)
-        if not player or not player["is_host"]:
+        player, err = _acting_player(game, data)
+        if err:
+            return err
+        if not player["is_host"]:
             return jsonify({"error": "Only the host can start the town."}), 403
         if len(game["players"]) < 2:
             return jsonify({"error": "Need at least 2 players to start."}), 400
@@ -649,7 +679,14 @@ def get_state(code):
         if not game:
             return jsonify({"error": "Unknown town."}), 404
         ensure_auction_closed(game)
-    return jsonify(public_state(game, pid))
+    # read-only, so a missing/wrong token only means "no private view"
+    # (you stop seeing your own pending trades) — it never grants a seat
+    viewer = player_by(game, pid) if pid else None
+    if viewer is not None and not secrets.compare_digest(
+            viewer.get("player_token") or "",
+            request.args.get("player_token") or ""):
+        viewer = None
+    return jsonify(public_state(game, viewer["id"] if viewer else None))
 
 
 @townclaim_bp.route("/roll", methods=["POST"])
@@ -662,6 +699,9 @@ def roll_dice():
         game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        seat, err = _acting_player(game, data)
+        if err:
+            return err
         ensure_auction_closed(game)
         cp = current_player(game)
         if not cp or cp["id"] != pid:
@@ -719,6 +759,9 @@ def buy_property():
         game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        seat, err = _acting_player(game, data)
+        if err:
+            return err
         ensure_auction_closed(game)
         cp = current_player(game)
         if not cp or cp["id"] != pid:
@@ -756,6 +799,9 @@ def auction_property():
         game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        seat, err = _acting_player(game, data)
+        if err:
+            return err
         ensure_auction_closed(game)
         cp = current_player(game)
         if not cp or cp["id"] != pid:
@@ -781,6 +827,9 @@ def bid():
         game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        seat, err = _acting_player(game, data)
+        if err:
+            return err
         ensure_auction_closed(game)
         a = game.get("auction")
         if not a:
@@ -814,6 +863,9 @@ def build_house():
         game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        seat, err = _acting_player(game, data)
+        if err:
+            return err
         ensure_auction_closed(game)
         cp = current_player(game)
         if not cp or cp["id"] != pid:
@@ -845,6 +897,9 @@ def bail_player():
         game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        seat, err = _acting_player(game, data)
+        if err:
+            return err
         ensure_auction_closed(game)
         cp = current_player(game)
         if not cp or cp["id"] != pid:
@@ -884,6 +939,9 @@ def propose_trade():
         game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        seat, err = _acting_player(game, data)
+        if err:
+            return err
         ensure_auction_closed(game)
         sender = player_by(game, pid)
         target = player_by(game, to)
@@ -931,6 +989,9 @@ def trade_response():
         game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        seat, err = _acting_player(game, data)
+        if err:
+            return err
         ensure_auction_closed(game)
         trade = next((t for t in game["pending_trades"] if t["id"] == tid), None)
         if not trade:
@@ -985,6 +1046,9 @@ def end_turn():
         game = get_game(code)
         if not game or game["status"] != "active":
             return jsonify({"error": "Town not active."}), 400
+        seat, err = _acting_player(game, data)
+        if err:
+            return err
         cp = current_player(game)
         if not cp or cp["id"] != pid:
             return jsonify({"error": "It is not your turn."}), 403

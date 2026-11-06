@@ -116,7 +116,7 @@ with sync_playwright() as p:
     # owner approves (switch to the groups tab first)
     page.click("[data-view='groups']"); time.sleep(0.5)
     page.locator("#groupReqList").get_by_role("button", name="Accept").click(); time.sleep(0.6)
-    page.click("#groupsList .social-row .btn", no_wait_after=True); time.sleep(0.6)
+    page.click("#groupsList .group-tile .btn", no_wait_after=True); time.sleep(0.6)
     body = page.locator("#groupDetailBody").inner_text()
     check("pal in member list", "pal" in body)
     # cleanup: pal leaves

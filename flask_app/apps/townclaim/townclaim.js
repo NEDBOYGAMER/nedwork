@@ -18,7 +18,7 @@ const COMMUNITY_ICON = "✚";
 const TAX_ICON = "₣";
 const TOKEN_EMOJI = { cat: "🐱", fox: "🦊", bear: "🐻", owl: "🦉", rabbit: "🐰", dog: "🐶", horse: "🐴", frog: "🐸" };
 
-let session = { code: null, playerId: null, name: null };
+let session = { code: null, playerId: null, playerToken: null, name: null };
 let pollTimer = null;
 let lastStatus = "lobby";
 let seenCardSeq = 0;
@@ -66,6 +66,10 @@ function money(n) {
 }
 
 async function api(path, body) {
+  // the seat secret rides along with every call — it is what proves this
+  // browser owns the player_id it claims to be
+  if (body && body.player_id === undefined) body.player_id = session.playerId;
+  if (body) body.player_token = session.playerToken;
   const res = await fetch(API_BASE + path, {
     method: body ? "POST" : "GET",
     headers: body ? { "Content-Type": "application/json" } : undefined,
@@ -109,7 +113,8 @@ $("#btn-create").addEventListener("click", async () => {
   const name = $("#create-name").value.trim() || "Mayor";
   try {
     const data = await api("create", { name });
-    session = { code: data.code, playerId: data.player_id, name };
+    session = { code: data.code, playerId: data.player_id,
+                playerToken: data.player_token, name };
     enterLobby();
   } catch (e) { $("#home-error").textContent = e.message; }
 });
@@ -120,7 +125,8 @@ $("#btn-join").addEventListener("click", async () => {
   if (!code) { $("#home-error").textContent = "Enter a town code."; return; }
   try {
     const data = await api("join", { name, code });
-    session = { code: data.code, playerId: data.player_id, name };
+    session = { code: data.code, playerId: data.player_id,
+                playerToken: data.player_token, name };
     enterLobby();
   } catch (e) { $("#home-error").textContent = e.message; }
 });
@@ -981,7 +987,7 @@ function stopPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = nu
 async function poll() {
   if (!session.code) return;
   try {
-    const state = await api(`state/${session.code}?player_id=${session.playerId}`);
+    const state = await api(`state/${session.code}?player_id=${encodeURIComponent(session.playerId)}&player_token=${encodeURIComponent(session.playerToken)}`);
     if (!state) return;
     if (state.status === "lobby") {
       renderLobby(state);

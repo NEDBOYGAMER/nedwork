@@ -1,14 +1,13 @@
 /* Members module — FIXED (always present, first). View mode: RSVP list
    only — removing people is an edit-mode setting (settingsMembers). */
 import { el, rsvpBadge, toast } from "../ui.js";
-import { rsvpUrl, transferUrl, memberUrl, byKeyUrl, api } from "../api.js";
+import { rsvpUrl, memberUrl, byKeyUrl, api } from "../api.js";
 
 const RSVP_VALUES = ["attending", "maybe", "cant"];
 
 export function renderMembers(root, ctx) {
-    const { module, event, state, isHost, me, refresh } = ctx;
+    const { event, state, me, refresh } = ctx;
     const members = state.members || [];
-    const amHost = isHost;
 
     // my RSVP row (not the host — host is implicit attending); the
     // "Your RSVP:" label is gone (round 6) — the buttons speak for it
@@ -59,36 +58,6 @@ export function renderMembers(root, ctx) {
         list.appendChild(li);
     }
     root.appendChild(list);
-
-    // host-only handover lives with the members it acts on, not in the
-    // page-bottom band (which floated detached on events without content)
-    if (amHost && event.status !== "archived") {
-        const actions = el("div", "host-actions-row");
-        const transferBtn = el("button", "btn btn-secondary btn-sm",
-            "Transfer host");
-        transferBtn.type = "button";
-        transferBtn.onclick = async () => {
-            const others = (state.members || [])
-                .filter((m) => m.role === "member");
-            if (!others.length) {
-                toast("No members to transfer to", "info");
-                return;
-            }
-            const name = prompt("Transfer host to which member?\n" +
-                others.map((m, i) => `${i + 1}. ${m.user.username}`).join("\n"));
-            const idx = Number(name) - 1;
-            if (!name || !others[idx]) return;
-            try {
-                await api(transferUrl(event.id), {
-                    method: "POST",
-                    body: JSON.stringify({ member_id: others[idx].id }),
-                });
-                await refresh();
-            } catch (e) { toast(e.message, "error"); }
-        };
-        actions.appendChild(transferBtn);
-        root.appendChild(actions);
-    }
 }
 
 export async function addMembers(event, ids, refresh) {

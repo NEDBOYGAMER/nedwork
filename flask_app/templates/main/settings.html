@@ -265,16 +265,13 @@
                 <p>Manage your login and how you access Nedwork.</p>
             </div>
 
-            <div class="setting-item is-placeholder">
+            <div class="setting-item">
                 <div class="setting-item-info">
-                    <h3>Password <span class="badge badge-neutral">Coming soon</span></h3>
+                    <h3>Password</h3>
                     <p>Change the password used to sign in.</p>
                 </div>
                 <div class="setting-item-control">
-                    <div class="input-group has-action" style="min-width:220px;">
-                        <input type="password" value="••••••••••" readonly disabled>
-                        <button class="btn btn-secondary btn-sm" type="button" disabled>Change</button>
-                    </div>
+                    <button class="btn btn-secondary btn-sm" type="button" id="changePasswordBtn">Change</button>
                 </div>
             </div>
 
@@ -436,6 +433,30 @@
             <button type="button" class="btn btn-secondary" id="deleteAccountCancel">Cancel</button>
             <button type="button" class="btn btn-danger" id="deleteAccountConfirmBtn"
                     data-username="{{ username }}" disabled>Delete account</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="changePasswordBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="changePasswordTitle">
+        <h3 id="changePasswordTitle">Change password</h3>
+        <div class="field">
+            <label for="pwCurrent">Current password</label>
+            <input id="pwCurrent" type="password" autocomplete="current-password">
+        </div>
+        <div class="field">
+            <label for="pwNew">New password</label>
+            <input id="pwNew" type="password" autocomplete="new-password">
+            <span class="hint">At least 10 characters.</span>
+        </div>
+        <div class="field">
+            <label for="pwConfirm">Confirm new password</label>
+            <input id="pwConfirm" type="password" autocomplete="new-password">
+        </div>
+        <p class="hint" id="pwError" hidden></p>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="pwCancel">Cancel</button>
+            <button type="button" class="btn btn-primary" id="pwSave">Update password</button>
         </div>
     </div>
 </div>

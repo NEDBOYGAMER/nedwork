@@ -45,6 +45,8 @@ MAX_CHAT_LEN = 2000
 IMAGE_UPLOAD_DIR = "event_images"   # under instance/data/
 IMAGE_EXT = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
              "gif": "image/gif", "webp": "image/webp"}
+# pixel cap for uploaded images (decompression-bomb guard)
+MAX_IMAGE_PIXELS = 40_000_000
 
 # Built-in event presets — module type → initial config. Empty modules
 # only; the host fills in the content after creation.

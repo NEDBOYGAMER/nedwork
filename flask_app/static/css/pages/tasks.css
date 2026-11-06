@@ -728,3 +728,12 @@ input[type="datetime-local"]:focus {
 
     .toast { animation-duration: .01s; }
 }
+/* The shared sidenav floats a hamburger at ≤768px (see sidenav.css) —
+   clear it so the page title is not buried under the menu button
+   (same pattern as app_corner.css / socials.css). This must stay after
+   the 640px padding rule above so it wins the cascade. */
+@media (max-width: 768px) {
+    .tasks-page {
+        padding-top: calc(64px + env(safe-area-inset-top, 0px));
+    }
+}

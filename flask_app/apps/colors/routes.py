@@ -94,9 +94,12 @@ def _is_valid_palette(palette):
 # you want to rotate the key/model without touching code.
 # ------------------------------------------------------------------
 AI_API_URL = "https://chat.nedwork.ch/api/chat/completions"
-AI_API_KEY = os.environ.get("COLORS_AI_API_KEY", "sk-2452123ed62b4ae9aee25ea442a3bafc")
+# no fallback on purpose: without the env var the feature reports a
+# config error instead of shipping a key in the repo
+AI_API_KEY = os.environ.get("COLORS_AI_API_KEY", "")
 AI_MODEL = os.environ.get("COLORS_AI_MODEL", "colorpalette-generator")
 MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB
+MAX_IMAGE_PIXELS = 50_000_000      # decompression-bomb guard
 
 
 def _clamp_color_count(value, default=5):
@@ -133,6 +136,9 @@ def _prepare_image(image_bytes):
     if HAS_PIL:
         try:
             img = Image.open(io.BytesIO(image_bytes))
+            # header-only bomb guard: never decode an absurd bitmap locally
+            if img.width * img.height > MAX_IMAGE_PIXELS:
+                raise ValueError("image dimensions too large")
             img = ImageOps.exif_transpose(img)   # respect EXIF orientation
             img = img.convert("RGB")             # drop alpha/CMYK quirks
             img.thumbnail((1024, 1024))          # cap size, shrink payload
@@ -202,6 +208,9 @@ def _generate_palette_from_image(image_bytes, mime_type, number):
     Mirrors the working Python test request exactly."""
     if requests is None:
         raise RuntimeError("The 'requests' library is not installed on the server.")
+    if not AI_API_KEY:
+        raise RuntimeError(
+            "Colors AI is not configured on this server (COLORS_AI_API_KEY is unset).")
 
     b64 = base64.b64encode(image_bytes).decode("utf-8")
     payload = {

@@ -15,74 +15,114 @@
 
 <main class="socials-page">
 
-    <header class="socials-header">
+    <header class="socials-hero">
         <div>
             <h1>Socials</h1>
-            <p class="socials-subtitle">People and groups on nedwork.</p>
+            <p class="socials-subtitle">The people you know and the groups you're in.</p>
         </div>
+        <dl class="socials-stats">
+            <div class="social-stat">
+                <dt>Friends</dt>
+                <dd id="statFriends">0</dd>
+            </div>
+            <div class="social-stat">
+                <dt>Requests</dt>
+                <dd id="statRequests">0</dd>
+            </div>
+            <div class="social-stat">
+                <dt>Groups</dt>
+                <dd id="statGroups">0</dd>
+            </div>
+        </dl>
     </header>
 
-    <nav class="tabs" id="socials-nav" role="tablist" aria-label="Socials views">
-        <button type="button" class="tab active" role="tab" aria-selected="true" data-view="friends">Friends</button>
-        <button type="button" class="tab" role="tab" aria-selected="false" data-view="groups">Groups</button>
-    </nav>
+    <div class="socials-switch" id="socials-nav" role="tablist" aria-label="Socials views">
+        <button type="button" class="socials-switch-btn active" role="tab" aria-selected="true" data-view="friends">
+            {{ icon('users') }} Friends
+        </button>
+        <button type="button" class="socials-switch-btn" role="tab" aria-selected="false" data-view="groups">
+            {{ icon('folder') }} Groups
+        </button>
+    </div>
 
     <section id="friendsView" class="socials-view">
-        <div class="socials-toolbar">
-            <div class="input-group has-icon add-friend">
-                {{ icon('user-plus', 'icon input-group-icon') }}
-                <input id="friendAddInput" type="text" placeholder="Add friend by username or key" maxlength="40" autocomplete="off">
+        <div class="card socials-composer">
+            <label class="socials-composer-label" for="friendAddInput">Add a friend</label>
+            <div class="socials-composer-row">
+                <div class="input-group has-icon">
+                    {{ icon('user-plus', 'icon input-group-icon') }}
+                    <input id="friendAddInput" type="text" placeholder="Username or key" maxlength="40" autocomplete="off">
+                </div>
+                <button type="button" class="btn btn-primary" id="friendAddBtn">Send request</button>
             </div>
-            <button type="button" class="btn btn-primary" id="friendAddBtn">Send request</button>
         </div>
 
-        <div class="input-group has-icon socials-filter">
-            {{ icon('search', 'icon input-group-icon') }}
-            <input id="friendsFilter" type="search" placeholder="Filter lists…" autocomplete="off">
-        </div>
+        <section class="socials-block" id="requestsBlock">
+            <h2 class="socials-block-title">
+                Waiting on you
+                <span class="badge badge-info" id="incomingBadge" hidden>0</span>
+            </h2>
+            <ul class="socials-list" id="incomingList"></ul>
+        </section>
 
-        <div class="socials-columns">
-            <div class="card social-card" id="requestsCol">
-                <h2 class="social-card-title">Requests <span class="badge badge-info" id="incomingBadge" hidden>0</span></h2>
-                <ul class="socials-list" id="incomingList"></ul>
-                <h2 class="social-card-title" id="outgoingTitle">Sent</h2>
-                <ul class="socials-list" id="outgoingList"></ul>
+        <section class="socials-block">
+            <div class="socials-block-head">
+                <h2 class="socials-block-title">
+                    Friends
+                    <span class="badge badge-neutral" id="friendsBadge" hidden>0</span>
+                </h2>
+                <div class="input-group has-icon socials-filter">
+                    {{ icon('search', 'icon input-group-icon') }}
+                    <input id="friendsFilter" type="search" placeholder="Filter friends…" autocomplete="off">
+                </div>
             </div>
-            <div class="card social-card" id="friendsCol">
-                <h2 class="social-card-title">Friends <span class="badge badge-neutral" id="friendsBadge" hidden>0</span></h2>
-                <ul class="socials-list" id="friendsList"></ul>
-            </div>
-        </div>
+            <ul class="socials-grid" id="friendsList"></ul>
+        </section>
+
+        <section class="socials-block" id="outgoingBlock">
+            <h2 class="socials-block-title" id="outgoingTitle">Sent requests</h2>
+            <ul class="socials-list" id="outgoingList"></ul>
+        </section>
     </section>
 
     <section id="groupsView" class="socials-view" hidden>
-        <div class="socials-toolbar">
-            <button type="button" class="btn btn-primary" id="newGroupBtn">
-                {{ icon('plus') }}
-                New group
-            </button>
-            <div class="input-group has-icon join-group">
-                {{ icon('key', 'icon input-group-icon') }}
-                <input id="joinCodeInput" type="text" class="join-code-input" placeholder="Join with code" maxlength="8" autocomplete="off">
+        <div class="card socials-composer">
+            <div class="socials-composer-row">
+                <button type="button" class="btn btn-primary" id="newGroupBtn">
+                    {{ icon('plus') }}
+                    New group
+                </button>
+                <div class="socials-join">
+                    <div class="input-group has-icon join-group">
+                        {{ icon('key', 'icon input-group-icon') }}
+                        <input id="joinCodeInput" type="text" class="join-code-input" placeholder="Join with code" maxlength="8" autocomplete="off">
+                    </div>
+                    <button type="button" class="btn btn-secondary" id="joinCodeBtn">Join</button>
+                </div>
             </div>
-            <button type="button" class="btn btn-secondary" id="joinCodeBtn">Join</button>
         </div>
 
-        <div class="input-group has-icon socials-filter">
-            {{ icon('search', 'icon input-group-icon') }}
-            <input id="groupsFilter" type="search" placeholder="Filter groups…" autocomplete="off">
-        </div>
+        <section class="socials-block" id="groupRequestsBlock">
+            <h2 class="socials-block-title">
+                Join requests
+                <span class="badge badge-info" id="groupReqBadge" hidden>0</span>
+            </h2>
+            <ul class="socials-list" id="groupReqList"></ul>
+        </section>
 
-        <div class="socials-columns">
-            <div class="card social-card" id="groupRequestsCol">
-                <h2 class="social-card-title">Join requests <span class="badge badge-info" id="groupReqBadge" hidden>0</span></h2>
-                <ul class="socials-list" id="groupReqList"></ul>
+        <section class="socials-block">
+            <div class="socials-block-head">
+                <h2 class="socials-block-title">
+                    My groups
+                    <span class="badge badge-neutral" id="groupsBadge" hidden>0</span>
+                </h2>
+                <div class="input-group has-icon socials-filter">
+                    {{ icon('search', 'icon input-group-icon') }}
+                    <input id="groupsFilter" type="search" placeholder="Filter groups…" autocomplete="off">
+                </div>
             </div>
-            <div class="card social-card" id="myGroupsCol">
-                <h2 class="social-card-title">My groups <span class="badge badge-neutral" id="groupsBadge" hidden>0</span></h2>
-                <ul class="socials-list" id="groupsList"></ul>
-            </div>
-        </div>
+            <ul class="socials-grid socials-grid-wide" id="groupsList"></ul>
+        </section>
     </section>
 
 </main>

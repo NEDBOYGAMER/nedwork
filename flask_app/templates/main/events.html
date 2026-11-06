@@ -2,6 +2,8 @@
 
 {% block title %}nedwork — Events{% endblock %}
 
+{% block body_class %}{% if event_id is defined and event_id %}events-detail-page{% else %}events-list-page{% endif %}{% endblock %}
+
 {% block extra_head %}
     <meta name="description" content="Coordinate gatherings with your group">
     <meta property="og:image" content="{{ url_for('static', filename='img/about/header_img.png') }}">

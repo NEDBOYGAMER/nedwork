@@ -43,7 +43,7 @@ async function submit() {
     const repeat = document.getElementById("new-password-repeat")?.value;
 
     if (!current || !next) { showError("Fill in all fields"); return; }
-    if (next.length < 8) { showError("New password must be at least 8 characters"); return; }
+    if (next.length < 10) { showError("New password must be at least 10 characters"); return; }
     if (next !== repeat) { showError("New passwords do not match"); return; }
 
     try {
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!container) return;
 
     container.appendChild(field("Current password", { id: "current-password", type: "password", placeholder: "Password" }));
-    container.appendChild(field("New password", { id: "new-password", type: "password", placeholder: "At least 8 characters" }));
+    container.appendChild(field("New password", { id: "new-password", type: "password", placeholder: "At least 10 characters" }));
     container.appendChild(field("Again", { id: "new-password-repeat", type: "password", placeholder: "Repeat password" }));
 
     const submitBtn = document.createElement('button');
