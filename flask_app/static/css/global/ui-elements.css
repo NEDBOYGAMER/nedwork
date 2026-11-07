@@ -517,6 +517,8 @@ input[type="radio"] {
     border-radius: var(--radius-sm);
     padding: var(--space-2);
 }
+/* the display:flex above would otherwise beat the UA's [hidden] rule */
+.picker-list[hidden] { display: none; }
 
 .picker-row {
     display: flex;
@@ -595,7 +597,8 @@ button.picker-row {
 
 
 /* ==========================================================================
-   Toast
+   Toast — one look everywhere; the implementation lives in
+   static/js/global/toast.js (window.toast / window.showToast)
    ========================================================================== */
 
 .toast-container {
@@ -604,25 +607,87 @@ button.picker-row {
     right: var(--space-5);
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     gap: 8px;
     z-index: 100;
+    pointer-events: none;   /* only the toasts themselves are clickable */
 }
 
 .toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 220px;
+    max-width: min(380px, calc(100vw - 2 * var(--space-5)));
     background: var(--surface);
     border: 1px solid var(--line);
     border-left: 3px solid var(--accent);
-    padding: 12px 16px;
+    padding: 12px 14px;
     border-radius: var(--radius-sm);
     font-size: 13px;
-    min-width: 220px;
+    line-height: 1.4;
     box-shadow: 0 8px 24px var(--shadow);
-    animation: toast-in .2s ease;
+    cursor: pointer;
+    animation: toast-in .22s cubic-bezier(.2, .8, .3, 1);
+}
+
+.toast-msg {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.toast-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    color: var(--accent);
+}
+
+.toast-info    { border-left-color: var(--info); }
+.toast-info    .toast-icon { color: var(--info); }
+.toast-success { border-left-color: var(--success); }
+.toast-success .toast-icon { color: var(--success); }
+.toast-error   { border-left-color: var(--danger); }
+.toast-error   .toast-icon { color: var(--danger); }
+.toast-warning { border-left-color: var(--warning); }
+.toast-warning .toast-icon { color: var(--warning); }
+.toast-level   { border-left-color: var(--accent); font-weight: 500; }
+
+.toast-action {
+    flex: none;
+    align-self: center;
+    padding: 2px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.toast-action:hover { border-color: var(--accent); color: var(--accent); }
+
+.toast.is-leaving {
+    animation: toast-out .3s ease forwards;
+    pointer-events: none;
 }
 
 @keyframes toast-in {
-    from { transform: translateX(20px); opacity: 0; }
-    to   { transform: translateX(0);    opacity: 1; }
+    from { transform: translateX(24px) scale(.98); opacity: 0; }
+    to   { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+@keyframes toast-out {
+    to { transform: translateX(24px) scale(.98); opacity: 0; }
 }
 
 
@@ -1256,8 +1321,14 @@ input[type="range"]:disabled {
 .btn-icon {
     padding: 10px;
 }
-/* Mobile: no toast popups. On phones they cover the bottom-right corner
-   (and the events edit save bar) without adding much over in-page state. */
+/* Mobile: toasts stay — laid out across the bottom, clear of the home
+   indicator. (They used to be hidden here, so phones got no feedback.) */
 @media (max-width: 768px) {
-    .toast-container { display: none; }
+    .toast-container {
+        left: var(--space-4);
+        right: var(--space-4);
+        bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+        align-items: stretch;
+    }
+    .toast { min-width: 0; max-width: none; }
 }

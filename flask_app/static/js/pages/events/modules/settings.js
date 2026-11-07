@@ -1,13 +1,13 @@
 /* Settings renderers — edit mode (§1). Each module renders as a config
    card: settings/fields/previews, NO live content interaction. They write
    into a local `draft` object; the sticky "Save changes" bar POSTs/PATCHes
-   everything in one go. Chat/Car share/Bring list show on/off toggles
-   plus their config; messages/rows stay read-only in view mode. */
+   everything in one go. Chat/Car share/Bring list have no settings — the
+   editor renders them as plain on/off switches instead. */
 
 import { el, icon, iconBtn, toast, fmtDate, confirmDialog, rsvpBadge } from "../ui.js";
 import {
-    eventUrl, moduleUrl, memberUrl, moduleContentUrl, imageUploadUrl,
-    inviteUrl, transferUrl, finalizeUrl, resetVotesUrl, api,
+    eventUrl, moduleUrl, modulesUrl, memberUrl, moduleContentUrl,
+    imageUploadUrl, inviteUrl, transferUrl, finalizeUrl, resetVotesUrl, api,
 } from "../api.js";
 import { openPicker } from "../picker.js";
 import { setupMapInteraction, keepMapSized, composeAddress } from "./location.js";
@@ -46,10 +46,12 @@ function toggle(labelText, checked, onChange) {
 /* ---- title (name + canonical event date) ------------------------------ */
 
 export function settingsTitle(root, ctx) {
-    const { draft } = ctx;
+    const { draft, event, refresh, imageModule } = ctx;
     const titleInput = textInput(draft.title, "Event title",
         (v) => { draft.title = v; });
     titleInput.maxLength = 120;
+    // the subtitle carries the event description now (the Description
+    // module is gone) — keep the hint pointing there
     const subInput = textInput(draft.subtitle, "Subtitle (optional)",
         (v) => { draft.subtitle = v; });
     subInput.maxLength = 200;
@@ -61,15 +63,58 @@ export function settingsTitle(root, ctx) {
         const pad = (n) => String(n).padStart(2, "0");
         dateInput.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
+    // trashcan clears the date again - only visible while one is set
+    const clearDate = iconBtn("trash", "Remove the date");
+    clearDate.type = "button";
+    const syncClear = () => {
+        clearDate.style.display = dateInput.value ? "" : "none";
+    };
+    dateInput.addEventListener("input", syncClear);
     dateInput.onchange = () => {
         draft.event_date = dateInput.value || null;
         draft.date_source = "manual";
+        syncClear();
     };
+    clearDate.onclick = () => {
+        draft.event_date = null;
+        draft.date_source = "manual";
+        dateInput.value = "";
+        syncClear();
+    };
+    syncClear();
+
+    const dateRow = el("div", "input-row");
+    dateRow.append(dateInput, clearDate);
 
     root.appendChild(field("Title", titleInput));
-    root.appendChild(field("Subtitle", subInput));
-    root.appendChild(field("Event date", dateInput,
+    root.appendChild(field("Subtitle", subInput,
+        "Shown under the title — the event's short description."));
+    root.appendChild(field("Event date", dateRow,
         "The one canonical date — the Doodle (time mode) and the countdown use it."));
+
+    // cover image — not a module card anymore, it lives in the header next
+    // to the title (view mode shows it behind the title as the masthead)
+    const coverBody = el("div", "cover-image-edit");
+    if (imageModule) {
+        settingsImage(coverBody, { ...ctx, module: imageModule });
+    } else {
+        const addBtn = el("button", "btn btn-secondary btn-sm", "Add cover image");
+        addBtn.type = "button";
+        addBtn.appendChild(icon("upload"));
+        addBtn.onclick = async () => {
+            try {
+                await api(modulesUrl(event.id), {
+                    method: "POST",
+                    body: JSON.stringify({ type: "image" }),
+                });
+                await refresh();
+            } catch (e) { toast(e.message, "error"); }
+        };
+        coverBody.appendChild(addBtn);
+        coverBody.appendChild(el("p", "hint",
+            "Shown as the event's header picture."));
+    }
+    root.appendChild(field("Cover image", coverBody));
 }
 
 /* ---- description ------------------------------------------------------- */
@@ -83,39 +128,6 @@ export function settingsDescription(root, ctx) {
     textarea.value = draft.description;
     textarea.oninput = () => { draft.description = textarea.value; };
     root.appendChild(field("Description", textarea));
-}
-
-/* ---- announcement (host banner text, optional tone) -------------------- */
-
-export function settingsAnnouncement(root, ctx) {
-    const { module, draft } = ctx;
-    const config = module.config || {};
-    draft.announcement = draft.announcement || {
-        text: config.text || "",
-        tone: config.tone || "info",
-    };
-    const d = draft.announcement;
-
-    const textarea = el("textarea", "field-input notes-editor");
-    textarea.rows = 3;
-    textarea.placeholder = "e.g. “Venue changed — we're at the back hall”";
-    textarea.value = d.text;
-    textarea.maxLength = 500;
-    textarea.oninput = () => { d.text = textarea.value; };
-    root.appendChild(field("Text", textarea));
-
-    const select = el("select", "field-input");
-    for (const [value, label] of [
-        ["info", "Info (neutral)"], ["important", "Important (accent)"],
-        ["urgent", "Urgent (red)"],
-    ]) {
-        const opt = el("option", null, label);
-        opt.value = value;
-        if (d.tone === value) opt.selected = true;
-        select.appendChild(opt);
-    }
-    select.onchange = () => { d.tone = select.value; };
-    root.appendChild(field("Tone", select));
 }
 
 /* ---- image (upload from PC is primary; URL secondary) ------------------ */
@@ -187,7 +199,7 @@ export function settingsImage(root, ctx) {
         }
     };
     root.appendChild(field("Upload image", uploadRow,
-        "PNG, JPEG, GIF or WebP, up to 8 MB."));
+        "PNG, JPEG, GIF or WebP."));
     root.appendChild(status);
 
     // URL as secondary
@@ -207,6 +219,43 @@ async function nominatimSearch(query) {
     if (!res.ok) throw new Error(`Nominatim ${res.status}`);
     const results = await res.json();
     return results?.[0] || null;
+}
+
+/* Reverse-geocode a map click/drag so the address fills itself in.
+   zoom=18 asks for building-level detail (house number + road). */
+async function nominatimReverse(lat, lng) {
+    const url = "https://nominatim.openstreetmap.org/reverse?format=json"
+        + "&addressdetails=1&zoom=18&lat=" + lat + "&lon=" + lng;
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) throw new Error(`Nominatim ${res.status}`);
+    return await res.json();
+}
+
+/* Approximate the visitor's area from their IP so an empty map opens near
+   them instead of over the world/CH. Best-effort: providers with generous
+   free CORS quotas; any failure returns null and the map keeps its
+   neutral default. */
+const IP_GEO_URLS = [
+    "https://get.geojs.io/v1/ip/geo.json",
+    "https://freeipapi.com/api/json",
+];
+
+async function ipLocation() {
+    for (const url of IP_GEO_URLS) {
+        try {
+            const res = await fetch(url, {
+                headers: { "Accept": "application/json" },
+            });
+            if (!res.ok) continue;
+            const data = await res.json();
+            const lat = Number(data?.latitude);
+            const lng = Number(data?.longitude);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                return [lat, lng];
+            }
+        } catch { /* rate-limited/blocked — try the next provider */ }
+    }
+    return null;
 }
 
 /* Structured address from the Nominatim fields (addressdetails=1) — not
@@ -297,6 +346,15 @@ function buildLocationMap(draft, config) {
     keepMapSized(map);
     liveMaps.push(map);
     setupMapInteraction(map, holder, mapDiv);
+    if (!hasPoint) {
+        // no pin yet: open near the visitor's approximate IP location
+        // (city-level) unless they already started interacting
+        let userTookOver = false;
+        map.on("click dragstart zoomstart", () => { userTookOver = true; });
+        ipLocation().then((pos) => {
+            if (pos && !userTookOver) map.setView(pos, 11);
+        });
+    }
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: "&copy; OpenStreetMap contributors",
@@ -327,10 +385,36 @@ function buildLocationMap(draft, config) {
         marker.bindPopup(popupFor());
     };
 
-    const setPoint = (lat, lng) => {
+    /* Auto-fill the address from the pin position. Nominatim asks for
+       at most one request per second, so clicks/drags are debounced; the
+       sequence guard drops responses superseded by a newer placement.
+       A miss keeps the previously detected address. */
+    let reverseTimer = null;
+    let reverseSeq = 0;
+    const reverseGeocode = (lat, lng) => {
+        const seq = ++reverseSeq;
+        clearTimeout(reverseTimer);
+        reverseTimer = setTimeout(async () => {
+            try {
+                const hit = await nominatimReverse(lat, lng);
+                if (seq !== reverseSeq || !hit?.address) return;
+                const parts = structuredAddress(hit);
+                if (!parts.street && !parts.town) return;
+                draft.location.street = parts.street;
+                draft.location.houseNumber = parts.houseNumber;
+                draft.location.town = parts.town;
+                draft.location.address = parts.display;
+                input.value = parts.display;
+                syncPopup();
+            } catch { /* offline/rate-limited — keep the old address */ }
+        }, 600);
+    };
+
+    const setPoint = (lat, lng, zoom) => {
+        const first = !marker;
         draft.location.lat = lat;
         draft.location.lng = lng;
-        if (!marker) {
+        if (first) {
             marker = L.marker([lat, lng], { draggable: true }).addTo(map);
             marker.on("click", () => marker.openPopup());
             marker.on("dragend", () => {
@@ -339,12 +423,15 @@ function buildLocationMap(draft, config) {
                 draft.location.lng = p.lng;
                 syncPopup();
                 readout.textContent = coordsText();
+                reverseGeocode(p.lat, p.lng);
             });
         } else {
             marker.setLatLng([lat, lng]);
         }
         syncPopup();
-        map.setView([lat, lng], 15);
+        // first placement jumps in from the world view; later clicks keep
+        // the zoom the user chose (forcing 15 made the map "zoom out")
+        map.setView([lat, lng], zoom ?? (first ? 15 : map.getZoom()));
         readout.textContent = coordsText();
     };
 
@@ -356,7 +443,10 @@ function buildLocationMap(draft, config) {
     };
 
     if (hasPoint) setPoint(draft.location.lat, draft.location.lng);
-    map.on("click", (e) => setPoint(e.latlng.lat, e.latlng.lng));
+    map.on("click", (e) => {
+        setPoint(e.latlng.lat, e.latlng.lng);
+        reverseGeocode(e.latlng.lat, e.latlng.lng);
+    });
 
     const status = el("span", "hint", "");
     go.onclick = async () => {
@@ -372,7 +462,7 @@ function buildLocationMap(draft, config) {
             draft.location.houseNumber = parts.houseNumber;
             draft.location.town = parts.town;
             draft.location.address = parts.display;
-            setPoint(parseFloat(hit.lat), parseFloat(hit.lon));
+            setPoint(parseFloat(hit.lat), parseFloat(hit.lon), 15);
             input.value = parts.display;
             status.textContent = "Found — pin placed. Drag to fine-tune.";
         } catch (e) {
@@ -425,8 +515,9 @@ export function settingsMembers(root, ctx) {
             "Transfer host");
         transferBtn.type = "button";
         transferBtn.onclick = async () => {
-            const name = prompt("Transfer host to which member?\n" +
-                others.map((m, i) => `${i + 1}. ${m.user.username}`).join("\n"));
+            const name = await promptDialog("Transfer host to which member?\n" +
+                others.map((m, i) => `${i + 1}. ${m.user.username}`).join("\n"),
+                { okText: "Transfer" });
             const idx = Number(name) - 1;
             if (!name || !others[idx]) return;
             try {
@@ -714,26 +805,6 @@ const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
 
-/* ---- bring list -------------------------------------------------------- */
-
-export function settingsBring(root, ctx) {
-    root.appendChild(el("p", "hint",
-        "The bring list itself is filled in by everyone in view mode — " +
-        "members add items and claim quantities there. Nothing to configure here."));
-}
-
-/* ---- car share --------------------------------------------------------- */
-
-export function settingsRides(root, ctx) {
-    root.appendChild(el("p", "hint",
-        "Ride offers are made by members in view mode (seats + departure). " +
-        "Nothing to configure here."));
-}
-
-/* ---- chat --------------------------------------------------------------- */
-
-export function settingsChat(root, ctx) {
-    root.appendChild(el("p", "hint",
-        "Chat happens in view mode — members read and write there. " +
-        "Nothing to configure here."));
-}
+/* ---- bring list / car share / chat ------------------------------------
+   No settings: the editor (editor.js TOGGLE_TYPES) renders these three as
+   plain on/off switches; their content is operated in view mode. */

@@ -75,11 +75,11 @@ export function openPicker(event, refresh) {
     search.oninput = render;
     render();
 
-    // live username suggestions for the manual add field (4+ chars)
+    // live username suggestions for the manual add field (3+ chars)
     keyInput.oninput = () => {
         clearTimeout(suggestTimer);
         const query = keyInput.value.trim().replace(/^@/, "");
-        if (query.length < 4) { clearSuggestions(); return; }
+        if (query.length < 3) { clearSuggestions(); return; }
         suggestTimer = setTimeout(async () => {
             const seq = ++suggestSeq;
             try {

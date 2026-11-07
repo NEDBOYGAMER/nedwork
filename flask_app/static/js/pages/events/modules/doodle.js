@@ -28,9 +28,8 @@ export function renderDoodle(root, ctx) {
     const anyoneVoted = votes.some((v) => v.option_id);
 
     if (!options.length) {
-        root.appendChild(el("p", "module-empty", amHost
-            ? "No options yet — pick dates/time spans in Edit."
-            : "No options yet — the host hasn't picked any."));
+        // empty doodle → the section (title included) is dropped by the
+        // view-mode section builder; nothing renders here at all
         return;
     }
 

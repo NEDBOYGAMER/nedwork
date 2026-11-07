@@ -81,15 +81,7 @@ async function api(url, { method = "POST", body } = {}) {
 }
 
 function toast(message) {
-    const host = document.getElementById("toastContainer");
-    if (!host) return;
-    const box = el("div", { class: "toast" }, message);
-    host.appendChild(box);
-    requestAnimationFrame(() => box.classList.add("show"));
-    setTimeout(() => {
-        box.classList.remove("show");
-        setTimeout(() => box.remove(), 300);
-    }, 3500);
+    return window.toast(message, "info");
 }
 
 /* setError(targetClass, text) -- fills the .admin-error in the section
@@ -250,7 +242,7 @@ async function denyPending(id) {
 }
 
 async function denyAllPending() {
-    if (!confirm("Deny ALL pending requests? Their names become free again for new registrations.")) return;
+    if (!(await confirmDialog("Deny ALL pending requests? Their names become free again for new registrations.", { danger: true }))) return;
     const res = await api("/admin/api/pending/deny_all");
     const data = res.data;
     if (!res.ok || !data.success) {
@@ -396,7 +388,7 @@ async function setCore(user, approved) {
 }
 
 async function deleteUser(user) {
-    if (!confirm(`PERMANENTLY delete ${user.username}? All their data (sessions, dashboards, tasks, app data, groups, friendships) is removed - this cannot be undone.`)) return;
+    if (!(await confirmDialog(`PERMANENTLY delete ${user.username}? All their data (sessions, dashboards, tasks, app data, groups, friendships) is removed - this cannot be undone.`, { danger: true }))) return;
 
     const res = await api(`/admin/api/users/${user.id}`, { method: "DELETE" });
     const data = res.data;
@@ -409,7 +401,7 @@ async function deleteUser(user) {
 }
 
 async function forceLogout(user) {
-    if (!confirm(`Kick ${user.username} out of every device now? Their access stays - they can log back in.`)) return;
+    if (!(await confirmDialog(`Kick ${user.username} out of every device now? Their access stays - they can log back in.`, { danger: true }))) return;
     const res = await api(`/admin/api/users/${user.id}/force_logout`, { method: "POST" });
     const data = res.data;
     if (!res.ok || !data.success) {
@@ -649,7 +641,7 @@ function editPermission(tr, row, errorId = "permError") {
 }
 
 async function deletePermission(row, errorId = "permError") {
-    if (!confirm(`Delete the permission "${row.name}"? It must not be granted anywhere.`)) return;
+    if (!(await confirmDialog(`Delete the permission "${row.name}"? It must not be granted anywhere.`, { danger: true }))) return;
     const res = await api(`/admin/api/permissions/${encodeURIComponent(row.name)}`, { method: "DELETE" });
     if (!res.ok || !res.data.success) {
         setError(errorId, res.data.error || "Failed");
@@ -1041,7 +1033,7 @@ async function createApp(form) {
 }
 
 async function deleteApp(app) {
-    if (!confirm(`Delete "${app.name}" from the catalog? Its tile image moves to img/apps/bin/ - nothing is hard-deleted.`)) return;
+    if (!(await confirmDialog(`Delete "${app.name}" from the catalog? Its tile image moves to img/apps/bin/ - nothing is hard-deleted.`, { danger: true }))) return;
     const res = await api(`/admin/api/apps/${encodeURIComponent(app.slug)}`, { method: "DELETE" });
     if (!res.ok || !res.data.success) {
         setError("appsError", res.data.error || "Failed");
@@ -1199,7 +1191,7 @@ async function saveGroupMembers(group, add, remove) {
 }
 
 async function deleteGroup(group) {
-    if (!confirm(`Delete group "${group.name}"? Members stay as users; the group's permissions simply go away.`)) return;
+    if (!(await confirmDialog(`Delete group "${group.name}"? Members stay as users; the group's permissions simply go away.`, { danger: true }))) return;
     const res = await api(`/admin/api/groups/${group.id}`, { method: "DELETE" });
     if (!res.ok || !res.data.success) { toast(res.data.error || "Failed"); return; }
     toast(`Group ${group.name} deleted`);
@@ -1246,7 +1238,7 @@ function renderSuggestions(items) {
 }
 
 async function deleteSuggestion(id) {
-    if (!confirm("Delete this suggestion?")) return;
+    if (!(await confirmDialog("Delete this suggestion?", { danger: true }))) return;
     const res = await api(`/admin/api/suggestions/${id}`, { method: "DELETE" });
     if (!res.ok || !res.data.success) { toast(res.data.error || "Failed"); return; }
     toast("Suggestion deleted");
@@ -1310,7 +1302,7 @@ async function addChangelog(form) {
 }
 
 async function deleteChangelog(id) {
-    if (!confirm("Remove this update from the public changelog?")) return;
+    if (!(await confirmDialog("Remove this update from the public changelog?", { danger: true }))) return;
     const res = await api(`/about/api/updates/${id}`, { method: "DELETE" });
     const data = res.data;
     if (!res.ok) { setError("changelogError", data.error || "Failed"); return; }

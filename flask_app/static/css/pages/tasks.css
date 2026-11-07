@@ -656,35 +656,10 @@ input[type="datetime-local"]:focus {
 .subtask-add .btn { flex: none; }
 
 
-/* -- toasts (with action button) -------------------------------------------------------------------------------------- */
+/* -- toasts: shared look lives in ui-elements.css; tasks only needs to sit
+   above its own sticky bars ------------------------------------------------------------- */
 
 .toast-container { z-index: 1300; }
-
-.toast-success { border-left-color: var(--success); }
-.toast-error   { border-left-color: var(--danger); }
-.toast-info    { border-left-color: var(--info); }
-.toast-level   { border-left-color: var(--accent); font-weight: 500; }
-
-.toast-action {
-    margin-left: var(--space-3);
-    padding: 2px 10px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    background: var(--surface-2);
-    color: var(--text);
-    font-family: inherit;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-}
-
-.toast-action:hover { border-color: var(--accent); color: var(--accent); }
-
-.toast.is-leaving {
-    opacity: 0;
-    transform: translateX(16px);
-    transition: opacity .25s ease, transform .25s ease;
-}
 
 
 /* -- responsive ---------------------------------------------------------------------------------------------------------- */

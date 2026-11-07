@@ -9,6 +9,17 @@ export function renderMembers(root, ctx) {
     const { event, state, me, refresh } = ctx;
     const members = state.members || [];
 
+    // the attendance stat lives here now (it left the title bar)
+    const summary = el("div", "member-summary");
+    summary.appendChild(el("span", "member-summary-count",
+        `${event.attending}/${event.member_count}`));
+    summary.appendChild(el("span", "member-summary-label", "going"));
+    if (event.maybe) {
+        summary.appendChild(el("span", "member-summary-maybe",
+            `${event.maybe} maybe`));
+    }
+    root.appendChild(summary);
+
     // my RSVP row (not the host — host is implicit attending); the
     // "Your RSVP:" label is gone (round 6) — the buttons speak for it
     if (me && me.role === "member") {

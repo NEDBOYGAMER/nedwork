@@ -120,16 +120,7 @@ function relTime(iso) {
 }
 
 function toast(msg, kind = 'accent') {
-    const t = document.createElement('div');
-    t.className = 'toast';
-    if (kind !== 'accent') t.style.borderLeftColor = `var(--${kind})`;
-    t.textContent = msg;
-    $('#toasts').append(t);
-    setTimeout(() => {
-        t.style.transition = 'opacity .3s ease';
-        t.style.opacity = '0';
-        setTimeout(() => t.remove(), 300);
-    }, 4200);
+    window.toast(msg, kind === 'accent' ? 'info' : kind);
 }
 
 /* ============================== updates data ============================ */

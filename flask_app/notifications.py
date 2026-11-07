@@ -33,6 +33,7 @@ logger = logging.getLogger("nedwork.notifications")
 EVENT_NOTIFICATION_TYPES = frozenset({
     "event_published", "date_finalized", "date_changed",
     "member_added", "event_reminder", "ride_cancelled",
+    "event_announcement",
 })
 
 

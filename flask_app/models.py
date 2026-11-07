@@ -727,11 +727,11 @@ class Task(db.Model):
 # a member leaving auto-releases them; votes/chat FK to users so they
 # survive a leave and show as "left".
 
-EVENT_MODULE_TYPES = ("notes", "image", "location", "members",
+EVENT_MODULE_TYPES = ("description", "image", "location", "members",
                       "doodle", "bring", "rides", "chat", "announcement")
 
 # modules that hold per-event state — only one instance per event allowed
-EVENT_SINGLETON_MODULES = ("notes", "image", "location", "members",
+EVENT_SINGLETON_MODULES = ("description", "image", "location", "members",
                            "doodle", "bring", "rides", "chat",
                            "announcement")
 
@@ -748,7 +748,8 @@ class Event(db.Model):
 
     status = db.Column(db.String(20), nullable=False, default="draft")
     # "draft" | "published" | "archived" — archived events are invisible
-    # to members (host-only); there is no hard delete in the MVP.
+    # to members (host-only); a hard delete exists via DELETE
+    # /events/api/events/<id> (host only).
 
     event_date = db.Column(db.DateTime)     # canonical; None until set
     date_source = db.Column(db.String(20), default="manual")
@@ -817,7 +818,7 @@ class EventModule(db.Model):
 
     config = db.Column(db.JSON, nullable=False, default=dict)
     # content-only modules keep their data here:
-    #   notes    {text, spacing}
+    #   description {text, spacing}
     #   image    {url, caption}
     #   location {address, street, houseNumber, town, lat, lng, note}
     #   doodle   {anonymous, deadline, show_counts} — deadline as iso str

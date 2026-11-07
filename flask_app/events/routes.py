@@ -52,7 +52,6 @@ MAX_IMAGE_PIXELS = 40_000_000
 # only; the host fills in the content after creation.
 EVENT_TEMPLATES = {
     "movie_night": [
-        {"type": "description", "config": {"text": "", "spacing": "normal"}},
         {"type": "image",  "config": {"url": ""}},
         {"type": "location", "config": {"address": "", "note": ""}},
         {"type": "doodle", "config": {"anonymous": False, "deadline": None,
@@ -61,7 +60,6 @@ EVENT_TEMPLATES = {
         {"type": "rides",  "config": {}},
     ],
     "game_night": [
-        {"type": "description", "config": {"text": "", "spacing": "normal"}},
         {"type": "image",  "config": {"url": ""}},
         {"type": "location", "config": {"address": "", "note": ""}},
         {"type": "doodle", "config": {"anonymous": False, "deadline": None,
@@ -71,7 +69,6 @@ EVENT_TEMPLATES = {
         {"type": "chat",   "config": {}},
     ],
     "party": [
-        {"type": "description", "config": {"text": "", "spacing": "normal"}},
         {"type": "image",  "config": {"url": ""}},
         {"type": "location", "config": {"address": "", "note": ""}},
         {"type": "announcement", "config": {}},
@@ -82,7 +79,6 @@ EVENT_TEMPLATES = {
         {"type": "chat",   "config": {}},
     ],
     "trip": [
-        {"type": "description", "config": {"text": "", "spacing": "normal"}},
         {"type": "image",  "config": {"url": ""}},
         {"type": "location", "config": {"address": "", "note": ""}},
         {"type": "announcement", "config": {}},
@@ -315,16 +311,26 @@ def _release_member_state(member):
     their bring claims, their passenger seats, any ride they drive (which
     drops its passengers back to the board). Doodle votes and chat survive
     (FK to users → render as 'left'). Not relied on cascade: SQLite."""
+    event = Event.query.get(member.event_id)
+    for claim in BringClaim.query.filter_by(member_id=member.id).all():
+        _remove_event_todo(member.user_id, _bring_todo_name(claim.item, event))
+    rides_module = EventModule.query.filter_by(
+        event_id=member.event_id, type="rides").first()
+    if rides_module is not None:
+        for ride in EventRide.query.filter_by(
+                module_id=rides_module.id,
+                driver_member_id=member.id).all():
+            _remove_event_todo(member.user_id, _ride_todo_name(ride, event))
+            for passenger in ride.passengers:
+                # the driver is gone — their passengers still need a ride
+                passenger.member.needs_ride = True
+        EventRide.query.filter_by(module_id=rides_module.id,
+                                  driver_member_id=member.id).delete(
+            synchronize_session=False)
     BringClaim.query.filter_by(member_id=member.id).delete(
         synchronize_session=False)
     RidePassenger.query.filter_by(member_id=member.id).delete(
         synchronize_session=False)
-    rides_module = EventModule.query.filter_by(
-        event_id=member.event_id, type="rides").first()
-    if rides_module is not None:
-        EventRide.query.filter_by(module_id=rides_module.id,
-                                  driver_member_id=member.id).delete(
-            synchronize_session=False)
 
 
 # ---------------------------------------------------------------------------
@@ -426,8 +432,9 @@ def create_event(user):
                                role="host", rsvp="attending"))
 
     # every event: the fixed Members module at the top, then template
-    # modules (or a single empty Description for a blank event)
-    specs = (modules_spec or [{"type": "description", "config": {}}])
+    # modules (a blank event starts with none — the header holds title,
+    # date and cover image, and the host adds content modules in Edit)
+    specs = modules_spec or []
     db.session.add(EventModule(event_id=event.id, type="members",
                                position=0, config={}))
     for i, spec in enumerate(specs):
@@ -522,6 +529,36 @@ def update_event(user, event_id):
 
     db.session.commit()
     return jsonify({"event": _event_to_dict(event, user)})
+
+
+@events_bp.route('/api/events/<int:event_id>', methods=['DELETE'])
+@permission_required("core", API)
+def delete_event(user, event_id):
+    """Hard delete — host only. Removes the event and every row it owns
+    (members, modules, doodle options/votes, bring items/claims, rides/
+    passengers, chat) via the ORM cascades. Image uploads for image
+    modules are unlinked too."""
+    event = _event_for(event_id)
+    if event is None:
+        return _deny("not found", 404)
+    if _host(event, user) is None:
+        return _deny("forbidden", 403)
+
+    for module in event.modules:
+        if module.type == "image":
+            url = str((module.config or {}).get("url") or "")
+            if url.startswith("/events/img/"):
+                filename = os.path.basename(url[len("/events/img/"):])
+                if filename.startswith(f"m{module.id}_"):
+                    try:
+                        os.remove(os.path.join(
+                            current_app.instance_path, "data",
+                            IMAGE_UPLOAD_DIR, filename))
+                    except OSError:
+                        pass
+    db.session.delete(event)
+    db.session.commit()
+    return jsonify({"ok": True})
 
 
 @events_bp.route('/api/events/<int:event_id>/publish', methods=['POST'])
@@ -818,9 +855,9 @@ def set_needs_ride(user, event_id):
 # api - modules (host structure)
 #   POST   /events/api/events/<id>/modules        -> add
 #   PATCH  /events/api/modules/<module_id>        -> config/position/hidden
-#   DELETE /events/api/modules/<module_id>        -> hide (?mode=delete)
+#   DELETE /events/api/modules/<module_id>        -> delete (non-fixed)
 #   POST   /events/api/events/<id>/modules/reorder
-#   PATCH  /events/api/modules/<module_id>/content -> notes/image/location
+#   PATCH  /events/api/modules/<module_id>/content -> description/image/location
 # ---------------------------------------------------------------------------
 
 
@@ -878,13 +915,22 @@ def module_detail(user, module_id):
     if request.method == 'DELETE':
         if module.type == "members":
             return _deny("the members module is fixed", 400)
-        mode = request.args.get("mode", "hide")
-        if mode == "delete" and module.type in ("doodle", "bring", "rides",
-                                                "chat"):
-            # stateful modules: removing drops their data too
-            db.session.delete(module)
-        else:
-            module.hidden = True
+        if module.type == "announcement":
+            return _deny("the announcement is fixed", 400)
+        # removal is a real delete: a hidden module lingers as a greyed-out
+        # card and blocks re-adding its type from the add-module picker
+        if module.type == "image":
+            url = str((module.config or {}).get("url") or "")
+            if url.startswith("/events/img/"):
+                filename = os.path.basename(url[len("/events/img/"):])
+                if filename.startswith(f"m{module.id}_"):
+                    try:
+                        os.remove(os.path.join(
+                            current_app.instance_path, "data",
+                            IMAGE_UPLOAD_DIR, filename))
+                    except OSError:
+                        pass
+        db.session.delete(module)
         db.session.commit()
         return jsonify({"ok": True})
 
@@ -896,13 +942,35 @@ def module_detail(user, module_id):
         payload["config"].pop("deadline", None)
         if module.type == "announcement":
             cfg = payload["config"]
+            if "title" in cfg:
+                cfg["title"] = str(cfg.get("title") or "")[:120]
             if "text" in cfg:
                 cfg["text"] = str(cfg.get("text") or "")[:500]
-            if "tone" in cfg and cfg["tone"] not in ("info", "important",
-                                                     "urgent"):
-                return _deny("unknown announcement tone", 400)
+            if "expires_at" in cfg:
+                parsed = _parse_dt(cfg.get("expires_at"))
+                if parsed is _INV:
+                    return _deny("expires_at must be an ISO datetime", 400)
+                cfg["expires_at"] = parsed.isoformat() if parsed else None
         module.config = {**(module.config or {}), **payload["config"]}
         changed = True
+        if module.type == "announcement":
+            # a new/changed announcement fans out to every member — in-app +
+            # email for those with event notifications on. The host is
+            # excluded; a saved announcement is only sent once per content
+            # change (editing the expiry alone doesn't re-notify).
+            title = str(module.config.get("title") or "").strip()
+            text = str(module.config.get("text") or "").strip()
+            if title or text:
+                sent_key = title + "\n" + text
+                if module.config.get("notified") != sent_key:
+                    module.config = {**module.config, "notified": sent_key}
+                    body = f"{title}\n\n{text}" if title else text
+                    notify_event_members(
+                        module.event, "event_announcement",
+                        subject=title or module.event.title,
+                        body=body,
+                        exclude_user_id=user.id,
+                    )
     if "position" in payload and isinstance(payload["position"], int):
         module.position = payload["position"]
         changed = True
@@ -1007,8 +1075,6 @@ def module_image_upload(user, module_id):
     if ext not in IMAGE_EXT:
         return _deny("only png/jpg/gif/webp images", 400)
     blob = file.read()
-    if len(blob) > 8 * 1024 * 1024:
-        return _deny("image too large (max 8 MB)", 413)
 
     upload_dir = os.path.join(current_app.instance_path, "data", IMAGE_UPLOAD_DIR)
     os.makedirs(upload_dir, exist_ok=True)
@@ -1226,6 +1292,64 @@ def finalize_doodle(user, module_id):
 
 
 # ---------------------------------------------------------------------------
+# auto-todos — claiming a bring item or offering a ride drops a task into
+# the member's Tasks list. The event date lands in the task (deadline +
+# text) when one is set; importance follows it (high with a date, low
+# without). Tasks are tracked by their generated name, so unclaiming /
+# cancelling the ride can remove exactly the task the sign-up created —
+# a user-renamed task is left alone.
+# ---------------------------------------------------------------------------
+
+def _event_date_txt(event):
+    if not event.event_date:
+        return ""
+    return event.event_date.strftime(" · %a %d %b %Y")
+
+
+def _bring_todo_name(item, event):
+    return f"Bring {item.label} · {event.title}"[:80]
+
+
+def _ride_todo_name(ride, event):
+    dest = f" to {ride.destination}" if ride.destination else ""
+    return f"Drive{dest} · {event.title}"[:80]
+
+
+def _spawn_event_todo(member, event, name):
+    """Add a task to the member's list. Importance: high when the event has
+    a date, low otherwise; the date is the task deadline and appears in the
+    text."""
+    now = datetime.now()
+    max_pos = db.session.query(db.func.max(Task.position)).filter_by(
+        user_id=member.user_id).scalar()
+    db.session.add(Task(
+        name=name,
+        text=f"{name}{_event_date_txt(event)}",
+        importance="high" if event.event_date else "low",
+        tags=[],
+        subtasks=[],
+        deadline=event.event_date,
+        private=False,
+        done=False,
+        working=False,
+        recurrence=None,
+        position=(max_pos or 0) + 1,
+        created_at=now,
+        last_updated_at=now,
+        completed_at=None,
+        user_id=member.user_id,
+    ))
+
+
+def _remove_event_todo(user_id, name):
+    """Delete the auto-todo(s) matching the generated name. A task that the
+    user renamed/edited is not matched and stays."""
+    for task in Task.query.filter_by(user_id=user_id).all():
+        if task.name == name:
+            db.session.delete(task)
+
+
+# ---------------------------------------------------------------------------
 # api - bring
 #   POST   /events/api/modules/<id>/items        -> member adds item
 #   PATCH  /events/api/items/<item_id>           -> host edits
@@ -1311,6 +1435,8 @@ def claim_item(user, item_id):
     if request.method == 'DELETE':
         if existing is None:
             return _deny("not claimed", 404)
+        event = item.module.event
+        _remove_event_todo(me.user_id, _bring_todo_name(item, event))
         db.session.delete(existing)
         db.session.commit()
         return jsonify({"ok": True})
@@ -1328,6 +1454,8 @@ def claim_item(user, item_id):
     if existing is None:
         db.session.add(BringClaim(item_id=item.id, member_id=me.id,
                                   qty=qty))
+        event = item.module.event
+        _spawn_event_todo(me, event, _bring_todo_name(item, event))
     else:
         existing.qty = qty
     db.session.commit()
@@ -1337,6 +1465,7 @@ def claim_item(user, item_id):
 # ---------------------------------------------------------------------------
 # api - rides
 #   POST   /events/api/modules/<id>/rides       -> member offers a ride
+#   PATCH  /events/api/rides/<ride_id>          -> driver/host edits it
 #   DELETE /events/api/rides/<ride_id>          -> driver or host
 #   POST   /events/api/rides/<ride_id>/passengers    -> claim seat
 #   DELETE /events/api/rides/<ride_id>/passengers    -> release seat
@@ -1365,12 +1494,53 @@ def offer_ride(user, module_id):
                      pickup_note=str(payload.get("pickup_note") or "")[:200] or None,
                      destination=str(payload.get("destination") or "")[:200] or None)
     db.session.add(ride)
+    event = module.event
+    _spawn_event_todo(me, event, _ride_todo_name(ride, event))
     db.session.commit()
     return jsonify({"ride": _ride_to_dict(ride)}), 201
 
 
 def _ride_for(ride_id):
     return EventRide.query.get(ride_id)
+
+
+@events_bp.route('/api/rides/<int:ride_id>', methods=['PATCH'])
+@permission_required("core", API)
+def update_ride(user, ride_id):
+    """Driver (or host) edits their ride's seats / from / to / when."""
+    ride = _ride_for(ride_id)
+    if ride is None:
+        return _deny("not found", 404)
+    event = ride.module.event
+    me = _member(event, user)
+    is_driver = me is not None and me.id == ride.driver_member_id
+    if not is_driver and _host(event, user) is None:
+        return _deny("forbidden", 403)
+
+    payload = request.get_json(silent=True) or {}
+    changed = False
+    if "seats" in payload:
+        try:
+            seats = max(1, int(payload["seats"]))
+        except (TypeError, ValueError):
+            return _deny("seats must be an integer", 400)
+        if seats < len(ride.passengers):
+            return _deny("can't drop seats below current passengers", 400)
+        ride.seats = seats
+        changed = True
+    if "departure" in payload:
+        ride.departure = str(payload.get("departure") or "")[:40] or None
+        changed = True
+    if "pickup_note" in payload:
+        ride.pickup_note = str(payload.get("pickup_note") or "")[:200] or None
+        changed = True
+    if "destination" in payload:
+        ride.destination = str(payload.get("destination") or "")[:200] or None
+        changed = True
+    if not changed:
+        return _deny("nothing to update", 400)
+    db.session.commit()
+    return jsonify({"ride": _ride_to_dict(ride)})
 
 
 @events_bp.route('/api/rides/<int:ride_id>', methods=['DELETE'])
@@ -1385,8 +1555,14 @@ def delete_ride(user, ride_id):
     if not is_driver and _host(event, user) is None:
         return _deny("forbidden", 403)
 
-    # notify passengers the ride is gone
+    # drop the driver's auto-todo (matched by generated name)
+    _remove_event_todo(ride.driver.user_id, _ride_todo_name(ride, event))
+
+    # displaced passengers still need a ride — re-flag them
     passengers = [p.member for p in ride.passengers]
+    for passenger in passengers:
+        passenger.needs_ride = True
+
     db.session.delete(ride)
     db.session.commit()
     for passenger in passengers:
@@ -1427,6 +1603,7 @@ def ride_passengers(user, ride_id):
     if len(ride.passengers) >= ride.seats:
         return _deny("ride is full", 409)
     db.session.add(RidePassenger(ride_id=ride.id, member_id=me.id))
+    me.needs_ride = False   # once seated, the "I need a ride" signal is off
     db.session.commit()
     return jsonify({"ride": _ride_to_dict(ride)})
 

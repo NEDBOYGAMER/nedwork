@@ -305,7 +305,7 @@ async function updateLink(id, title, url, desc, tags) {
 }
 
 async function deleteLink(id) {
-  if (!confirm('Delete this link?')) return;
+  if (!(await confirmDialog('Delete this link?', { danger: true }))) return;
   try {
     const data = await apiRequest('/delete', {
       method: 'POST',
@@ -385,13 +385,9 @@ function saveFromModal() {
   closeModal();
 }
 
-// ---- Toast ----
+// ---- Toast (site-wide implementation: /static/js/global/toast.js) ----
 function showToast(msg, type) {
-  const t = document.createElement('div');
-  t.className = `toast ${type === 'success' ? 'toast-success' : type === 'danger' ? 'toast-danger' : ''}`;
-  t.textContent = msg;
-  toastContainer.appendChild(t);
-  setTimeout(() => t.remove(), 2800);
+  window.toast(msg, type || 'info');
 }
 
 // ---- Search ----

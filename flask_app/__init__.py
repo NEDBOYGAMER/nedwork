@@ -17,6 +17,13 @@ _PWA_HEAD_TAGS = (
 )
 
 _CSRF_SCRIPT_TAG = '<script src="/static/js/global/csrf.js"></script>'
+_TOAST_SCRIPT_TAG = '<script src="/static/js/global/toast.js"></script>'
+# site-styled confirm/prompt/alert replacing the native browser boxes —
+# same injection strategy: every HTML page gets it, so app pages (which
+# do not extend base.html) share one implementation too
+_DIALOGS_CSS_TAG = ('<link rel="stylesheet" '
+                    'href="/static/css/global/dialogs.css">')
+_DIALOGS_SCRIPT_TAG = '<script src="/static/js/global/dialogs.js"></script>'
 
 # Endpoints that may be POSTed without a logged-in session (and whose only
 # purpose is to build one) can never carry a CSRF token, so they are exempt.
@@ -201,6 +208,17 @@ def create_app():
                 # pages that do not extend base.html (apps, about).
                 if "csrf.js" not in html:
                     html = html.replace("</head>", _CSRF_SCRIPT_TAG + "</head>", 1)
+                    changed = True
+                # same for the toast helper: page scripts call window.toast,
+                # and app/admin pages do not load the events UI module
+                if "global/toast.js" not in html:
+                    html = html.replace("</head>", _TOAST_SCRIPT_TAG + "</head>", 1)
+                    changed = True
+                # site-styled dialogs replace native confirm/prompt/alert
+                if "global/dialogs.js" not in html:
+                    html = html.replace("</head>",
+                                        _DIALOGS_CSS_TAG + _DIALOGS_SCRIPT_TAG +
+                                        "</head>", 1)
                     changed = True
                 if changed:
                     response.set_data(html)

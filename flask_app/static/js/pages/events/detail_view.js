@@ -7,9 +7,8 @@
      event-hero     full-bleed masthead spanning the viewport; the Image
                     module's picture sits BEHIND the event title (poster
                     treatment). Without an image it's a quiet band.
-     event-description  the Description module as bare prose directly
-                    under the hero — no section head, it reads as the
-                    page's subtitle.
+     event-hero-desc   the Description module as a muted poster caption
+                    inside the hero, bottom-right of the title.
      event-info-row location + members side by side near the top (both
                     are info, not interactive; location only when
                     activated). Single-orphan falls back to a plain
@@ -106,51 +105,52 @@ function draw(wrap, prev, why) {
         wrap.appendChild(alerts);
     }
 
-    // ── hero: the title sits on top of the event image (poster treatment)
-    wrap.appendChild(renderHero(event, amHost));
-
     const sectionCtx = (module) => ({
         module, event, state, isHost: amHost, me,
         refresh: () => poller?.refresh(),
     });
 
-    // ── description: bare prose right under the hero — no "About" head,
-    // no icon; it reads as the subtitle of the page
-    const descModule = (state.modules || []).find((m) => m.type === "description");
-    if (descModule && (!descModule.hidden || amHost) &&
-        (descModule.config?.text || "").trim()) {
-        const desc = el("div", "event-description");
-        if (descModule.hidden) desc.classList.add("module-hidden");
-        MODULES.description.render(desc, sectionCtx(descModule));
-        wrap.appendChild(desc);
-    }
+    // the description module is gone — the subtitle is the event's short
+    // description and already renders in the hero under the title
+    wrap.appendChild(renderHero(event, amHost));
 
-    // ── main column: info row first, then the member-operated sections
+    // �"?�"? announcement: a yellow banner right under the title, not a
+    // section. Hidden once it expires or the event date has passed.
+    const annBanner = announcementBanner(event, state);
+    if (annBanner) wrap.appendChild(annBanner);
+
+    // �"?�"? main column: info row first, then the member-operated sections
     // in the host's saved order
     const main = el("div", "event-main");
     const modules = (state.modules || [])
         .filter((m) => !m.hidden || amHost)
         .filter((m) => m.type !== "image" && m.type !== "chat" &&
-                       m.type !== "description");
+                       m.type !== "description" &&
+                       m.type !== "announcement");
 
     // info row: location + members side by side (location only when the
     // module is activated); with only one of them it stays a plain section
     const location = modules.find((m) => m.type === "location");
     const members = modules.find((m) => m.type === "members");
-    if (location && members) {
+    const locSec = location ? eventSection(location, sectionCtx(location)) : null;
+    const memSec = members ? eventSection(members, sectionCtx(members)) : null;
+    if (locSec && memSec) {
         const infoRow = el("div", "event-info-row");
-        infoRow.appendChild(eventSection(location, sectionCtx(location)));
-        infoRow.appendChild(eventSection(members, sectionCtx(members)));
+        infoRow.appendChild(locSec);
+        infoRow.appendChild(memSec);
         main.appendChild(infoRow);
-    } else if (members) {
-        main.appendChild(eventSection(members, sectionCtx(members)));
+    } else if (memSec) {
+        main.appendChild(memSec);
+    } else if (locSec) {
+        main.appendChild(locSec);
     }
 
     // interactive sections (doodle, bring, rides) keep the saved order
     const stack = el("div", "event-sections");
     for (const module of modules) {
         if (module.type === "location" || module.type === "members") continue;
-        stack.appendChild(eventSection(module, sectionCtx(module)));
+        const sec = eventSection(module, sectionCtx(module));
+        if (sec) stack.appendChild(sec);
     }
     main.appendChild(stack);
 
@@ -200,19 +200,28 @@ function renderHero(event, amHost) {
 
     const scrim = el("div", "event-hero-scrim");
     const inner = el("div", "event-hero-inner");
-    inner.appendChild(el("h1", "event-title", event.title));
+    // big name + subtitle on the left; the date block rides at the
+    // bottom-right of the same line (bottom edge, not mid-title)
+    const titleLine = el("div", "event-head-line");
+    const headMain = el("div", "event-head-main");
+    headMain.appendChild(el("h1", "event-title", event.title));
     if (event.subtitle) {
-        inner.appendChild(el("p", "event-subtitle", event.subtitle));
+        headMain.appendChild(el("p", "event-subtitle", event.subtitle));
     }
-    const meta = el("div", "event-head-meta");
-    meta.appendChild(statusBadge(event.status));
-    meta.appendChild(el("span", "event-date", fmtDate(event.event_date)));
+    titleLine.appendChild(headMain);
+    const dateBox = el("div", "event-date-box");
+    dateBox.appendChild(el("span", "event-date", fmtDate(event.event_date)));
     const cd = countdown(event.event_date);
-    if (cd) meta.appendChild(el("span", "badge badge-accent", cd));
-    meta.appendChild(el("span", "badge badge-neutral mono",
-        `${event.attending}/${event.member_count} going` +
-        (event.maybe ? ` · ${event.maybe} maybe` : "")));
-    inner.appendChild(meta);
+    if (cd) dateBox.appendChild(el("span", "event-countdown", cd));
+    titleLine.appendChild(dateBox);
+    inner.appendChild(titleLine);
+    // "Published" is the normal state — no tag in the title bar for it
+    if (event.status !== "published") {
+        const meta = el("div", "event-head-meta");
+        meta.appendChild(statusBadge(event.status));
+        inner.appendChild(meta);
+    }
+
     scrim.appendChild(inner);
 
     hero.appendChild(scrim);
@@ -229,6 +238,29 @@ function renderHero(event, amHost) {
     return hero;
 }
 
+/* -- announcement banner --------------------------------------------------- */
+/* The announcement is not a section — it renders as a yellow band right
+   under the title (full width). Active while it has content and neither
+   its own expiry nor the event date has passed. */
+function announcementBanner(event, state) {
+    const module = (state.modules || []).find((m) => m.type === "announcement");
+    if (!module) return null;
+    const config = module.config || {};
+    const title = (config.title || "").trim();
+    const text = (config.text || "").trim();
+    if (!title && !text) return null;
+
+    const now = Date.now();
+    const expires = config.expires_at ? new Date(config.expires_at).getTime() : Infinity;
+    const eventAt = event.event_date ? new Date(event.event_date).getTime() : Infinity;
+    if (now >= expires || now >= eventAt) return null;
+
+    const banner = el("div", "event-announcement");
+    if (title) banner.appendChild(el("h3", "event-announcement-title", title));
+    if (text) banner.appendChild(el("p", "event-announcement-text", text));
+    return banner;
+}
+
 /* -- event sections ------------------------------------------------------- */
 
 /* Attendee-facing labels: the page speaks the event's language ("What to
@@ -240,7 +272,6 @@ const SECTION_LABELS = {
     bring:       "What to bring",
     rides:       "Getting there",
     location:    "Where",
-    announcement: "Announcement",
     chat:        "Chat",
 };
 
@@ -264,6 +295,9 @@ function eventSection(module, ctx) {
     } else {
         body.appendChild(el("p", "module-empty", "Unknown module."));
     }
+    // an empty module gets no section at all — no orphaned title. Only
+    // hidden elements (doodle's empty-state hook) don't count as content.
+    if (![...body.children].some((n) => !n.hidden)) return null;
     section.appendChild(body);
     return section;
 }

@@ -224,9 +224,17 @@ function initFilters() {
 function initFriendAdd() {
     const input = document.getElementById("friendAddInput");
     const btn = document.getElementById("friendAddBtn");
+    const box = document.getElementById("friendSuggestions");
     if (!input || !btn) return;
-    const send = async () => {
-        const lookup = input.value.trim();
+
+    const hideSuggestions = () => {
+        if (!box) return;
+        box.innerHTML = "";
+        box.hidden = true;
+    };
+
+    const send = async (lookupOverride) => {
+        const lookup = String(lookupOverride ?? input.value).trim();
         if (!lookup) { toast("Enter a username or key", "info"); return; }
         try {
             const data = await api(BASE.friends, {
@@ -237,12 +245,56 @@ function initFriendAdd() {
                 ? "They had already asked you — you're friends now"
                 : "Request sent", "success");
             input.value = "";
+            hideSuggestions();
             loadFriends();
         } catch (e) { toast(e.message, "error"); }
     };
-    btn.onclick = send;
+
+    const renderSuggestions = (users) => {
+        if (!box) return;
+        box.innerHTML = "";
+        if (!users.length) { box.hidden = true; return; }
+        for (const user of users) {
+            const row = document.createElement("button");
+            row.type = "button";
+            row.className = "picker-row";
+            const name = document.createElement("span");
+            name.className = "picker-name";
+            name.textContent = user.username;
+            const key = document.createElement("span");
+            key.className = "picker-key mono";
+            key.textContent = user.key;
+            row.append(name, key);
+            row.onclick = () => send(user.username);
+            box.appendChild(row);
+        }
+        box.hidden = false;
+    };
+
+    // live username suggestions from 3 characters (server caps at 8)
+    let timer = null;
+    let seq = 0;
+    input.addEventListener("input", () => {
+        clearTimeout(timer);
+        const q = input.value.trim().replace(/^@/, "");
+        if (!box || !BASE.userSearch || q.length < 3) { hideSuggestions(); return; }
+        timer = setTimeout(async () => {
+            const mine = ++seq;
+            try {
+                const data = await api(`${BASE.userSearch}?q=${encodeURIComponent(q)}`);
+                if (mine === seq) renderSuggestions(data.users || []);
+            } catch { hideSuggestions(); }
+        }, 250);
+    });
+
+    document.addEventListener("click", (e) => {
+        if (box && !box.contains(e.target) && e.target !== input) hideSuggestions();
+    });
+
+    btn.onclick = () => send();
     input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); send(); }
+        if (e.key === "Escape") hideSuggestions();
     });
 }
 
@@ -380,7 +432,7 @@ async function openGroupDetail(g) {
                 await navigator.clipboard.writeText(link);
                 toast("Link copied", "success");
             } catch {
-                window.prompt("Copy this link:", link);
+                await promptDialog("Copy this link:", { default: link, okText: "Copy" });
             }
         };
         codeRow.appendChild(copyLink);

@@ -1,0 +1,113 @@
+/* Site-wide dialogs — confirm / prompt / alert, replacing the native
+   browser boxes. Injected into every HTML page (create_app). Uses the
+   shared design tokens with fallbacks so it matches both the main site
+   (ui-elements.css / colors.css) and the standalone app pages (which
+   define their own --surface / --line / --accent / --danger). Namespaced
+   .dialog-* so it never collides with page-local modal classes. */
+
+.dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 1rem;
+}
+
+.dialog-backdrop.open { display: flex; }
+
+.dialog-box {
+    width: 380px;
+    max-width: 100%;
+    background: var(--surface, #16161a);
+    border: 1px solid var(--line, #2a2a32);
+    border-radius: var(--radius-md, 14px);
+    padding: 24px;
+    font-family: var(--font-body, 'IBM Plex Sans', sans-serif);
+    color: var(--text, #ededf0);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+}
+
+.dialog-title {
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 8px;
+}
+
+.dialog-msg {
+    color: var(--text-muted, #8b8b96);
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 16px;
+    white-space: pre-wrap;
+}
+
+.dialog-input {
+    display: block;
+    width: 100%;
+    margin-bottom: 16px;
+    background: var(--surface-2, #1e1e24);
+    border: 1px solid var(--line, #2a2a32);
+    border-radius: var(--radius-sm, 10px);
+    color: var(--text, #ededf0);
+    font-family: var(--font-body, 'IBM Plex Sans', sans-serif);
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+}
+
+.dialog-input:focus {
+    border-color: var(--accent, #6c5ce7);
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.dialog-btn {
+    appearance: none;
+    cursor: pointer;
+    border-radius: var(--radius-sm, 10px);
+    font-family: var(--font-body, 'IBM Plex Sans', sans-serif);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    padding: 10px 16px;
+    border: 1px solid var(--line, #2a2a32);
+    background: transparent;
+    color: var(--text, #ededf0);
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+
+.dialog-btn:hover {
+    border-color: var(--accent, #6c5ce7);
+}
+
+.dialog-btn-primary,
+.dialog-btn-danger {
+    border-color: transparent;
+    color: var(--accent-ink, #fff);
+}
+
+.dialog-btn-primary {
+    background: var(--accent, #6c5ce7);
+}
+
+.dialog-btn-primary:hover {
+    background: var(--accent, #6c5ce7);
+    filter: brightness(1.08);
+}
+
+.dialog-btn-danger {
+    background: var(--danger, #e5484d);
+}
+
+.dialog-btn-danger:hover {
+    background: var(--danger, #e5484d);
+    filter: brightness(1.08);
+}

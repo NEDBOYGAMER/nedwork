@@ -1,21 +1,20 @@
 /* Edit mode (§1) — /events/<id>/edit/, host only. Modules render as
    config cards (settings only, no live content interaction); a sticky
    bottom bar holds Cancel + Save changes (drafts also get "publish after
-   saving"). Reordering via drag (desktop) or per-card up/down arrows
-   (touch — HTML5 DnD never fires on phones); Members and Title
-   are fixed. Saving PATCHes event + module configs, applies reorder,
-   then returns to view mode. */
+   saving"). Sections are on/off switches (bring, rides, chat, location) —
+   no reordering anymore. Members and Title are fixed. Saving PATCHes
+   event + module configs, then returns to view mode. */
 import { el, icon, toast, confirmDialog } from "./ui.js";
 import { MODULE_META, MODULES } from "./modules/index.js";
 import { startPolling } from "./poller.js";
 import {
-    eventUrl, moduleUrl, modulesUrl, reorderUrl, publishUrl, unpublishUrl,
+    eventUrl, moduleUrl, modulesUrl, publishUrl, unpublishUrl,
     archiveUrl, optionsUrl, api,
 } from "./api.js";
 
 let state = null;
 let poller = null;
-let draft = null;   // kept across redraws — reordering must not wipe edits
+let draft = null;   // kept across redraws — add/remove must not wipe edits
 
 export function renderEditor(container, eventId) {
     container.innerHTML = "";
@@ -29,8 +28,8 @@ export function renderEditor(container, eventId) {
     poller = startPolling(() => eventId, (snap) => {
         state = snap;
         if (!draft) {
-            // seed once from the server snapshot; later redraws (reorder,
-            // add-module) reuse it so unsaved edits survive
+            // seed once from the server snapshot; later redraws (add-module)
+            // reuse it so unsaved edits survive
             draft = {
                 title: snap.event.title,
                 subtitle: snap.event.subtitle,
@@ -45,6 +44,7 @@ export function renderEditor(container, eventId) {
             window.location.href = window.EVENTS_API.baseUrl;
         }
     });
+    initAnnouncementModal();
     return wrap;
 }
 
@@ -54,7 +54,13 @@ export function stopEditor() {
     draft = null;
 }
 
-let dragCard = null;   // the card being dragged (module scope: survives DOM moves)
+// sections switched on/off in the add-card: bring/rides/chat have no
+// settings card at all; location and doodle keep their cards (map,
+// doodle calendar) but are added/removed by the same switch, so their
+// cards have no trashcan.
+const CARD_LESS = new Set(["bring", "rides", "chat"]);
+const TOGGLE_TYPES = new Set(["bring", "rides", "chat", "location",
+                              "doodle"]);
 
 function draw(wrap, eventId, draft) {
     wrap.innerHTML = "";
@@ -72,16 +78,34 @@ function draw(wrap, eventId, draft) {
         "is operated in view mode. Save changes when you're done."));
     wrap.appendChild(head);
 
+    // the announcement is not a module — it's edited via a modal from the
+    // sticky bar (and renders as a yellow banner in view mode).
+    // Description & Image are not modules either (image lives in the Title
+    // card); they stay in the array for saving but never render as cards.
+    const modules = [...(state.modules || [])]
+        .filter((m) => m.type !== "announcement")
+        .sort((a, b) => a.position - b.position);
+    const imageModule = (state.modules || []).find((m) => m.type === "image");
+
     const list = el("div", "edit-module-list");
 
-    const modules = [...(state.modules || [])].sort(
-        (a, b) => a.position - b.position);
+    // a deleted module must not leave its draft slice behind — otherwise
+    // re-adding the same type in this session would resurrect old content
+    const clearDraftFor = (type) => {
+        if (type === "description") delete draft.description;
+        else if (type === "location") delete draft.location;
+        else if (type === "doodle") delete draft.doodle;
+        else if (type === "image") {
+            delete draft.imageUrl;
+            delete draft.imageFileName;
+            delete draft.imageStatus;
+        }
+    };
 
     const makeCard = (module) => {
         const meta = MODULE_META[module.type] ||
             { label: module.type, icon: "grid-dots" };
         const card = el("section", "card edit-module-card");
-        card.dataset.moduleId = module.id ?? "title";
         if (module.hidden) card.classList.add("module-hidden");
         if (meta.fixed) card.classList.add("edit-module-fixed");
 
@@ -91,12 +115,13 @@ function draw(wrap, eventId, draft) {
         title.appendChild(el("span", null, meta.label));
         headRow.appendChild(title);
 
-        // non-fixed cards: grip (drag to reorder) + delete; fixed cards
-        // (title/members) get neither
+        // non-fixed cards get a small nav (restore for legacy hidden rows,
+        // delete for everything except location/doodle — those are removed
+        // by their on/off switch instead). No reordering anymore.
         if (!meta.fixed) {
             const nav = el("div", "edit-module-nav");
             if (module.hidden) {
-                // content modules "delete" = hide server-side — offer it back
+                // legacy rows from when removal was a hide — offer them back
                 const restore = el("button", "btn btn-secondary btn-sm",
                     "Restore");
                 restore.type = "button";
@@ -110,79 +135,23 @@ function draw(wrap, eventId, draft) {
                     } catch (e) { toast(e.message, "error"); }
                 };
                 nav.appendChild(restore);
-            } else {
+            }
+            if (module.type !== "location" && module.type !== "doodle") {
                 const del = iconBtn("trash", "Delete module");
                 del.onclick = async () => {
                     if (!(await confirmDialog(
-                        "Delete this module? Data in it (votes, items, "
-                        + "messages, rides) is removed too."))) return;
+                        "Delete this module? Its content (description, "
+                        + "location, votes, items, messages, rides) is "
+                        + "removed too."))) return;
                     try {
-                        await api(moduleUrl(module.id) + "?mode=delete",
-                            { method: "DELETE" });
+                        await api(moduleUrl(module.id), { method: "DELETE" });
+                        clearDraftFor(module.type);
                         await poller?.refresh();
                     } catch (e) { toast(e.message, "error"); }
                 };
                 nav.appendChild(del);
             }
-
-            // reorder — drag on desktop (HTML5 DnD never fires on touch),
-            // up/down buttons everywhere. Both mutate the DOM; the shared
-            // sync then reorders the live `modules` array from DOM order —
-            // Save persists exactly that order (title card is fixed at 0).
-            const syncOrder = () => {
-                const ordered = [...list.querySelectorAll(
-                    ".edit-module-card[data-module-id]")]
-                    .map((n) => Number(n.dataset.moduleId))
-                    .filter((id) => !Number.isNaN(id));
-                const byId = new Map(modules.map((m) => [m.id, m]));
-                const next = ordered.map((id) => byId.get(id)).filter(Boolean);
-                modules.splice(0, modules.length, ...next);
-            };
-            const moveCard = (dir) => {
-                const sibling = dir < 0 ? card.previousElementSibling
-                                        : card.nextElementSibling;
-                // stay inside the module stack: not above the fixed title
-                // card (always the list's first child), not past the
-                // trailing add-module card
-                if (!sibling || sibling === list.firstElementChild ||
-                        sibling.classList.contains("edit-add-card")) return;
-                list.insertBefore(card, dir < 0 ? sibling : sibling.nextSibling);
-                syncOrder();
-            };
-            const up = iconBtn("arrow-up", "Move up", "edit-module-grip");
-            up.onclick = () => moveCard(-1);
-            const down = iconBtn("arrow-down", "Move down", "edit-module-grip");
-            down.onclick = () => moveCard(1);
-            nav.appendChild(up);
-            nav.appendChild(down);
-
-            // drag handle — HTML5 DnD, enabled only from the grip so text
-            // inputs inside the card stay draggable/selectable
-            const grip = iconBtn("grip-vertical", "Drag to reorder",
-                "edit-module-grip");
-            grip.onmousedown = () => { card.draggable = true; };
-            card.addEventListener("dragstart", (e) => {
-                dragCard = card;
-                card.classList.add("is-dragging");
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("text/plain", card.dataset.moduleId);
-            });
-            card.addEventListener("dragend", () => {
-                card.classList.remove("is-dragging");
-                card.draggable = false;
-                dragCard = null;
-                syncOrder();
-            });
-            card.addEventListener("dragover", (e) => {
-                if (!dragCard || dragCard === card) return;
-                e.preventDefault();
-                const rect = card.getBoundingClientRect();
-                const after = e.clientY - rect.top > rect.height / 2;
-                list.insertBefore(dragCard,
-                    after ? card.nextSibling : card);
-            });
-            nav.appendChild(grip);
-            headRow.appendChild(nav);
+            if (nav.children.length) headRow.appendChild(nav);
         }
         card.appendChild(headRow);
 
@@ -191,7 +160,7 @@ function draw(wrap, eventId, draft) {
         if (renderer?.settings) {
             renderer.settings(body, {
                 module, event, state, draft, isHost: true,
-                refresh: () => poller?.refresh(),
+                imageModule, refresh: () => poller?.refresh(),
             });
         } else {
             body.appendChild(el("p", "module-empty",
@@ -201,45 +170,123 @@ function draw(wrap, eventId, draft) {
         return card;
     };
 
-    // title card first (fixed), then the ordered stack — the drag handlers
-    // above mutate both the DOM and the live `modules` array.
+    // title card first (fixed), then the remaining cards — location keeps its
+    // settings card but is switch-controlled; bring/rides/chat are switches
+    // only. Description & Image never render (image lives in the Title card).
     list.appendChild(makeCard({ type: "title" }));
-    modules.forEach((module) => list.appendChild(makeCard(module)));
+    modules
+        .filter((module) => !CARD_LESS.has(module.type))
+        .filter((module) => module.type !== "description"
+                          && module.type !== "image")
+        .forEach((module) => list.appendChild(makeCard(module)));
 
-    // add-module picker — already-placed types gray out (no duplicates);
-    // fixed types (title/members) never appear here
-    const placed = new Set(modules.map((m) => m.type));
+    // every section is an on/off switch now — no "add a module" buttons.
+    // bring/rides/chat have no settings card at all; location and doodle
+    // keep their cards but the switch is how they're added/removed.
     const addCard = el("section", "card edit-module-card edit-add-card");
     const addHead = el("header", "edit-module-head");
-    addHead.appendChild(el("h2", "module-title", "Add a module"));
+    addHead.appendChild(el("h2", "module-title", "Sections"));
     addCard.appendChild(addHead);
-    const addRow = el("div", "module-add-row");
+
+    const toggleRow = el("div", "module-toggle-row");
     for (const [type, meta] of Object.entries(MODULE_META)) {
-        if (meta.fixed) continue;
-        const btn = el("button", "btn btn-secondary btn-sm", meta.label);
-        btn.type = "button";
-        btn.appendChild(icon(meta.icon));
-        if (placed.has(type)) {
-            btn.disabled = true;
-            btn.title = "Already placed";
-        } else {
-            btn.onclick = async () => {
-                try {
+        if (meta.fixed || !TOGGLE_TYPES.has(type)) continue;
+        const present = modules.find((m) => m.type === type);
+        const label = el("label", "module-toggle");
+        const switchWrap = el("span", "switch");
+        const check = el("input");
+        check.type = "checkbox";
+        check.checked = !!present;
+        check.onchange = async () => {
+            check.disabled = true;
+            try {
+                if (check.checked && !present) {
                     await api(modulesUrl(eventId), {
                         method: "POST",
                         body: JSON.stringify({ type }),
                     });
-                    await poller?.refresh();
-                } catch (e) { toast(e.message, "error"); }
-            };
-        }
-        addRow.appendChild(btn);
+                } else if (!check.checked && present) {
+                    await api(moduleUrl(present.id), { method: "DELETE" });
+                    clearDraftFor(type);
+                }
+                await poller?.refresh();
+            } catch (e) {
+                check.checked = !check.checked;
+                toast(e.message, "error");
+            } finally {
+                check.disabled = false;
+            }
+        };
+        const track = el("span", "switch-track");
+        switchWrap.append(check, track);
+        const toggleIcon = icon(meta.icon);
+        toggleIcon.classList.add("module-toggle-icon");
+        label.append(switchWrap, toggleIcon,
+            el("span", "module-toggle-label", meta.label));
+        toggleRow.appendChild(label);
     }
-    addCard.appendChild(addRow);
+    addCard.appendChild(toggleRow);
+
     list.appendChild(addCard);
     wrap.appendChild(list);
 
     wrap.appendChild(stickyBar(eventId, event, draft, modules));
+}
+
+/* -- announcement modal ---------------------------------------------------- */
+/* Edited from the sticky bar; the fields stage into draft.announcement and
+   persist with "Save changes" (same model as everything else in the editor).
+   View mode shows the result as a yellow banner under the title. */
+function initAnnouncementModal() {
+    const backdrop = document.getElementById("announcementBackdrop");
+    if (!backdrop) return;
+    const titleInput = document.getElementById("annTitle");
+    const textInput = document.getElementById("annText");
+    const expiresInput = document.getElementById("annExpires");
+    if (!titleInput || !textInput) return;
+
+    backdrop.querySelectorAll("[data-action='close-announcement']")
+        .forEach((b) => { b.onclick = closeAnnouncementModal; });
+    backdrop.addEventListener("click", (e) => {
+        if (e.target === backdrop) closeAnnouncementModal();
+    });
+    document.getElementById("annSaveBtn").onclick = () => {
+        draft.announcement = {
+            title: titleInput.value,
+            text: textInput.value,
+            expires_at: expiresInput.value,
+        };
+        closeAnnouncementModal();
+    };
+    backdrop.querySelector("[data-action='announcement-clear']").onclick = () => {
+        draft.announcement = { title: "", text: "", expires_at: "" };
+        closeAnnouncementModal();
+    };
+}
+
+function openAnnouncementModal() {
+    const backdrop = document.getElementById("announcementBackdrop");
+    if (!backdrop) return;
+    // seed from the module's current config on first open
+    if (!draft.announcement) {
+        const annModule = (state.modules || []).find(
+            (m) => m.type === "announcement");
+        const cfg = annModule?.config || {};
+        draft.announcement = {
+            title: cfg.title || "",
+            text: cfg.text || "",
+            expires_at: cfg.expires_at ? String(cfg.expires_at).slice(0, 16) : "",
+        };
+    }
+    const d = draft.announcement;
+    document.getElementById("annTitle").value = d.title || "";
+    document.getElementById("annText").value = d.text || "";
+    document.getElementById("annExpires").value = d.expires_at || "";
+    backdrop.classList.add("open");
+}
+
+function closeAnnouncementModal() {
+    document.getElementById("announcementBackdrop")?.classList.remove("open");
 }
 
 function iconBtn(name, title, cls = "btn-ghost-icon btn-sm-icon") {
@@ -261,7 +308,30 @@ function stickyBar(eventId, event, draft, modules) {
         window.location.href = `${window.EVENTS_API.baseUrl}${eventId}/`;
     };
 
+    // permanent delete — quiet red, away from the save actions
+    const del = el("button", "btn btn-sm btn-danger", "Delete event");
+    del.type = "button";
+    del.onclick = async () => {
+        if (!(await confirmDialog(
+            "Delete this event permanently? Everyone loses access, and " +
+            "everything inside it (votes, bring list, messages, rides) " +
+            "is removed. This cannot be undone."))) return;
+        try {
+            await api(eventUrl(eventId), { method: "DELETE" });
+            window.location.href = window.EVENTS_API.baseUrl;
+        } catch (e) { toast(e.message, "error"); }
+    };
+    const danger = el("div", "edit-sticky-danger");
+    danger.appendChild(del);
+
     const actions = el("div", "edit-sticky-actions");
+
+    // announcement — opened from the bar, edited in a modal. There is only
+    // one slot: making a new announcement replaces whatever is out.
+    const annBtn = el("button", "btn btn-secondary", "Make announcement");
+    annBtn.type = "button";
+    annBtn.onclick = openAnnouncementModal;
+    actions.appendChild(annBtn);
 
     if (event.status === "published") {
         const unpublish = el("button", "btn btn-secondary", "Unpublish");
@@ -304,7 +374,7 @@ function stickyBar(eventId, event, draft, modules) {
     save.onclick = () => saveChanges(eventId, draft, modules);
     actions.appendChild(save);
 
-    inner.append(cancel, actions);
+    inner.append(cancel, danger, actions);
     bar.appendChild(inner);
     return bar;
 }
@@ -350,12 +420,32 @@ async function saveChanges(eventId, draft, modules) {
             }
         }
 
-        // 3) reorder — positions in list order (title fixed at 0)
-        const orderIds = modules.map((m) => m.id);
-        await api(reorderUrl(eventId), {
-            method: "POST",
-            body: JSON.stringify({ order: orderIds }),
-        });
+        // 3) announcement — separate from the module list; PATCH the hidden
+        // module (creates it on first save). The server notifies members.
+        if (draft.announcement) {
+            const annConfig = {
+                title: (draft.announcement.title || "").trim(),
+                text: draft.announcement.text || "",
+                expires_at: draft.announcement.expires_at || null,
+            };
+            const annModule = (state.modules || []).find(
+                (m) => m.type === "announcement");
+            if (annModule) {
+                await api(moduleUrl(annModule.id), {
+                    method: "PATCH",
+                    body: JSON.stringify({ config: annConfig }),
+                });
+            } else if (annConfig.title || annConfig.text) {
+                const created = await api(modulesUrl(eventId), {
+                    method: "POST",
+                    body: JSON.stringify({ type: "announcement" }),
+                });
+                await api(moduleUrl(created.module.id), {
+                    method: "PATCH",
+                    body: JSON.stringify({ config: annConfig }),
+                });
+            }
+        }
 
         // 4) publish if requested (drafts only)
         if (draft._publish?.()) {
@@ -397,14 +487,6 @@ function buildModulePayload(module, draft) {
                     lat: draft.location.lat ?? null,
                     lng: draft.location.lng ?? null,
                     note: draft.location.note || "",
-                };
-            }
-            break;
-        case "announcement":
-            if (draft.announcement) {
-                payload.config = {
-                    text: draft.announcement.text || "",
-                    tone: draft.announcement.tone || "info",
                 };
             }
             break;

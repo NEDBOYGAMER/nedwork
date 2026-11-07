@@ -670,7 +670,7 @@ async function savePaletteToServer(name, colorsArr){
   });
   if(!res.ok){
     const err = await res.json().catch(()=>({}));
-    alert('Save failed: ' + (err.error || res.statusText));
+    await alertDialog('Save failed: ' + (err.error || res.statusText));
     throw new Error('save failed');
   }
   flatPalettes[name] = cleanColors;
@@ -686,7 +686,7 @@ async function deletePathOnServer(name){
   });
   if(!res.ok){
     const err = await res.json().catch(()=>({}));
-    alert('Delete failed: ' + (err.error || res.statusText));
+    await alertDialog('Delete failed: ' + (err.error || res.statusText));
     throw new Error('delete failed');
   }
   return res.json();
@@ -907,7 +907,7 @@ function loadPaletteIntoEditor(fullName, colorsArr){
 }
 
 async function handleDelete(pathKey, label){
-  if(!confirm(`Delete ${label}? This cannot be undone.`)) return;
+  if(!(await confirmDialog(`Delete ${label}? This cannot be undone.`, { danger: true }))) return;
   try{
     await deletePathOnServer(pathKey);
   } catch(err){
@@ -972,7 +972,7 @@ async function createNewPalette(prefixParts){
 
   const name = values[0];
   if(!name || name.includes('/')){
-    alert('Name must be non-empty and cannot contain "/"');
+    await alertDialog('Name must be non-empty and cannot contain "/"');
     return;
   }
 
@@ -981,7 +981,7 @@ async function createNewPalette(prefixParts){
   // creating a bare library — just the folder, nothing forced beneath it
   if(levelIndex === 0){
     if(virtualLibraries.has(name) || existingTree[name]){
-      alert('A library with that name already exists.');
+      await alertDialog('A library with that name already exists.');
       return;
     }
     virtualLibraries.add(name);
@@ -997,7 +997,7 @@ async function createNewPalette(prefixParts){
     const [lib] = prefixParts;
     const projKey = `${lib}/${name}`;
     if(virtualProjects.has(projKey) || (existingTree[lib] && existingTree[lib][name])){
-      alert('A project with that name already exists.');
+      await alertDialog('A project with that name already exists.');
       return;
     }
     virtualLibraries.add(lib);
@@ -1015,7 +1015,7 @@ async function createNewPalette(prefixParts){
   const allParts = [...prefixParts, name];
   const fullName = allParts.join('/');
   if(flatPalettes[fullName]){
-    alert('A palette with that exact name already exists.');
+    await alertDialog('A palette with that exact name already exists.');
     return;
   }
 
@@ -1051,13 +1051,13 @@ async function saveCurrentAs(){
   if(!values) return;
 
   if(values.some(p=>!p || p.includes('/'))){
-    alert('Each name must be non-empty and cannot contain "/"');
+    await alertDialog('Each name must be non-empty and cannot contain "/"');
     return;
   }
 
   const allParts = [...prefixParts, ...values];
   const fullName = allParts.join('/');
-  if(flatPalettes[fullName] && !confirm(`"${fullName.split('/').join(' / ')}" already exists. Overwrite it?`)){
+  if(flatPalettes[fullName] && !(await confirmDialog(`"${fullName.split('/').join(' / ')}" already exists. Overwrite it?`, { okText: 'Overwrite' }))){
     return;
   }
 
@@ -1319,7 +1319,7 @@ document.addEventListener('keydown', (e)=>{
 
 imageModalGenerate.addEventListener('click', async ()=>{
   if(!selectedImageFile){
-    alert('Please choose an image first.');
+    await alertDialog('Please choose an image first.');
     return;
   }
 
@@ -1358,7 +1358,7 @@ imageModalGenerate.addEventListener('click', async ()=>{
     render();
     flashHeaderToast('Palette extracted from image');
   } catch(err){
-    alert(err.message || String(err));
+    await alertDialog(err.message || String(err));
   } finally {
     imageModalGenerate.disabled = false;
     imageModalGenerate.textContent = 'Extract';

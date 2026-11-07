@@ -441,30 +441,10 @@ function awardXP(task) {
 }
 
 /* -- toasts (with optional action button, e.g. Undo) ------------------------------------------ */
+/* the site-wide implementation (static/js/global/toast.js) */
 
 function toast(message, type = "info", action = null) {
-    const el = document.createElement("div");
-    el.className = `toast toast-${type}`;
-    el.setAttribute("role", "status");
-
-    const text = document.createElement("span");
-    text.textContent = message;
-    el.appendChild(text);
-
-    if (action) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "toast-action";
-        btn.textContent = action.label;
-        btn.addEventListener("click", () => { el.remove(); action.fn(); });
-        el.appendChild(btn);
-    }
-
-    els.toastContainer.appendChild(el);
-    setTimeout(() => {
-        el.classList.add("is-leaving");
-        setTimeout(() => el.remove(), 300);
-    }, action ? 6500 : 3800);
+    return window.toast(message, type, action);
 }
 
 

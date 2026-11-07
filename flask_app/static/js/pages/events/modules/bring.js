@@ -41,7 +41,6 @@ export function renderBring(root, ctx) {
     root.appendChild(addRow);
 
     if (!items.length) {
-        root.appendChild(el("p", "module-empty", "Nothing to bring yet."));
         return;
     }
 
@@ -74,7 +73,19 @@ export function renderBring(root, ctx) {
                 claim.type = "button";
                 claim.onclick = async () => {
                     const open = item.target_qty - claimed;
-                    const qty = open > 1 ? Number(prompt(`How many? (1-${open})`, "1")) || 1 : 1;
+                    const asked = open > 1 ? await promptDialog(`How many? (1-${open})`, {
+                        default: "1",
+                        okText: "Claim",
+                        validate: (v) => {
+                            const n = Number(v);
+                            if (!Number.isFinite(n) || n < 1 || n > open) {
+                                return `Enter a number from 1 to ${open}`;
+                            }
+                            return true;
+                        },
+                    }) : "1";
+                    if (open > 1 && asked === null) return;
+                    const qty = Number(asked) || 1;
                     try {
                         await api(claimUrl(item.id), {
                             method: "POST",

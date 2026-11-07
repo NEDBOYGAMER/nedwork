@@ -55,6 +55,7 @@
                 </div>
                 <button type="button" class="btn btn-primary" id="friendAddBtn">Send request</button>
             </div>
+            <div id="friendSuggestions" class="picker-list" role="listbox" hidden></div>
         </div>
 
         <section class="socials-block" id="requestsBlock">
@@ -220,6 +221,7 @@
             friends: "{{ url_for('socials.list_friends') }}",
             groups: "{{ url_for('socials.list_groups') }}",
             joinByCode: "{{ url_for('socials.join_group') }}",
+            userSearch: "{{ url_for('socials.search_users') }}",
             baseUrl: "{{ url_for('socials.socials_page') }}",
         };
         window.EVENT_USER_ID = {{ user_id | default(0) }};

@@ -12,18 +12,38 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-4);
-    padding: var(--space-5) var(--space-6) var(--space-4);
+    padding: var(--space-5) var(--space-7) var(--space-4);
     flex-wrap: wrap;
 }
 
 .events-header h1 { font-size: 24px; }
 
-/* ── list view ──────────────────────────────────────────────────────── */
+/* ── list view — grouped sections (hosting / planning / attending /
+   archive). Empty groups are dropped entirely, titles included. ──── */
+.events-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-7);
+    padding: 0 var(--space-7) var(--space-7);
+}
+
+.events-group { display: flex; flex-direction: column; gap: var(--space-3); }
+
+.events-group-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* archived events — muted, quieter than the live sections */
+.events-group.is-archived { opacity: .6; }
+.events-group.is-archived .events-group-title { color: var(--text-muted); }
+
 .events-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: var(--space-4);
-    padding: 0 var(--space-6);
 }
 
 .event-card {
@@ -127,6 +147,37 @@
 
 .event-hero-inner { display: flex; flex-direction: column; gap: var(--space-2); }
 
+/* title line: name + subtitle on the left, date block at the bottom-right */
+.event-head-line {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-5);
+    flex-wrap: nowrap;
+}
+.event-head-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+.event-head-line .event-head-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.event-date-box {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+@media (min-width: 769px) {
+    /* not pinned to the very edge — leave ~10% air to its right */
+    .event-date-box { margin-right: 10%; }
+}
+@media (max-width: 768px) {
+    /* narrow screens: the date block wraps under the title */
+    .event-head-line { flex-wrap: wrap; align-items: flex-start; }
+}
+
 /* the event title anchors the page — big, dominant */
 .event-title {
     font-size: clamp(30px, 4.8vw, 52px);
@@ -148,7 +199,8 @@
 .event-hero-image .event-subtitle { color: #fff; }
 .event-hero-image .event-title,
 .event-hero-image .event-subtitle,
-.event-hero-image .event-date {
+.event-hero-image .event-date,
+.event-hero-image .event-countdown {
     text-shadow: 0 1px 12px rgba(8, 8, 10, 0.55);
 }
 .event-hero-image .event-head-meta .badge-neutral {
@@ -160,6 +212,7 @@
     color: var(--on-accent, #fff);
 }
 .event-hero-image .event-date { color: #fff; }
+.event-hero-image .event-countdown { color: rgba(255, 255, 255, 0.68); }
 
 /* the host's Edit pill — quiet glass, reads as furniture, not a CTA */
 .event-edit-btn {
@@ -170,11 +223,11 @@
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 7px 16px;
+    gap: 7px;
+    padding: 10px 20px;
     border-radius: var(--radius-pill);
     font-family: var(--font-body);
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 500;
     line-height: 1;
     text-decoration: none;
@@ -201,7 +254,6 @@
 
 .event-subtitle { font-size: 15px; color: var(--text-muted); margin: 0; }
 
-.event-head-main { display: flex; flex-direction: column; gap: var(--space-1); }
 .event-head-meta {
     display: flex;
     align-items: center;
@@ -211,6 +263,7 @@
     color: var(--text-muted);
 }
 .event-date { color: var(--text); }
+.event-countdown { color: var(--text-muted); }
 
 /* prominent labeled back button in the page header (detail/edit views) */
 .events-back {
@@ -230,7 +283,6 @@
 }
 
 .event-section { padding: var(--space-5) 0; }
-.event-section + .event-section { border-top: 1px solid var(--line); }
 .event-section.module-hidden { opacity: .55; }
 
 /* hidden modules are the host's business — attendees never see the
@@ -250,7 +302,7 @@
     align-items: center;
     gap: var(--space-2);
     font-family: var(--font-display);
-    font-size: 17px;
+    font-size: 19px;
     font-weight: 600;
     margin: 0;
 }
@@ -267,6 +319,47 @@
     flex-wrap: wrap;
     gap: var(--space-2);
 }
+
+/* chat / bring list / car share: on/off switches, not module cards */
+.module-toggle-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line);
+}
+.module-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+}
+.module-toggle:hover { border-color: var(--accent); }
+.module-toggle:has(input:checked) {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+}
+.module-toggle:has(input:disabled) { opacity: .6; }
+.module-toggle .switch { width: 34px; height: 20px; }
+.module-toggle .switch-track::before {
+    width: 14px;
+    height: 14px;
+    left: 2px;
+    top: 2px;
+}
+.module-toggle .switch input:checked + .switch-track::before {
+    transform: translateX(14px);
+}
+.module-toggle-icon { width: 16px; height: 16px; opacity: .9; }
+.module-toggle-label { line-height: 1; }
 
 .module-empty { font-size: 13px; color: var(--text-muted); margin: 0; }
 
@@ -403,6 +496,21 @@
 .member-info { flex: 1; display: flex; align-items: center; gap: var(--space-2); }
 .member-name { font-size: 14px; }
 
+/* attendance stat headline — the "X/Y going" moved out of the title bar */
+.member-summary { display: flex; align-items: baseline; gap: var(--space-2); }
+.member-summary-count {
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+}
+.member-summary-label { font-size: 14px; color: var(--text-muted); }
+.member-summary-maybe {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-left: var(--space-1);
+}
+
 .rsvp-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 .rsvp-label { font-size: 13px; color: var(--text-muted); }
 .rsvp-group { display: flex; gap: var(--space-2); }
@@ -474,22 +582,93 @@
 .bring-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 
 .bring-item {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-3);
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto;
+    grid-template-areas: "head claims actions";
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-4);
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--surface-2);
 }
 
-.bring-item-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
-.bring-item-label { font-size: 14px; }
-.bring-item-actions { display: flex; gap: var(--space-2); align-items: center; }
-.bring-claims { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+.bring-item-head {
+    grid-area: head;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+}
+.bring-item-label { font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
+.bring-item-actions {
+    grid-area: actions;
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    justify-content: flex-end;
+}
+.bring-claims {
+    grid-area: claims;
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    align-items: center;
+}
+/* who brings what — the scannable part of the board, so the chips are
+   larger and use normal text colour instead of the muted badge default */
+.bring-claims .badge {
+    font-size: 14px;
+    padding: 5px 12px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+}
+
+@media (max-width: 768px) {
+    .bring-item {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "head head"
+            "claims actions";
+    }
+}
+
+@media (max-width: 640px) {
+    .bring-item {
+        grid-template-columns: 1fr;
+        grid-template-areas: "head" "claims" "actions";
+    }
+    .bring-item-actions { justify-content: flex-start; }
+}
 
 /* ── rides ──────────────────────────────────────────────────────────── */
-.rides-entry { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.rides-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    margin-bottom: var(--space-3);
+}
+.rides-status-text { font-size: 14px; }
+
+/* the "I need a ride" chip is a passive signal, not a competing action —
+   a pill, clearly secondary to Offer a ride / Take a seat */
+.needs-ride {
+    margin-left: auto;
+    border-radius: var(--radius-pill);
+    font-size: 13px;
+}
+.needs-ride.is-on {
+    background: color-mix(in srgb, var(--accent, #6C5CE7) 16%, transparent);
+    border-color: var(--accent, #6C5CE7);
+    color: var(--accent-ink, var(--text));
+}
 
 .ride-form {
     display: flex;
@@ -527,6 +706,11 @@
     border-radius: var(--radius-sm);
     background: var(--surface-2);
 }
+/* your own ride is unmistakable — accent border + soft tint */
+.ride-card.is-mine {
+    border-color: var(--accent, #6C5CE7);
+    background: color-mix(in srgb, var(--accent, #6C5CE7) 8%, var(--surface-2, #1E1E24));
+}
 
 .ride-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .ride-driver { font-size: 14px; }
@@ -536,9 +720,8 @@
 
 /* ── chat — pinned to the page bottom, one quiet band ───────────────── */
 .event-chat {
-    margin: 0 calc(-1 * var(--space-5)) calc(-1 * var(--space-8));
+    margin: var(--space-7) calc(-1 * var(--space-5)) calc(-1 * var(--space-8));
     padding: var(--space-4) 0 0;
-    border-top: 1px solid var(--line);
     background: var(--surface-2);
 }
 
@@ -662,7 +845,8 @@ select.field-input { cursor: pointer; }
 /* ── responsive ─────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
     .events-header { padding: var(--space-4) var(--space-4) var(--space-3); }
-    .events-grid { padding: 0 var(--space-4); grid-template-columns: 1fr; }
+    .events-list { padding: 0 var(--space-4) var(--space-5); }
+    .events-grid { grid-template-columns: 1fr; }
     .event-detail { padding: var(--space-4) var(--space-4) var(--space-7); }
     .event-hero { min-height: 180px; }
     .event-hero-scrim { padding: var(--space-4); }
@@ -720,6 +904,30 @@ select.field-input { cursor: pointer; }
     gap: var(--space-3);
 }
 .edit-module-card:not(.edit-module-fixed) { padding-left: 34px; }
+
+/* the announcement is a top-level feature, not a module card — it sits
+   alone above the module list, full width */
+.edit-announcement-card {
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+.edit-announcement-card .module-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 15px;
+    margin: 0;
+}
+
+/* an input with an inline icon button beside it (e.g. clear the date) */
+.input-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
 /* card titles are the editor's language (kept under the module-* names) */
 .edit-module-card .module-title {
     display: flex;
@@ -795,6 +1003,9 @@ select.field-input { cursor: pointer; }
 .edit-sticky-actions { display: flex; gap: var(--space-2); }
 .edit-sticky-actions .btn-primary { min-width: 160px; }
 
+/* permanent-delete zone — hugs the Cancel side, away from Save */
+.edit-sticky-danger { margin-right: auto; display: flex; gap: var(--space-2); }
+
 /* ── doodle date-mode calendar (§4) ─────────────────────────────────── */
 .doodle-cal {
     border: 1px solid var(--line);
@@ -863,11 +1074,34 @@ select.field-input { cursor: pointer; }
    sidenav — content stretches edge to edge behind a tiny shared gutter,
    no centered column. */
 .event-detail-view {
-    --event-gutter: clamp(8px, 1vw, 16px);   /* shared micro-gutter */
+    --event-gutter: clamp(16px, 2.5vw, 32px);   /* shared side padding */
     max-width: none;
     margin: 0;
     padding: 0 0 var(--space-8);
     gap: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+/* The view page fills the viewport so the chat band is pushed to the very
+   bottom — on short events no page background shows below the conversation.
+   #content already carries min-height: 100vh; stretching the chain lets
+   the chat's margin-top:auto absorb the leftover height. */
+#content:has(.event-detail-view) {
+    display: flex;
+    flex-direction: column;
+}
+#content:has(.event-detail-view) > .events-page {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding-bottom: 0;   /* no gap under the chat band */
+}
+#content:has(.event-detail-view) #container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 }
 
 .event-detail-view .event-main {
@@ -930,14 +1164,18 @@ select.field-input { cursor: pointer; }
     }
 }
 
-/* the hero scrim's text sits on the same gutter as the sections */
+/* the hero scrim's text sits on the same gutter as the sections; no
+   max-width column — the title is allowed to use the full page width */
 .event-detail-view .event-hero-scrim {
-    padding-left: calc(var(--event-gutter) + 4px);
+    max-width: none;
+    padding-left: calc(var(--event-gutter) - 8px);
     padding-right: calc(var(--event-gutter) + 4px);
 }
 
-/* chat: the band spans the full width, text on the shared gutter */
+/* chat: the band spans the full width, text on the shared gutter, and
+   margin-top:auto pins it to the bottom of the viewport-filling page */
 .event-detail-view .event-chat {
+    margin-top: auto;
     margin-left: 0;
     margin-right: 0;
 }
@@ -956,40 +1194,43 @@ select.field-input { cursor: pointer; }
     }
 }
 
-/* description: bare prose directly under the hero — the page's subtitle,
-   no section head, no icon */
-.event-detail-view .event-description {
-    max-width: none;
-    width: 100%;
-    margin: 0 auto;
-    padding: var(--space-4) var(--event-gutter) 0;
+/* description: the page's lede lives in the hero as a poster caption —
+   bottom-right of the title, muted but comfortably readable, bigger than
+   body text. It only exists once it has content; empty → invisible. */
+.event-detail-view .event-hero-desc {
+    margin-left: auto;
+    max-width: 540px;
+    padding-top: var(--space-2);
 }
-.event-detail-view .event-description .notes-text {
-    font-size: 15px;
-    line-height: 1.55;
-    color: var(--text);
+.event-detail-view .event-hero-desc .notes-text {
+    font-size: clamp(17px, 1.7vw, 24px);
+    line-height: 1.45;
+    color: var(--text-muted);
 }
-.event-detail-view .event-description .module-empty { margin: 0; }
 
-/* ── announcement module ─────────────────────────────────────────────── */
-/* one bold callout; the tone picks the color, the text carries it */
-.announcement-box {
-    border-left: 3px solid var(--line-strong, var(--line));
-    background: var(--surface-2);
-    border-radius: 0 var(--radius-md) var(--radius-md) 0;
-    padding: var(--space-3) var(--space-4);
+/* ── announcement banner ────────────────────────────────────────────── */
+/* announcement banner - not a module/section: a yellow band right under
+   the title, full width. Active until its own expiry or the event date. */
+.event-announcement {
+    width: 100%;
+    background: color-mix(in srgb, var(--warning, #E8A23D) 16%, var(--bg, #16161A));
+    border-block: 1px solid color-mix(in srgb, var(--warning, #E8A23D) 50%, transparent);
+    padding: var(--space-3) var(--event-gutter);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+.event-announcement-title {
     font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+}
+.event-announcement-text {
+    font-size: 14px;
     line-height: 1.5;
     margin: 0;
     white-space: pre-wrap;
-}
-.announcement-box.announcement-important {
-    border-left-color: var(--accent);
-    background: var(--accent-soft);
-}
-.announcement-box.announcement-urgent {
-    border-left-color: var(--danger);
-    background: var(--danger-soft, rgba(229, 72, 77, 0.12));
+    color: var(--text-muted);
 }
 
 /* ── hero image integration ──────────────────────────────────────────── */
@@ -1020,16 +1261,23 @@ select.field-input { cursor: pointer; }
     padding-bottom: var(--space-6);
 }
 
-/* the title anchors the page — poster scale (9vw, operator call) */
+/* the title anchors the page — poster scale (10vw, operator call) */
 .event-detail-view .event-title {
-    font-size: clamp(38px, 9vw, 130px);
+    font-size: clamp(42px, 10.4vw, 150px);
 }
+/* the title gets the full width — no Edit-pill clearance to steal room */
+.event-detail-view .event-hero-host .event-title { padding-right: 0; }
 /* the infos under the title grow with it */
 .event-detail-view .event-subtitle { font-size: 22px; }
 .event-detail-view .event-head-meta {
     font-size: 18px;
     gap: var(--space-3);
 }
+.event-detail-view .event-date {
+    font-size: 26px;
+    font-weight: 500;
+}
+.event-detail-view .event-countdown { font-size: 17px; }
 
 /* no-image band: title needs clear air under the floating header */
 .event-detail-view .event-hero:not(.event-hero-image) {
@@ -1090,7 +1338,6 @@ select.field-input { cursor: pointer; }
     justify-content: flex-end;
     gap: var(--space-2);
     padding: var(--space-3) 0;
-    border-top: 1px solid var(--line);
     margin-top: var(--space-4);
 }
 .event-member-actions .btn-danger { margin-right: auto; }
@@ -1103,21 +1350,15 @@ select.field-input { cursor: pointer; }
     gap: 0 var(--space-5);
     align-items: start;
 }
-.event-info-row .event-section:first-child + .event-section {
-    border-top: none;
-}
 .event-info-row .event-section-body .location-map-wrap { margin-top: var(--space-2); }
 
 @media (max-width: 640px) {
     .event-info-row { grid-template-columns: 1fr; }
-    .event-info-row .event-section + .event-section {
-        border-top: 1px solid var(--line);
-    }
 }
 
 @media (max-width: 640px) {
     .event-detail-view {
-        --event-gutter: var(--space-3);
+        --event-gutter: var(--space-4);
     }
     /* the floating header keeps the same gutter as the content below it,
        but clears the fixed mobile hamburger (44px at left 12px + notch) */

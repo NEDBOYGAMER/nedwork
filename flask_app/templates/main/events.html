@@ -128,6 +128,39 @@
         </div>
     </div>
 
+    {# ── announcement modal (edit mode, opened from the sticky bar) ─── #}
+    <div class="modal-backdrop" id="announcementBackdrop">
+        <div class="event-modal" role="dialog" aria-modal="true" aria-labelledby="announcementTitle">
+            <header class="event-modal-head">
+                <h2 id="announcementTitle">Announcement</h2>
+                <button type="button" class="btn-ghost-icon" data-action="close-announcement" title="Close">
+                    {{ icon('x') }}
+                </button>
+            </header>
+            <div class="event-modal-body">
+                <p class="hint">Making a new announcement replaces the one currently out.</p>
+                <div class="field">
+                    <label for="annTitle">Title</label>
+                    <input id="annTitle" type="text" maxlength="120" placeholder="Title (optional)">
+                </div>
+                <div class="field">
+                    <label for="annText">Text</label>
+                    <textarea id="annText" class="field-input notes-editor" rows="4" maxlength="500" placeholder="Quick update for everyone…"></textarea>
+                </div>
+                <div class="field">
+                    <label for="annExpires">Hide after (optional)</label>
+                    <input id="annExpires" type="datetime-local">
+                    <p class="hint">The banner shows under the title until this date — otherwise until the event takes place.</p>
+                </div>
+            </div>
+            <footer class="event-modal-foot">
+                <button type="button" class="btn btn-secondary" data-action="announcement-clear">Clear</button>
+                <button type="button" class="btn btn-secondary" data-action="close-announcement">Cancel</button>
+                <button type="button" class="btn btn-primary" id="annSaveBtn">Save</button>
+            </footer>
+        </div>
+    </div>
+
 {% endblock %}
 
 {% block extra_scripts %}

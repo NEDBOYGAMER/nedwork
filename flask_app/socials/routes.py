@@ -136,9 +136,10 @@ def list_friends(user):
 @socials_bp.route('/api/users/search', methods=['GET'])
 @permission_required("core", API)
 def search_users(user):
-    """Username suggestions for the member pickers (4+ chars, max 8)."""
+    """Username suggestions for the friend add field and member pickers
+    (3+ chars, max 8)."""
     q = str(request.args.get("q") or "").strip().lstrip("@")
-    if len(q) < 4:
+    if len(q) < 3:
         return jsonify({"users": []})
     escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     users = (User.query

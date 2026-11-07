@@ -34,16 +34,7 @@ async function init() {
     // TOAST
     // =========================
     function showToast(message, isError = false) {
-        const container = document.getElementById('toastContainer');
-        if (!container) return;
-
-        const toast = document.createElement('div');
-        toast.className = 'toast';
-        if (isError) toast.style.borderLeftColor = 'var(--danger)';
-        toast.textContent = message;
-
-        container.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+        window.toast(message, isError ? 'error' : 'info');
     }
 
 // =========================

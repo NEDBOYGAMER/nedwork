@@ -55,7 +55,7 @@ export function renderLocation(root, ctx) {
         root.appendChild(links);
     }
     if (!address && !hasPoint) {
-        root.appendChild(el("p", "module-empty", "No location set yet."));
+        return;
     }
 }
 
@@ -86,7 +86,11 @@ function renderLeafletMap(root, config) {
    out yet (detached node / pending grid layout), tiles land offset in a
    corner. Re-measure whenever the container actually gets its size. */
 export function keepMapSized(map) {
-    new ResizeObserver(() => map.invalidateSize()).observe(map.getContainer());
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    // a redraw removes the map; without this the observer keeps firing
+    // into a torn-down Leaflet instance (console errors on every redraw)
+    map.on("unload", () => observer.disconnect());
 }
 
 const MOBILE_MAP_QUERY = "(max-width: 768px)";

@@ -27,7 +27,7 @@ export function icon(name, cls = "icon") {
    keeps the tabler set. Falls back to a tabler icon for unknown types. */
 const EV_ICONS = {
     description: "flyer",
-    members:     "table",
+    members:     "person",
     doodle:      "vote",
     bring:       "basket",
     rides:       "car",
@@ -101,23 +101,10 @@ export function countdown(iso) {
     return `${-days} days ago`;
 }
 
-/* toast — one container, auto-dismiss, kinds map to system colors */
-export function toast(message, kind = "info") {
-    let container = document.getElementById("toastContainer");
-    if (!container) {
-        container = el("div", "toast-container");
-        container.id = "toastContainer";
-        document.body.appendChild(container);
-    }
-    container.classList.add("toast-container");
-    const t = el("div", "toast toast-" + kind);
-    const icons = { info: "info-circle", success: "check", error: "alert-circle" };
-    t.appendChild(icon(icons[kind] || "info-circle"));
-    t.appendChild(el("span", null, message));
-    container.appendChild(t);
-    setTimeout(() => t.classList.add("is-leaving"), 3600);
-    setTimeout(() => t.remove(), 4000);
-}
+/* toast — the one implementation is static/js/global/toast.js, loaded on
+   every page; this re-export keeps the module import contract. */
+export const toast = (message, kind = "info", action = null) =>
+    window.toast(message, kind, action);
 
 /* modal open/close — the global .modal-backdrop uses a .open class */
 export function openModal(id) {

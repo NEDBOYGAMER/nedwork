@@ -1,29 +1,63 @@
-/* List view — my events grid. Drafts visible only to the host; archived
-   only to the host. "New event" opens the create modal. */
+/* List view — my events, grouped into sections: hosting / planning /
+   attending / archive. Drafts visible only to the host, archived only to
+   the host. Empty sections are dropped entirely (titles included).
+   "New event" opens the create modal. */
 import { el, icon, statusBadge, rsvpBadge, fmtDate, countdown, toast } from "./ui.js";
 import { eventsUrl, api } from "./api.js";
 
 export function renderListView(container, onOpen) {
     container.innerHTML = "";
-    const grid = el("div", "events-grid");
-    container.appendChild(grid);
+    const list = el("div", "events-list");
+    container.appendChild(list);
     const loading = el("p", "module-empty", "Loading events…");
-    grid.appendChild(loading);
+    list.appendChild(loading);
 
     api(eventsUrl())
         .then((data) => {
             loading.remove();
             const events = data.events || [];
             if (!events.length) {
-                grid.appendChild(emptyState());
+                list.appendChild(emptyState());
                 return;
             }
-            for (const event of events) grid.appendChild(card(event, onOpen));
+            for (const group of groupEvents(events)) {
+                list.appendChild(section(group.key, group.label, group.events, onOpen));
+            }
         })
         .catch((e) => {
             loading.remove();
-            grid.appendChild(el("p", "alert alert-danger", e.message));
+            list.appendChild(el("p", "alert alert-danger", e.message));
         });
+}
+
+/* Section buckets — hosting first, then everything still in flux
+   (drafts and invited-but-unconfirmed = planning), the committed
+   (attending), and the archived last, greyed out. Sections with
+   nothing in them are omitted. */
+function groupEvents(events) {
+    const live = events.filter((e) => e.status !== "archived");
+    return [
+        { key: "hosting",   label: "Hosting",
+          events: live.filter((e) => e.is_host && e.status !== "draft") },
+        { key: "planning",  label: "Planning",
+          events: live.filter((e) =>
+              e.status === "draft" ||
+              (!e.is_host && e.my_rsvp !== "attending")) },
+        { key: "attending", label: "Attending",
+          events: live.filter((e) => !e.is_host && e.my_rsvp === "attending") },
+        { key: "archive",   label: "Archive",
+          events: events.filter((e) => e.status === "archived") },
+    ].filter((g) => g.events.length);
+}
+
+function section(key, label, events, onOpen) {
+    const sec = el("section",
+        `events-group${key === "archive" ? " is-archived" : ""}`);
+    sec.appendChild(el("h2", "events-group-title", label));
+    const grid = el("div", "events-grid");
+    for (const event of events) grid.appendChild(card(event, onOpen));
+    sec.appendChild(grid);
+    return sec;
 }
 
 function emptyState() {

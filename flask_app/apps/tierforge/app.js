@@ -401,9 +401,9 @@ function makeCard(img, tierId) {
   removeBtn.className = 'img-remove';
   removeBtn.title = 'Remove image';
   removeBtn.textContent = '✕';
-  removeBtn.addEventListener('click', (e) => {
+  removeBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
-    if (settings.confirmDelete && !confirm(`Remove "${img.name}"?`)) return;
+    if (settings.confirmDelete && !(await confirmDialog(`Remove "${img.name}"?`, { danger: true }))) return;
     removeImageFromEverywhere(img.id);
     deleteImageFromServer(img.id);
     render();
@@ -772,10 +772,10 @@ document.getElementById('imageUpload').addEventListener('change', async (e) => {
 
     if (errors.length > 0) {
       const names = errors.map(er => er.name).join(', ');
-      alert(`${errors.length} image(s) could not be uploaded: ${names}`);
+      await alertDialog(`${errors.length} image(s) could not be uploaded: ${names}`);
     }
   } catch (err) {
-    alert('Upload failed: ' + err.message);
+    await alertDialog('Upload failed: ' + err.message);
   } finally {
     if (uploadLabel) {
       uploadLabel.style.pointerEvents = '';
@@ -806,8 +806,8 @@ function moveTier(id, dir) {
 }
 
 // ── Clear All ──────────────────────────────────────────────────────
-document.getElementById('clearAllBtn').addEventListener('click', () => {
-  if (settings.confirmClear && !confirm('Return all images to the pool and clear tiers?')) return;
+document.getElementById('clearAllBtn').addEventListener('click', async () => {
+  if (settings.confirmClear && !(await confirmDialog('Return all images to the pool and clear tiers?', { danger: true }))) return;
   const allImages = [
     ...pool,
     ...tiers.flatMap(t => t.images)
@@ -868,9 +868,9 @@ document.getElementById('saveTierBtn').addEventListener('click', () => {
   render();
 });
 
-document.getElementById('deleteTierBtn').addEventListener('click', () => {
+document.getElementById('deleteTierBtn').addEventListener('click', async () => {
   if (!editing) return;
-  if (!confirm('Delete this tier? Images will return to the pool.')) return;
+  if (!(await confirmDialog('Delete this tier? Images will return to the pool.', { danger: true }))) return;
   const tier = tiers.find(t => t.id === editing);
   if (tier) {
     pool.push(...tier.images);
@@ -956,7 +956,7 @@ document.getElementById('exportPngBtn').addEventListener('click', async () => {
     link.href = canvas.toDataURL('image/png');
     link.click();
   } catch (err) {
-    alert('Export failed: ' + err.message);
+    await alertDialog('Export failed: ' + err.message);
   } finally {
     document.body.removeChild(capture);
   }
@@ -995,7 +995,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       pool: await Promise.all(pool.map(async i => ({ id: i.id, src: await fetchAsDataURL(i), name: i.name }))),
     };
   } catch (err) {
-    alert('Could not prepare file for saving: ' + err.message);
+    await alertDialog('Could not prepare file for saving: ' + err.message);
     return;
   }
 
@@ -1046,7 +1046,7 @@ document.getElementById('loadFileInput').addEventListener('change', (e) => {
 
       oldIds.forEach(deleteImageFromServer);
     } catch (err) {
-      alert('Could not load file: ' + err.message);
+      await alertDialog('Could not load file: ' + err.message);
     }
   };
   reader.readAsText(file);

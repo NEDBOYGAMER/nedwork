@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-  <!-- car share: a top-down car with two seats marked -->
-  <rect x="6.5" y="4.5" width="11" height="15" rx="4.5"/>
-  <path d="M9.5 8.2 h1.6"/>
-  <path d="M13.5 8.2 h1.6"/>
-  <path d="M9.5 15.8 h1.6"/>
-  <path d="M13.5 15.8 h1.6"/>
+  <!-- car share: simple road in perspective -->
+  <path d="M4.5 21 L9.5 4"/>
+  <path d="M19.5 21 L14.5 4"/>
+  <path d="M12 7.5 v2"/>
+  <path d="M12 12 v2.5"/>
+  <path d="M12 17 v2.5"/>
 </svg>
