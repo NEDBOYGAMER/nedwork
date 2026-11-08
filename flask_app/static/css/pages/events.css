@@ -405,6 +405,7 @@
 .file-name { font-size: 13px; color: var(--text-muted); }
 
 .location-address { font-size: 14px; margin: 0; }
+.location-address-muted { color: var(--text-muted); }
 .location-note { font-size: 13px; color: var(--text-muted); margin: 0; }
 .location-map-wrap { position: relative; }
 .location-map {
@@ -776,10 +777,6 @@
 
 .chat-form { display: flex; gap: var(--space-2); }
 .chat-form .field-input { flex: 1; }
-
-/* ── duties ─────────────────────────────────────────────────────────── */
-.duties-section { padding: var(--space-3) 0 0; }
-.duties-list { margin: 0; padding: 0 0 0 var(--space-4); font-size: 14px; display: flex; flex-direction: column; gap: var(--space-1); }
 
 /* ── picker modal — shared styles live in ui-elements.css (.picker-*)
    so the socials add-member picker matches without page-CSS imports ── */

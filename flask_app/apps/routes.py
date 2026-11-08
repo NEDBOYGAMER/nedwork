@@ -36,18 +36,22 @@ JSON_ASSET_APPS = {"trivia"}
 def _page_gate(app_name):
     """The one permission gate for app pages — used by the page route
     AND by the static catch-all (for *.html requests), so both doors
-    always agree. Returns None when access is allowed, else the
-    redirect/403 response to send."""
-    required = required_permissions_for(app_name)
-    if not required:
-        return None
+    always agree.
 
+    Returns (denied_response, user): (None, user) when access is allowed,
+    (response, None) when it is not. The user (or None) is passed into the
+    template so self-contained app pages can identify the visitor."""
+    required = required_permissions_for(app_name)
     valid, user = Session.check(request.cookies.get("session_id"))
-    if not valid:
-        return redirect(url_for("auth.login_page"))
+    user = user if valid else None
+    if not required:
+        return None, user
+
+    if user is None:
+        return redirect(url_for("auth.login_page")), None
     if not user.has_any(required):
-        return render_template("auth/forbidden.html"), 403
-    return None
+        return (render_template("auth/forbidden.html"), 403), None
+    return None, user
 
 
 @apps_bp.route('/<app_name>')
@@ -62,11 +66,12 @@ def dynamic_app(app_name):
     if not os.path.exists(template_full_path):
         abort(404)
 
-    denied = _page_gate(app_name)
+    denied, user = _page_gate(app_name)
     if denied is not None:
         return denied
 
-    return render_template(template_relative_path, app_name=app_name)
+    return render_template(template_relative_path, app_name=app_name,
+                           user=user)
 
 @apps_bp.route('/<app_name>/<path:filename>')
 def app_static(app_name, filename):
@@ -81,7 +86,7 @@ def app_static(app_name, filename):
         if not os.path.exists(template_full_path):
             abort(404)
 
-        denied = _page_gate(app_name)
+        denied, _user = _page_gate(app_name)
         if denied is not None:
             return denied
 

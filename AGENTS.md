@@ -4,7 +4,7 @@ Orientation for coding agents working in this repo. Read this before touching
 anything. **Always read `TODO.md` too, at the start of every task** — open
 work items and accepted tradeoffs live there; check whether your task (or a
 cheap related fix) is already listed before you plan, and keep it current
-when things change. Verified 2026-10-28; if reality has moved, update this
+when things change. Verified 2026-11-08; if reality has moved, update this
 file in the same session (same rule as `__docs/structure.md`).
 
 ---
@@ -161,7 +161,7 @@ Never put user data or generated files under `static/` — it is public and
 served as-is (historical bug: suggestions JSON used to live there; runtime
 stores now live in `instance/data/`).
 
-## 7. Current state & pitfalls (2026-11-03)
+## 7. Current state & pitfalls (2026-11-08)
 
 - **Uncommitted work in the tree**: the 2026-11 TODO round (timer, events,
   socials, settings, notifications, account deletion) is modified but not
@@ -175,6 +175,12 @@ stores now live in `instance/data/`).
   purely via the dynamic catalog route. That is a valid pattern, not a bug.
 - **`tierforge/_uploads/`** is an in-package runtime dir (user uploads write
   inside the repo tree). Known wart; don't "fix" without discussion.
+- **TierForge multiplayer** (`flask_app/apps/tierforge/`): link sessions
+  poll every second; board pushes are add-only and deletions are sticky
+  `board["removed"]` tombstones (co-op: any member deletes; split: host
+  only); live drag presence is an in-memory per-process map, never
+  persisted. Full model + API in `__docs/apps.md`; sessions have no
+  inactivity TTL yet (see `TODO.md`).
 - **All cookies are unconditionally `Secure`** (session, csrf, admin —
   issued *and* cleared; no scheme sniffing left, so `X-Forwarded-Proto`
   / `PROXY_FIX_X_FOR` no longer matter for cookies). Consequences:
@@ -216,9 +222,10 @@ stores now live in `instance/data/`).
 | `__docs/style-instructions.md` | universal UI styling ruleset (mandatory) |
 | `__docs/git.md` | git workflow for pushing changes |
 | `__docs/server_cheat-sheet.md` | server command reference (ops context) |
-| `__docs/apps.md`, `__docs/tips_and_tricks.md` | currently empty placeholders |
+| `__docs/apps.md` | per-app deep dives (currently TierForge multiplayer) |
+| `__docs/tips_and_tricks.md` | currently an empty placeholder |
+| `TODO.md` | open items + accepted tradeoffs |
 
 Verified 2026-11-03: `stuff/` was cleaned of one-off screenshots, design
 mockups, and stale notes (recoverable from git history); only smoke/diagnostic
 scripts remain.
-| `TODO.md` | open items + accepted tradeoffs |

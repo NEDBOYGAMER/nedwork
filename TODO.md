@@ -39,7 +39,10 @@ Notifications widget shipped 2026-11-03.)
 **Going**; `maybe` may still request a ride, `cant`/`pending` are
 read-only. Non-Going members see a read-only banner listing outstanding
 claims/seats/rides, and downgrading warns before keeping them. Existing
-garbled location addresses: re-search / drag the pin in Edit to re-fill.)
+garbled location addresses: re-search / drag the pin in Edit to re-fill.
+Also shipped 2026-11-08: the "Your to-dos for this event" rollup
+(`myDuties`) is gone, and a pin without an address now shows a muted
+fallback line instead of the address silently vanishing.)
 
 ## Socials
 
@@ -77,11 +80,41 @@ the runtime truth); ids are a stable contract — never renumber or reuse.
 
 ### TierForge
 
-(none — no open items. TierMaker **template** import shipped 2026-11-07
-(`POST /apps/tierforge/import`, "Import from link" in the File menu):
-fetches the template API, downloads items through the normal image
-pipeline, defaults S–F tiers. A *completed* user list with placements
-(share-code page type) is a possible future extension, not started.)
+TierMaker **template** import shipped 2026-11-07 (`POST /apps/tierforge/import`,
+"Import from link" in the File menu). A *completed* user list with
+placements (share-code page type) is a possible future extension.
+
+Shipped 2026-11-08 (min-size scope confirmed: right-click preview only):
+minimum rendered size in the big-picture preview (`min-width: 50vw;
+min-height: 50vh`), "Clear all" split dropdown with **Clear completely**
+(confirm dialog + per-image DELETE for the current board), "Import from
+file" moved to a `btn-primary` toolbar button beside "Upload images",
+ZIP upload (magic-byte detection, in-memory expansion, entry/size caps,
+zip-slip + junk filtering, same `_normalize_to_jpeg` pipeline),
+drop-indicator height matching `--tier-img-size` / `--pool-img-size`, and
+the drag glow now covering the whole `.tier-row` including controls.
+
+Shipped 2026-11-08: multiplayer permission model (co-op = any member may
+delete shared images; split-screen = host-only deletion with sticky
+`board["removed"]` tombstones, pushes are add-only) and live drag presence
+(in-memory, ~1 s poll, cursor + dragged-image ghost). Details in
+`__docs/apps.md`.
+
+- [ ] **Auto-end idle sessions**: open sessions never expire, so
+      abandoned ones stay open forever. Add a TTL (e.g. end after N hours
+      without a join/board push), checked lazily in `_get_session_by_token`
+      or the poll, or via a sweep.
+- [ ] **Friend-based session invites** (next multiplayer step): choose
+      friends from `/socials/api/friends`, send a `tierforge_join_request`
+      notification via `notify_user`, and have the host approve a
+      `pending` membership. Invite links currently join directly with no
+      approval; the model already reserves member status `pending`.
+- [ ] **Sidenav notification badge for join requests**: add a
+      `#notifications-btn` entry to the top-nav in
+      `flask_app/templates/partials/sidenav.html` and poll
+      `/events/api/notifications` (about every 60s) from `sidenav.js`,
+      with an animated badge for pending game join requests. Reusable for
+      other notification types later.
 
 ### Colors
 

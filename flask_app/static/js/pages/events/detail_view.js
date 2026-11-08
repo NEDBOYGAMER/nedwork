@@ -164,10 +164,6 @@ function draw(wrap, prev, why) {
     }
     main.appendChild(stack);
 
-    // my duties footer
-    const duties = myDuties(state, me);
-    if (duties) main.appendChild(duties);
-
     // membership actions — a quiet page-bottom band before chat (the
     // Leave button was buried in the members column before)
     const memberActions = renderMemberActions(event, state, me,
@@ -406,55 +402,4 @@ function participationBanner(state, me) {
 
     wrap.appendChild(alert);
     return wrap;
-}
-
-/* -- my duties rollup ----------------------------------------------------- */
-
-function myDuties(state, me) {
-    if (!me) return null;
-    // non-Going members can't act on these suggestions anyway
-    if (!isGoing({ isHost: state.event.is_host, me })) return null;
-    const duties = [];
-    const event = state.event;
-
-    // doodle: vote pending (module exists, I haven't voted, no date set)
-    const doodle = (state.modules || []).find((m) => m.type === "doodle" && !m.hidden);
-    if (doodle && !event.event_date) {
-        const voted = (state.votes || []).some((v) => v.user.id === window.EVENT_USER_ID);
-        if (!voted) duties.push("Vote on the date");
-    }
-    // bring: something fully unclaimed that I could take? (only hint at open claims)
-    const bring = (state.modules || []).find((m) => m.type === "bring" && !m.hidden);
-    if (bring) {
-        const myClaims = new Set();
-        for (const item of state.items || []) {
-            for (const claim of item.claims || []) {
-                if (claim.member_id === me.id) myClaims.add(item.id);
-            }
-        }
-        const open = (state.items || []).some((i) => i.claimed_qty < i.target_qty);
-        if (open && !myClaims.size) duties.push("Claim something to bring");
-    }
-    // rides: I need a ride and have no seat
-    const rides = (state.modules || []).find((m) => m.type === "rides" && !m.hidden);
-    if (rides && me.needs_ride) {
-        const seated = (state.rides || []).some((r) =>
-            (r.passengers || []).some((p) => p.member_id === me.id));
-        const driving = (state.rides || []).some(
-            (r) => r.driver?.member_id === me.id);
-        if (!seated && !driving) duties.push("Find a ride or offer one");
-    }
-    if (!duties.length) return null;
-
-    const section = el("div", "event-section duties-section");
-    const head = el("header", "event-section-head");
-    const title = el("h2", "event-section-title");
-    title.appendChild(evIcon("duty"));
-    title.appendChild(el("span", null, "Your to-dos for this event"));
-    head.appendChild(title);
-    section.appendChild(head);
-    const list = el("ul", "duties-list");
-    for (const duty of duties) list.appendChild(el("li", null, duty));
-    section.appendChild(list);
-    return section;
 }

@@ -24,10 +24,15 @@ export function renderLocation(root, ctx) {
         root.appendChild(el("p", "location-note", config.note));
     }
     const address = composeAddress(config) || config.address || "";
+    const hasPoint = Number.isFinite(config.lat) && Number.isFinite(config.lng);
     if (address) {
         root.appendChild(el("p", "location-address", address));
+    } else if (hasPoint) {
+        // Never let the address line silently vanish: a pin without a
+        // reverse-geocoded address still shows a muted hint instead.
+        root.appendChild(el("p", "location-address location-address-muted",
+            "No address set — drag the pin or search a place in Edit."));
     }
-    const hasPoint = Number.isFinite(config.lat) && Number.isFinite(config.lng);
     if (hasPoint && window.L) {
         renderLeafletMap(root, config);
     } else if (hasPoint) {
@@ -53,9 +58,6 @@ export function renderLocation(root, ctx) {
         apple.rel = "noopener noreferrer";
         links.append(google, apple);
         root.appendChild(links);
-    }
-    if (!address && !hasPoint) {
-        return;
     }
 }
 
@@ -188,6 +190,11 @@ export function locationPopup(config) {
         const a = document.createElement("strong");
         a.textContent = address;
         box.appendChild(a);
+    } else {
+        const hint = document.createElement("span");
+        hint.className = "location-address-muted";
+        hint.textContent = "No address set";
+        box.appendChild(hint);
     }
     if (config.note) {
         box.appendChild(document.createElement("br"));

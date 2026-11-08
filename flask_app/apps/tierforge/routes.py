@@ -1,8 +1,12 @@
 import io
 import os
 import re
+import secrets
 import shutil
+import time
 import uuid
+import zipfile
+from datetime import datetime
 
 import requests
 
@@ -14,7 +18,10 @@ try:
 except ImportError:
     HAS_PIL = False
 
-from ...models import Session
+from ... import db
+from ...models import (
+    Session, TierForgeSession, TierForgeSessionMember,
+)
 from ...auth.decorators import login_required, permission_required, API
 
 # NOTE ON REGISTRATION: this blueprint is meant to be mounted at
@@ -90,9 +97,39 @@ FULL_QUALITY = 90
 MAX_IMAGE_PIXELS = 50_000_000      # decompression-bomb guard (decode only)
 IMAGE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 
+# ZIP upload caps — "Upload images" also accepts an archive full of images.
+# The archive is expanded in memory (never extracted to disk), every entry
+# still goes through the normal normalize/thumbnail pipeline, and these
+# caps bound a malicious archive: entry count + uncompressed byte totals
+# (zip bomb), plus the per-image pixel cap above.
+ZIP_MAGIC = b"PK\x03\x04"
+MAX_ZIP_ENTRIES = 500
+MAX_ZIP_ENTRY_BYTES = 50 * 1024 * 1024          # 50 MB per file
+MAX_ZIP_TOTAL_BYTES = 250 * 1024 * 1024         # 250 MB per archive
+ZIP_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp",
+                  ".bmp", ".tif", ".tiff")
+
 # TierMaker import caps — a big template can carry hundreds of items; keep
 # the import bounded so a paste can't turn into an hours-long scrape.
 MAX_IMPORT_ITEMS = 500
+
+# Multiplayer session caps. A session board is client-authored JSON, so
+# everything that goes into it is re-validated and bounded here.
+SESSION_MODES = ("coop", "split")
+SESSION_TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
+MAX_SESSION_IMAGES = 1000
+MAX_SESSION_TIERS = 60
+MAX_SESSION_TITLE = 80
+TIER_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
+HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+MAX_SESSION_REMOVE = 200
+
+# Realtime drag presence is ephemeral: it is never persisted and waitress
+# runs a single process, so a module-level map is shared by every worker
+# thread and disappears on restart. Entries expire on their own.
+_PRESENCE_MAX_AGE = 2.5      # seconds without an update before a cursor hides
+_PRESENCE_MAX_ENTRIES = 64
+_SESSION_PRESENCE = {}       # token -> {str(user_id): {...}}
 
 # ------------------------------------------------------------------
 # helpers
@@ -156,6 +193,128 @@ def _strip_ext(filename):
     return re.sub(r"\.[^.\\/]+$", "", filename or "image")
 
 
+def _store_image(user, raw, original_name):
+    """Normalize + thumbnail one image and write both copies, returning the
+    API result entry. The single write path shared by uploads and ZIP
+    entries; PIL re-encoding is the real content check (extension/MIME is
+    never trusted)."""
+    full_bytes = _normalize_to_jpeg(raw, FULL_MAX_DIM, FULL_QUALITY)
+    thumb_bytes = _normalize_to_jpeg(raw, THUMB_MAX_DIM, THUMB_QUALITY)
+
+    image_id = uuid.uuid4().hex
+    orig_path, thumb_path = _safe_image_paths(user, image_id)
+    with open(orig_path, "wb") as f:
+        f.write(full_bytes)
+    with open(thumb_path, "wb") as f:
+        f.write(thumb_bytes)
+
+    # Display name is basename-only (same rule as ZIP entries); the stored
+    # filename is our uuid either way.
+    display_name = re.split(r"[\\/]", original_name or "")[-1] or "image"
+
+    return {
+        "id": image_id,
+        "name": _strip_ext(display_name),
+        "thumbUrl": url_for("tierforge.get_image", image_id=image_id, variant="thumb"),
+        "fullUrl": url_for("tierforge.get_image", image_id=image_id, variant="full"),
+    }
+
+
+def _is_zip(raw):
+    # Magic bytes, not the filename extension: a renamed file still gets
+    # treated correctly, and a fake .zip that isn't one falls through to
+    # the normal image path (and fails there).
+    return raw[:4] == ZIP_MAGIC
+
+
+def _safe_zip_entry_name(name):
+    """Return a safe basename for an image entry, or None to skip it.
+
+    Nothing is ever extracted to disk (entries are read into memory and
+    stored under our own uuid filenames), so this is defense-in-depth:
+    reject traversal/absolute paths, directories, hidden/resource-fork
+    junk (__MACOSX, ._*, .DS_Store) and non-image extensions."""
+    normalized = (name or "").replace("\\", "/")
+    if not normalized or normalized.endswith("/"):
+        return None
+    if "__MACOSX/" in normalized or normalized.startswith("__MACOSX"):
+        return None
+    # Zip-slip / absolute-path / drive-letter shapes
+    if normalized.startswith("/") or re.match(r"^[A-Za-z]:", normalized):
+        return None
+    if any(part == ".." for part in normalized.split("/")):
+        return None
+    base = normalized.rsplit("/", 1)[-1]
+    if base in ("", ".", "..") or base.startswith("."):
+        return None
+    if "\x00" in base or ":" in base:
+        return None
+    if not base.lower().endswith(ZIP_IMAGE_EXTS):
+        return None
+    return base
+
+
+def _expand_zip(user, raw):
+    """Expand an in-memory archive into stored images.
+
+    Returns (results, errors) in the same shape as the upload loop. Caps:
+    entry count, per-entry size and total uncompressed size are checked
+    from the central directory AND enforced on the actual read (a lying
+    header must not be able to inflate memory)."""
+    results, errors = [], []
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            entries = [info for info in archive.infolist() if not info.is_dir()]
+            if len(entries) > MAX_ZIP_ENTRIES:
+                return [], [{
+                    "name": "archive.zip",
+                    "error": f"too many files (max {MAX_ZIP_ENTRIES})",
+                }]
+
+            declared_total = 0
+            read_total = 0
+            for info in entries:
+                name = _safe_zip_entry_name(info.filename)
+                if name is None:
+                    continue
+                if info.file_size > MAX_ZIP_ENTRY_BYTES:
+                    errors.append({"name": name, "error": "file too large"})
+                    continue
+                declared_total += info.file_size
+                if declared_total > MAX_ZIP_TOTAL_BYTES:
+                    errors.append({"name": name,
+                                   "error": "archive exceeds the size limit"})
+                    break
+                try:
+                    # +1 byte detects an entry that lies about its size
+                    with archive.open(info) as fh:
+                        entry = fh.read(MAX_ZIP_ENTRY_BYTES + 1)
+                    if len(entry) > MAX_ZIP_ENTRY_BYTES:
+                        raise ValueError("file too large")
+                    if not entry:
+                        raise ValueError("empty file")
+                    # Enforce the total on the bytes actually read too — the
+                    # central directory's file_size can lie.
+                    read_total += len(entry)
+                    if read_total > MAX_ZIP_TOTAL_BYTES:
+                        errors.append({"name": name,
+                                       "error": "archive exceeds the size limit"})
+                        break
+                    results.append(_store_image(user, entry, name))
+                except Exception as exc:
+                    errors.append({"name": name, "error": str(exc)})
+    except zipfile.BadZipFile:
+        errors.append({"name": "archive.zip", "error": "invalid zip file"})
+    if not results and not errors:
+        # Nothing usable in the archive (only folders/non-images, or empty):
+        # report it instead of silently adding zero images.
+        errors.append({
+            "name": "archive.zip",
+            "error": "no valid images found in the archive",
+        })
+    return results, errors
+
+
 def _prettify_name(filename):
     """TierMaker item filename -> a presentable label. The API only hands
     out filenames ('adventurercookiepng.png'), so the name is a best-effort
@@ -199,6 +358,232 @@ def _default_import_tiers():
 
 
 # ------------------------------------------------------------------
+# multiplayer sessions
+#
+# A session is a capability link (the 32-char token) plus a client-authored
+# board. The board shape:
+#   catalog -- shared image refs [{id, owner, name}]
+#   coop    -- {"tiers": [...], "pool": [refs]} for one-screen editing
+#   split   -- {user_id: {"tiers": [...], "pool_order": [refs]}} for
+#              split-screen editing: same image set, one ranking per member
+#
+# Every write carries the client's base_version; a mismatch answers 409 with
+# the current state. The client re-pulls for the fresh version and retries
+# once, so concurrent edits resolve as whole-board last-write-wins rather
+# than interleaving two people's drags into a broken board.
+# ------------------------------------------------------------------
+
+def _clean_wire_ref(raw):
+    """Validate/trim one {id, owner, name} image reference, or None."""
+    if not isinstance(raw, dict):
+        return None
+    image_id = str(raw.get("id") or "")
+    if not IMAGE_ID_RE.match(image_id):
+        return None
+    try:
+        owner = int(raw.get("owner"))
+    except (TypeError, ValueError):
+        return None
+    if owner <= 0:
+        return None
+    name = str(raw.get("name") or "image")[:200]
+    return {"id": image_id, "owner": owner, "name": name}
+
+
+def _clean_catalog(raw):
+    """Validated, de-duplicated catalog list (None for a malformed value)."""
+    if not isinstance(raw, list):
+        return None
+    out, seen = [], set()
+    for entry in raw[:MAX_SESSION_IMAGES]:
+        ref = _clean_wire_ref(entry)
+        if ref is None:
+            continue
+        key = (ref["owner"], ref["id"])
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(ref)
+    return out
+
+
+def _clean_ref_list(raw):
+    if not isinstance(raw, list):
+        return None
+    out = []
+    for entry in raw[:MAX_SESSION_IMAGES]:
+        ref = _clean_wire_ref(entry)
+        if ref is not None:
+            out.append(ref)
+    return out
+
+
+def _clean_tiers(raw):
+    if not isinstance(raw, list):
+        return None
+    out = []
+    seen_ids = set()
+    for idx, tier in enumerate(raw[:MAX_SESSION_TIERS]):
+        if not isinstance(tier, dict):
+            continue
+        label = str(tier.get("label") or "?")[:4].upper() or "?"
+        color = str(tier.get("color") or "#6c757d")
+        if not HEX_COLOR_RE.match(color):
+            color = "#6c757d"
+        tier_id = str(tier.get("id") or "")
+        if not TIER_ID_RE.match(tier_id) or tier_id in seen_ids:
+            tier_id = f"t{idx}"
+            while tier_id in seen_ids:
+                tier_id += "_"
+        seen_ids.add(tier_id)
+        images = _clean_ref_list(tier.get("images")) or []
+        out.append({
+            "id": tier_id,
+            "label": label,
+            "color": color,
+            "images": images,
+        })
+    return out
+
+
+def _merge_catalog(catalog, tiers, pool):
+    """Build the shared image set: the incoming catalog plus every ref still
+    placed on a board (so a client that omits the catalog can't lose images).
+    Insertion order is preserved (catalog first, then new refs)."""
+    seen = {}
+    for ref in (catalog or []):
+        seen.setdefault((ref["owner"], ref["id"]), ref)
+    for tier in (tiers or []):
+        for ref in tier.get("images") or []:
+            seen.setdefault((ref["owner"], ref["id"]), ref)
+    for ref in (pool or []):
+        seen.setdefault((ref["owner"], ref["id"]), ref)
+    return list(seen.values())
+
+
+def _catalog_keys(catalog):
+    return {(ref["owner"], ref["id"]) for ref in catalog}
+
+
+def _only_in_catalog(refs, catalog_keys):
+    return [ref for ref in refs
+            if (ref["owner"], ref["id"]) in catalog_keys]
+
+
+def _without(refs, exclude_keys):
+    return [ref for ref in refs
+            if (ref["owner"], ref["id"]) not in exclude_keys]
+
+
+def _presence_snapshot(session):
+    """Fresh drag presence for the session's active members, or {}."""
+    now = time.time()
+    member_ids = {str(m.user_id) for m in session.members
+                  if m.status == "active"}
+    store = _SESSION_PRESENCE.get(session.token) or {}
+    out = {}
+    for uid, entry in list(store.items()):
+        if uid not in member_ids or now - entry.get("ts", 0) > _PRESENCE_MAX_AGE:
+            store.pop(uid, None)
+            continue
+        out[uid] = {
+            "username": entry.get("username"),
+            "image": entry.get("image"),
+            "x": entry.get("x", 0),
+            "y": entry.get("y", 0),
+        }
+    return out
+
+
+def clear_session_presence(token, user_id=None):
+    """Drop ephemeral presence for a whole session or one member of it."""
+    store = _SESSION_PRESENCE.get(token)
+    if store is None:
+        return
+    if user_id is None:
+        _SESSION_PRESENCE.pop(token, None)
+    else:
+        store.pop(str(user_id), None)
+
+
+def _get_session_by_token(token):
+    if not token or not SESSION_TOKEN_RE.match(token):
+        return None
+    return TierForgeSession.query.filter_by(token=token).first()
+
+
+def _session_member_row(session, user):
+    return TierForgeSessionMember.query.filter_by(
+        session_id=session.id, user_id=user.id).first()
+
+
+def _session_dict(session):
+    rows = sorted(
+        session.members,
+        key=lambda m: (m.role != "host",
+                       m.joined_at or datetime.min, m.id),
+    )
+    members = []
+    for row in rows:
+        if row.status != "active":
+            continue
+        members.append({
+            "userId": row.user_id,
+            "username": row.user.username if row.user else f"user {row.user_id}",
+            "role": row.role,
+        })
+    return {
+        "token": session.token,
+        "mode": session.mode,
+        "title": session.title,
+        "status": session.status,
+        "version": session.version,
+        "hostId": session.host_id,
+        "members": members,
+        "board": session.board or {},
+    }
+
+
+def _bump_session(session, board):
+    session.board = board
+    session.version = (session.version or 0) + 1
+
+
+def _session_references_image(session, owner_id, image_id):
+    """The image route only serves bytes that are actually part of the
+    session board — a member can't walk the upload tree with guessed ids."""
+    board = session.board or {}
+
+    def refs():
+        for ref in board.get("catalog") or []:
+            yield ref
+        coop = board.get("coop") or {}
+        for tier in coop.get("tiers") or []:
+            for ref in tier.get("images") or []:
+                yield ref
+        for ref in coop.get("pool") or []:
+            yield ref
+        for entry in (board.get("split") or {}).values():
+            if not isinstance(entry, dict):
+                continue
+            for tier in entry.get("tiers") or []:
+                for ref in tier.get("images") or []:
+                    yield ref
+            for ref in entry.get("pool_order") or []:
+                yield ref
+
+    for ref in refs():
+        if not isinstance(ref, dict) or ref.get("id") != image_id:
+            continue
+        try:
+            if int(ref.get("owner")) == owner_id:
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
+
+
+# ------------------------------------------------------------------
 # routes
 # ------------------------------------------------------------------
 
@@ -231,22 +616,12 @@ def upload_images(user):
             if not raw:
                 raise ValueError("empty file")
 
-            full_bytes = _normalize_to_jpeg(raw, FULL_MAX_DIM, FULL_QUALITY)
-            thumb_bytes = _normalize_to_jpeg(raw, THUMB_MAX_DIM, THUMB_QUALITY)
-
-            image_id = uuid.uuid4().hex
-            orig_path, thumb_path = _safe_image_paths(user, image_id)
-            with open(orig_path, "wb") as f:
-                f.write(full_bytes)
-            with open(thumb_path, "wb") as f:
-                f.write(thumb_bytes)
-
-            results.append({
-                "id": image_id,
-                "name": _strip_ext(original_name),
-                "thumbUrl": url_for("tierforge.get_image", image_id=image_id, variant="thumb"),
-                "fullUrl": url_for("tierforge.get_image", image_id=image_id, variant="full"),
-            })
+            if _is_zip(raw):
+                zip_results, zip_errors = _expand_zip(user, raw)
+                results.extend(zip_results)
+                errors.extend(zip_errors)
+            else:
+                results.append(_store_image(user, raw, original_name))
         except Exception as exc:
             errors.append({"name": original_name, "error": str(exc)})
 
@@ -300,6 +675,376 @@ def delete_image(user, image_id):
             pass
 
     return jsonify({"status": "ok"})
+
+
+@tierforge_bp.route("/sessions", methods=["POST"])
+@permission_required("tierforge", API)
+def create_session(user):
+    """Start a multiplayer session from the caller's current board. The
+    invite link is the returned token — holding it = direct join."""
+    payload = request.get_json(silent=True) or {}
+    mode = payload.get("mode")
+    if mode not in SESSION_MODES:
+        return jsonify({"error": "mode must be 'coop' or 'split'"}), 400
+
+    title = str(payload.get("title") or "").strip()[:MAX_SESSION_TITLE]
+    title = title or "TierForge session"
+
+    catalog = _clean_catalog(payload.get("catalog")) or []
+    tiers = _clean_tiers(payload.get("tiers")) or []
+    pool = _clean_ref_list(payload.get("pool")) or []
+    catalog = _merge_catalog(catalog, tiers, pool)
+    catalog_keys = _catalog_keys(catalog)
+    # keep the tier structure but drop refs that aren't in the catalog
+    for tier in tiers:
+        tier["images"] = _only_in_catalog(tier["images"], catalog_keys)
+    pool = _only_in_catalog(pool, catalog_keys)
+
+    board = {"catalog": catalog, "coop": None, "split": {}}
+    if mode == "coop":
+        board["coop"] = {"tiers": tiers, "pool": pool}
+    else:
+        board["split"][str(user.id)] = {
+            "tiers": tiers,
+            "pool_order": pool,
+        }
+
+    session = TierForgeSession(
+        token=secrets.token_hex(16),
+        host_id=user.id,
+        mode=mode,
+        title=title,
+        status="open",
+        version=1,
+        board=board,
+    )
+    db.session.add(session)
+    db.session.flush()
+    db.session.add(TierForgeSessionMember(
+        session_id=session.id, user_id=user.id,
+        role="host", status="active"))
+    db.session.commit()
+    return jsonify(_session_dict(session)), 201
+
+
+@tierforge_bp.route("/sessions/<token>", methods=["GET"])
+@permission_required("tierforge", API)
+def get_session(user, token):
+    """Poll endpoint: current board + metadata for any member. Ended
+    sessions stay readable so clients can show the final state."""
+    session = _get_session_by_token(token)
+    if session is None:
+        return jsonify({"error": "session not found"}), 404
+    if _session_member_row(session, user) is None:
+        return jsonify({"error": "not a member of this session"}), 403
+    return jsonify({**_session_dict(session),
+                    "presence": _presence_snapshot(session)})
+
+
+@tierforge_bp.route("/sessions/<token>/join", methods=["POST"])
+@permission_required("tierforge", API)
+def join_session(user, token):
+    """Direct join via invite link; idempotent for existing members."""
+    session = _get_session_by_token(token)
+    if session is None:
+        return jsonify({"error": "session not found"}), 404
+    if session.status != "open":
+        return jsonify({"error": "this session has ended"}), 410
+
+    member = _session_member_row(session, user)
+    if member is None:
+        db.session.add(TierForgeSessionMember(
+            session_id=session.id, user_id=user.id,
+            role="member", status="active"))
+        if session.mode == "split":
+            board = dict(session.board or {})
+            split = dict(board.get("split") or {})
+            split.setdefault(str(user.id), {"tiers": [], "pool_order": []})
+            board["split"] = split
+            _bump_session(session, board)
+        else:
+            session.version = (session.version or 0) + 1
+        db.session.commit()
+    elif member.status != "active":
+        member.status = "active"
+        session.version = (session.version or 0) + 1
+        db.session.commit()
+
+    return jsonify(_session_dict(session))
+
+
+@tierforge_bp.route("/sessions/<token>/board", methods=["POST"])
+@permission_required("tierforge", API)
+def push_session_board(user, token):
+    """Replace this member's view of the board (whole-board LWW)."""
+    session = _get_session_by_token(token)
+    if session is None:
+        return jsonify({"error": "session not found"}), 404
+    if _session_member_row(session, user) is None:
+        return jsonify({"error": "not a member of this session"}), 403
+    if session.status != "open":
+        return jsonify({"error": "this session has ended",
+                        "session": _session_dict(session)}), 410
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        base_version = int(payload.get("base_version"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "base_version is required"}), 400
+    if base_version != session.version:
+        return jsonify({"error": "stale board",
+                        "session": _session_dict(session)}), 409
+
+    board = dict(session.board or {})
+    incoming_catalog = _clean_catalog(payload.get("catalog")) or []
+    existing_catalog = _clean_catalog(board.get("catalog")) or []
+    tombstones = _catalog_keys(_clean_catalog(board.get("removed")) or [])
+
+    # Pushes only ever ADD to the shared catalogue: both modes union the
+    # existing set with what the pusher sent, then drop tombstoned images.
+    # Deletions go through the remove endpoint, so a member with a stale
+    # board can neither lose nor resurrect another member's images.
+    if session.mode == "coop":
+        tiers = _clean_tiers(payload.get("tiers")) or []
+        pool = _clean_ref_list(payload.get("pool")) or []
+        catalog = _merge_catalog(existing_catalog + incoming_catalog,
+                                 tiers, pool)
+        catalog = _without(catalog, tombstones)
+        catalog_keys = _catalog_keys(catalog)
+        for tier in tiers:
+            tier["images"] = _only_in_catalog(tier["images"], catalog_keys)
+        board["catalog"] = catalog
+        board["coop"] = {
+            "tiers": tiers,
+            "pool": _only_in_catalog(pool, catalog_keys),
+        }
+    else:
+        tiers = _clean_tiers(payload.get("my_tiers")) or []
+        pool_order = _clean_ref_list(payload.get("my_pool_order")) or []
+        catalog = _merge_catalog(existing_catalog + incoming_catalog, tiers,
+                                 pool_order)
+        catalog = _without(catalog, tombstones)
+        catalog_keys = _catalog_keys(catalog)
+        for tier in tiers:
+            tier["images"] = _only_in_catalog(tier["images"], catalog_keys)
+        board["catalog"] = catalog
+        split = dict(board.get("split") or {})
+        split[str(user.id)] = {
+            "tiers": tiers,
+            "pool_order": _only_in_catalog(pool_order, catalog_keys),
+        }
+        board["split"] = split
+
+    _bump_session(session, board)
+    db.session.commit()
+    return jsonify(_session_dict(session))
+
+
+@tierforge_bp.route("/sessions/<token>/remove", methods=["POST"])
+@permission_required("tierforge", API)
+def remove_session_images(user, token):
+    """Delete images from the shared pool for everyone.
+
+    Permission follows the sharing model: co-op is one shared board, so any
+    member may delete; split-screen shares one catalogue while rankings stay
+    personal, so only the host curates it. Every removal is tombstoned in the
+    board JSON, which lets ordinary pushes stay add-only — a member with a
+    stale board can never resurrect a deleted image."""
+    session = _get_session_by_token(token)
+    if session is None:
+        return jsonify({"error": "session not found"}), 404
+    if _session_member_row(session, user) is None:
+        return jsonify({"error": "not a member of this session"}), 403
+    if session.status != "open":
+        return jsonify({"error": "this session has ended",
+                        "session": _session_dict(session)}), 410
+    if session.mode == "split" and session.host_id != user.id:
+        return jsonify({"error": "only the host can delete shared images"}), 403
+
+    payload = request.get_json(silent=True) or {}
+    refs = (_clean_catalog(payload.get("refs")) or [])[:MAX_SESSION_REMOVE]
+    if not refs:
+        return jsonify({"error": "no images to remove"}), 400
+
+    board = dict(session.board or {})
+    removed = _merge_catalog(
+        (_clean_catalog(board.get("removed")) or []) + refs, None, None)
+    removed = removed[:MAX_SESSION_IMAGES]
+    removed_keys = _catalog_keys(removed)
+
+    board["removed"] = removed
+    board["catalog"] = _without(
+        _clean_catalog(board.get("catalog")) or [], removed_keys)
+
+    coop = board.get("coop")
+    if isinstance(coop, dict):
+        board["coop"] = {
+            "tiers": [
+                {**tier,
+                 "images": _without(tier.get("images") or [], removed_keys)}
+                for tier in coop.get("tiers") or []
+            ],
+            "pool": _without(coop.get("pool") or [], removed_keys),
+        }
+
+    split = board.get("split")
+    if isinstance(split, dict):
+        clean_split = {}
+        for uid, entry in split.items():
+            if not isinstance(entry, dict):
+                continue
+            clean_split[uid] = {
+                "tiers": [
+                    {**tier,
+                     "images": _without(tier.get("images") or [],
+                                        removed_keys)}
+                    for tier in entry.get("tiers") or []
+                ],
+                "pool_order": _without(entry.get("pool_order") or [],
+                                       removed_keys),
+            }
+        board["split"] = clean_split
+
+    _bump_session(session, board)
+    db.session.commit()
+    return jsonify(_session_dict(session))
+
+
+@tierforge_bp.route("/sessions/<token>/leave", methods=["POST"])
+@permission_required("tierforge", API)
+def leave_session(user, token):
+    """Members leave on their own; only the host can end the session."""
+    session = _get_session_by_token(token)
+    if session is None:
+        return jsonify({"error": "session not found"}), 404
+    member = _session_member_row(session, user)
+    if member is None:
+        return jsonify({"error": "not a member of this session"}), 403
+    if member.role == "host":
+        return jsonify({"error": "the host must end the session"}), 400
+
+    db.session.delete(member)
+    if session.mode == "split":
+        board = dict(session.board or {})
+        split = dict(board.get("split") or {})
+        if split.pop(str(user.id), None) is not None:
+            board["split"] = split
+            _bump_session(session, board)
+        else:
+            session.version = (session.version or 0) + 1
+    else:
+        session.version = (session.version or 0) + 1
+    db.session.commit()
+    clear_session_presence(session.token, user.id)
+    return jsonify({"status": "ok"})
+
+
+@tierforge_bp.route("/sessions/<token>/end", methods=["POST"])
+@permission_required("tierforge", API)
+def end_session(user, token):
+    """Host ends the session for everyone; the row is retained (read-only
+    final state) instead of deleted."""
+    session = _get_session_by_token(token)
+    if session is None:
+        return jsonify({"error": "session not found"}), 404
+    if session.host_id != user.id:
+        return jsonify({"error": "only the host can end the session"}), 403
+    if session.status != "ended":
+        session.status = "ended"
+        session.version = (session.version or 0) + 1
+        db.session.commit()
+        clear_session_presence(session.token)
+    return jsonify(_session_dict(session))
+
+
+@tierforge_bp.route("/sessions/<token>/presence", methods=["POST"])
+@permission_required("tierforge", API)
+def post_session_presence(user, token):
+    """Ephemeral drag presence for the live cursors.
+
+    Nothing is persisted and nothing is written to the DB — the map lives in
+    the (single) waitress process and expires in a couple of seconds. Ghost
+    images are still loaded through the board-gated image route, so pointing
+    at an arbitrary ref cannot leak bytes."""
+    session = _get_session_by_token(token)
+    if session is None:
+        return jsonify({"error": "session not found"}), 404
+    if _session_member_row(session, user) is None:
+        return jsonify({"error": "not a member of this session"}), 403
+    if session.status != "open":
+        return jsonify({"error": "this session has ended"}), 410
+
+    payload = request.get_json(silent=True) or {}
+    image = None
+    raw_ref = payload.get("image")
+    if isinstance(raw_ref, dict):
+        ref = _clean_wire_ref(raw_ref)
+        # Only advertise refs that are actually on the board. Clients load
+        # the ghost through the board-gated image route, so an off-board ref
+        # would just render a broken image — and pointing cursors at random
+        # upload ids buys nothing anyway.
+        if ref is not None and _session_references_image(
+                session, ref["owner"], ref["id"]):
+            image = {"owner": ref["owner"], "id": ref["id"]}
+    try:
+        x = float(payload.get("x") or 0)
+        y = float(payload.get("y") or 0)
+    except (TypeError, ValueError):
+        x = y = 0.0
+    x = max(-100000.0, min(100000.0, x))
+    y = max(-100000.0, min(100000.0, y))
+
+    now = time.time()
+    store = _SESSION_PRESENCE.setdefault(session.token, {})
+    if len(store) > _PRESENCE_MAX_ENTRIES:
+        store.clear()
+    store[str(user.id)] = {
+        "username": user.username,
+        "image": image,
+        "x": round(x, 1),
+        "y": round(y, 1),
+        "ts": now,
+    }
+    member_ids = {str(m.user_id) for m in session.members
+                  if m.status == "active"}
+    for uid in [uid for uid, entry in store.items()
+                if uid not in member_ids
+                or now - entry.get("ts", 0) > _PRESENCE_MAX_AGE]:
+        store.pop(uid, None)
+    return jsonify({"status": "ok"})
+
+
+@tierforge_bp.route(
+    "/sessions/<token>/images/<int:owner_id>/<image_id>/<variant>",
+    methods=["GET"])
+@permission_required("tierforge", API)
+def get_session_image(user, token, owner_id, image_id, variant):
+    """Serve a member's image to every other member of the session.
+
+    The regular image route is ownership-scoped (requester's own folder),
+    which can't work for a shared board. This route resolves the owner's
+    folder explicitly and only serves ids that appear in the session board,
+    so membership + a real board reference are both required."""
+    if variant not in ("thumb", "full"):
+        abort(404)
+    session = _get_session_by_token(token)
+    if session is None:
+        abort(404)
+    if _session_member_row(session, user) is None:
+        abort(403)
+    if not image_id or not IMAGE_ID_RE.match(image_id):
+        abort(404)
+    if not _session_references_image(session, owner_id, image_id):
+        abort(404)
+
+    suffix = "thumb" if variant == "thumb" else "orig"
+    path = os.path.join(_upload_root(), str(owner_id), f"{image_id}.{suffix}")
+    if not os.path.isfile(path):
+        abort(404)
+
+    response = send_file(path, mimetype="image/jpeg", conditional=True)
+    response.headers["Cache-Control"] = "private, max-age=31536000, immutable"
+    return response
 
 
 # ------------------------------------------------------------------

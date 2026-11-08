@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="/static/css/global/ui-elements.css" />
   <link rel="stylesheet" href="/apps/{{ app_name }}/style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    window.TIERFORGE_USER = {{ ({"id": user.id, "username": user.username} if user else none) | tojson }};
+  </script>
   <script src="/apps/{{ app_name }}/app.js" defer></script>
 </head>
 <body>
@@ -25,15 +28,37 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Upload images
       </label>
-      <input type="file" id="imageUpload" multiple accept="image/*" hidden />
+      <input type="file" id="imageUpload" multiple accept="image/*,.zip" hidden />
+      <label class="btn btn-primary" for="loadFileInput">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Import from file
+      </label>
+      <input type="file" id="loadFileInput" accept=".tierforge" hidden />
+      <button class="btn btn-secondary" id="multiplayerBtn" title="Start a live session with an invite link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Multiplayer
+      </button>
       <button class="btn btn-secondary" id="addTierBtn">+ Add tier</button>
-      <button class="btn btn-secondary" id="clearAllBtn">Clear all</button>
+      <div class="dropdown split-dropdown" id="clearMenu">
+        <button class="btn btn-secondary" id="clearAllBtn">Clear all</button>
+        <button class="btn btn-secondary dropdown-toggle btn-icon" id="clearMenuBtn"
+                title="More clear options" aria-label="More clear options"
+                aria-haspopup="true" aria-expanded="false"
+                aria-controls="clearMenuDropdown">
+          <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dropdown-menu" id="clearMenuDropdown" hidden>
+          <button class="dropdown-item" id="clearCompletelyBtn">Clear completely (delete all images)</button>
+        </div>
+      </div>
       <button class="btn btn-ghost" id="settingsBtn" title="Settings">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Settings
       </button>
       <div class="dropdown" id="fileMenu">
-        <button class="btn btn-ghost dropdown-toggle" id="fileMenuBtn">
+        <button class="btn btn-ghost dropdown-toggle" id="fileMenuBtn"
+                aria-haspopup="true" aria-expanded="false"
+                aria-controls="fileMenuDropdown">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           File
           <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -43,11 +68,6 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             Save
           </button>
-          <label class="dropdown-item" for="loadFileInput" id="loadBtn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Load
-          </label>
-          <input type="file" id="loadFileInput" accept=".tierforge" hidden />
           <button class="dropdown-item" id="importLinkBtn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
             Import from link
@@ -68,10 +88,32 @@
     </div>
   </header>
 
+  <div class="session-banner" id="sessionBanner" hidden>
+    <div class="session-info">
+      <span class="session-badge" id="sessionModeLabel">Co-op session</span>
+      <span class="session-title" id="sessionTitleLabel"></span>
+      <span class="session-members" id="sessionMembers"></span>
+    </div>
+    <div class="session-actions">
+      <button class="btn btn-secondary btn-sm" id="copyInviteBtn">Copy invite link</button>
+      <button class="btn btn-secondary btn-sm" id="peerToggleBtn" hidden>Peer rankings</button>
+      <button class="btn btn-danger btn-sm" id="endSessionBtn" hidden>End session</button>
+      <button class="btn btn-secondary btn-sm" id="leaveSessionBtn" hidden>Leave session</button>
+    </div>
+  </div>
+
   <main>
     <div class="tier-title-wrap">
       <input type="text" id="tierTitle" class="tier-title-input" placeholder="Name your tier list…" maxlength="80" spellcheck="false" />
     </div>
+
+    <div class="peer-view" id="peerView" hidden>
+      <div class="peer-view-header">
+        <span class="peer-view-title">Live rankings</span>
+      </div>
+      <div class="peer-columns" id="peerColumns"></div>
+    </div>
+
     <div class="tier-board" id="tierBoard">
       <!-- Tiers rendered by JS -->
     </div>
@@ -93,6 +135,40 @@
   <!-- Image Preview Overlay (right-click) -->
   <div class="img-preview-overlay" id="imgPreviewOverlay" hidden>
     <img id="imgPreviewImage" src="" alt="" />
+  </div>
+
+  <!-- Multiplayer Session Modal -->
+  <div class="tf-modal-overlay" id="sessionModalOverlay" hidden>
+    <div class="tf-modal session-modal">
+      <div class="tf-modal-header">
+        <span>Start multiplayer session</span>
+        <button class="tf-modal-close" id="sessionModalClose">✕</button>
+      </div>
+      <div class="tf-modal-body">
+        <label>Session name</label>
+        <input type="text" id="sessionTitleInput" maxlength="80" placeholder="Tier list session" />
+
+        <label>Mode</label>
+        <label class="session-mode-option">
+          <input type="radio" name="sessionMode" value="coop" checked />
+          <span>
+            <strong>One screen (co-op)</strong><br />
+            <small>Everyone edits the same board together, live.</small>
+          </span>
+        </label>
+        <label class="session-mode-option">
+          <input type="radio" name="sessionMode" value="split" />
+          <span>
+            <strong>Split screen</strong><br />
+            <small>Same images, each person ranks their own board and can watch the others live.</small>
+          </span>
+        </label>
+      </div>
+      <div class="tf-modal-footer">
+        <button class="btn btn-ghost" id="sessionModalCancel">Cancel</button>
+        <button class="btn btn-primary" id="createSessionBtn">Create session</button>
+      </div>
+    </div>
   </div>
 
   <!-- Settings Modal -->
