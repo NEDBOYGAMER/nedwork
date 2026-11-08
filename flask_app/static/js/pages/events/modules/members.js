@@ -1,6 +1,6 @@
 /* Members module — FIXED (always present, first). View mode: RSVP list
    only — removing people is an edit-mode setting (settingsMembers). */
-import { el, rsvpBadge, toast } from "../ui.js";
+import { el, rsvpBadge, toast, confirmRsvpChange } from "../ui.js";
 import { rsvpUrl, memberUrl, byKeyUrl, api } from "../api.js";
 
 const RSVP_VALUES = ["attending", "maybe", "cant"];
@@ -32,6 +32,7 @@ export function renderMembers(root, ctx) {
             btn.type = "button";
             btn.textContent = { attending: "Going", maybe: "Maybe", cant: "Can't" }[value];
             btn.onclick = async () => {
+                if (!(await confirmRsvpChange(state, mine, value))) return;
                 try {
                     await api(rsvpUrl(event.id), {
                         method: "POST",

@@ -1,6 +1,7 @@
-/* Bring module — wishlist + claim board. Any member adds items; the host
-   sets target quantities. "Popcorn ×3 — 2/3 claimed" progress per item. */
-import { el, icon, toast, confirmDialog } from "../ui.js";
+/* Bring module — wishlist + claim board. Members marked Going add and
+   claim items; the host sets target quantities. Everyone can read the
+   board. "Popcorn ×3 — 2/3 claimed" progress per item. */
+import { el, icon, toast, confirmDialog, isGoing } from "../ui.js";
 import { itemsUrl, itemUrl, claimUrl, api } from "../api.js";
 
 export function renderBring(root, ctx) {
@@ -8,8 +9,11 @@ export function renderBring(root, ctx) {
     const items = state.items || [];
     const amHost = isHost;
     const myMemberId = me?.id;
+    const going = isGoing(ctx);
     const memberNames = new Map(
         (state.members || []).map((m) => [m.id, m.user.username]));
+    const memberRsvp = new Map(
+        (state.members || []).map((m) => [m.id, m.rsvp]));
 
     const addRow = el("div", "bring-add");
     const input = el("input", "field-input");
@@ -38,7 +42,12 @@ export function renderBring(root, ctx) {
     };
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") addBtn.click(); });
     addRow.append(input, qtyInput, addBtn);
-    root.appendChild(addRow);
+    if (going) {
+        root.appendChild(addRow);
+    } else {
+        root.appendChild(el("p", "hint",
+            "Only members marked Going can add or claim items."));
+    }
 
     if (!items.length) {
         return;
@@ -68,7 +77,7 @@ export function renderBring(root, ctx) {
                     catch (e) { toast(e.message, "error"); }
                 };
                 actions.appendChild(unclaim);
-            } else if (!full) {
+            } else if (!full && going) {
                 const claim = el("button", "btn btn-primary btn-sm", "Claim");
                 claim.type = "button";
                 claim.onclick = async () => {
@@ -110,8 +119,13 @@ export function renderBring(root, ctx) {
         }
         const who = el("div", "bring-claims");
         for (const claim of item.claims || []) {
-            who.appendChild(el("span", "badge badge-neutral",
-                `${claim.qty}× ${memberNames.get(claim.member_id) || "?"}`));
+            const rsvp = memberRsvp.get(claim.member_id);
+            const held = rsvp && rsvp !== "attending";
+            const chip = el("span",
+                `badge ${held ? "badge-warning" : "badge-neutral"}`,
+                `${claim.qty}× ${memberNames.get(claim.member_id) || "?"}`);
+            if (held) chip.title = "Not going — this claim may be released";
+            who.appendChild(chip);
         }
         li.appendChild(who);
         li.appendChild(actions);

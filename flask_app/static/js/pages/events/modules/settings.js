@@ -399,12 +399,18 @@ function buildLocationMap(draft, config) {
                 const hit = await nominatimReverse(lat, lng);
                 if (seq !== reverseSeq || !hit?.address) return;
                 const parts = structuredAddress(hit);
-                if (!parts.street && !parts.town) return;
-                draft.location.street = parts.street;
-                draft.location.houseNumber = parts.houseNumber;
-                draft.location.town = parts.town;
-                draft.location.address = parts.display;
-                input.value = parts.display;
+                // Never clobber: a pin nudged off a building must not drop
+                // its street/town/house number (the recurring "the address
+                // disappeared" bug). Only fill in what the geocode actually
+                // returned; a result with no structured parts at all is
+                // ignored entirely (display_name fallback is too noisy).
+                if (!parts.street && !parts.town && !parts.houseNumber) return;
+                if (parts.street) draft.location.street = parts.street;
+                if (parts.houseNumber) draft.location.houseNumber = parts.houseNumber;
+                if (parts.town) draft.location.town = parts.town;
+                const merged = composeAddress(draft.location);
+                if (merged) draft.location.address = merged;
+                input.value = draft.location.address || "";
                 syncPopup();
             } catch { /* offline/rate-limited — keep the old address */ }
         }, 600);
@@ -445,7 +451,9 @@ function buildLocationMap(draft, config) {
     if (hasPoint) setPoint(draft.location.lat, draft.location.lng);
     map.on("click", (e) => {
         setPoint(e.latlng.lat, e.latlng.lng);
-        reverseGeocode(e.latlng.lat, e.latlng.lng);
+        // only auto-fill when there is nothing to lose — a stray click on
+        // an event that already has an address must never rewrite it
+        if (!draft.location.address) reverseGeocode(e.latlng.lat, e.latlng.lng);
     });
 
     const status = el("span", "hint", "");

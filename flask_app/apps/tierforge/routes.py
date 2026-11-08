@@ -4,6 +4,8 @@ import re
 import shutil
 import uuid
 
+import requests
+
 from flask import Blueprint, request, jsonify, redirect, url_for, send_file, abort, current_app
 
 try:
@@ -88,6 +90,10 @@ FULL_QUALITY = 90
 MAX_IMAGE_PIXELS = 50_000_000      # decompression-bomb guard (decode only)
 IMAGE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 
+# TierMaker import caps — a big template can carry hundreds of items; keep
+# the import bounded so a paste can't turn into an hours-long scrape.
+MAX_IMPORT_ITEMS = 500
+
 # ------------------------------------------------------------------
 # helpers
 # ------------------------------------------------------------------
@@ -148,6 +154,48 @@ def _normalize_to_jpeg(image_bytes, max_dim, quality):
 
 def _strip_ext(filename):
     return re.sub(r"\.[^.\\/]+$", "", filename or "image")
+
+
+def _prettify_name(filename):
+    """TierMaker item filename -> a presentable label. The API only hands
+    out filenames ('adventurercookiepng.png'), so the name is a best-effort
+    prettify: split camelCase/digit boundaries, drop a trailing format word,
+    title-case. Lowercase concatenated words ('adventurercookiepng') can't
+    be split without a dictionary — they get a capital first letter only."""
+    stem = _strip_ext(filename or "")
+    stem = stem.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+    parts = re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|[0-9]+", stem)
+    if len(parts) <= 1 and not parts[0][0].isupper():
+        parts = [stem]
+    if len(parts) == 1:
+        trimmed = re.sub(r"(png|jpe?g|gif|webp)$", "", parts[0], flags=re.I)
+        if trimmed:
+            parts[0] = trimmed
+    if parts and parts[-1].lower() in ("png", "jpg", "jpeg", "gif", "webp"):
+        parts = parts[:-1]
+    text = " ".join(p.capitalize() for p in parts).strip()
+    return text[:120] or stem or "image"
+
+
+def _prettify_title(slug):
+    """Template slug -> a readable title: 'cookie-run-kingdom-cookies-
+    tier-list-1325477' -> 'Cookie Run Kingdom Cookies Tier List'."""
+    words = [w for w in re.split(r"[-_]", slug or "")
+             if w and not w.isdigit()]
+    return " ".join(w.capitalize() for w in words)[:200] or slug or "Imported list"
+
+
+def _default_import_tiers():
+    """The TierMaker API carries no tier labels/colors — a fresh template
+    defaults to the familiar S–F ladder (mirrors TierForge's defaults)."""
+    return [
+        {"label": "S", "color": "#e63946"},
+        {"label": "A", "color": "#f4a261"},
+        {"label": "B", "color": "#e9c46a"},
+        {"label": "C", "color": "#57cc99"},
+        {"label": "D", "color": "#4ea8de"},
+        {"label": "F", "color": "#6c757d"},
+    ]
 
 
 # ------------------------------------------------------------------
@@ -252,3 +300,132 @@ def delete_image(user, image_id):
             pass
 
     return jsonify({"status": "ok"})
+
+
+# ------------------------------------------------------------------
+# TierMaker import
+#
+# A template page (https://tiermaker.com/create/<slug>) is server-rendered
+# without a login wall and carries two values in a script block:
+#   baseTierImagePath = "/images/chart/chart/<slug>"
+#   dateLastEdited    = "YYYY-MM-DD HH:MM:SS"
+# The item list comes from a plain JSON API:
+#   /api/?type=templates-v2&id=<slug>&lastEdited=<date>
+# -> ["<slug>", "file1.png", "file2.png", ...]   (index 0 is the slug;
+#    variation templates may use {"id","src"} objects instead of strings)
+# Each filename is downloaded and pushed through the exact same normalize/
+# thumbnail pipeline as an upload, so imported images are indistinguishable
+# from uploaded ones to the rest of the app.
+# ------------------------------------------------------------------
+
+_IMPORT_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+              "AppleWebKit/537.36 (KHTML, like Gecko) "
+              "Chrome/120.0 Safari/537.36")
+
+
+@tierforge_bp.route("/import", methods=["POST"])
+@permission_required("tierforge", API)
+def import_tiermaker(user):
+    if not HAS_PIL:
+        return jsonify({"error": "Pillow is not installed on the server"}), 500
+
+    payload = request.get_json(silent=True) or {}
+    url = str(payload.get("url") or "").strip()
+    if not url:
+        return jsonify({"error": "url is required"}), 400
+
+    # SSRF guard: only http(s) to tiermaker.com itself — the server will
+    # follow this URL, so it must never point anywhere else.
+    try:
+        parsed = requests.utils.urlparse(url)
+    except ValueError:
+        parsed = None
+    if parsed is None or parsed.scheme not in ("http", "https"):
+        return jsonify({"error": "url must be an http(s) link"}), 400
+    host = (parsed.hostname or "").lower()
+    if host != "tiermaker.com" and not host.endswith(".tiermaker.com"):
+        return jsonify({"error": "only tiermaker.com links are allowed"}), 400
+
+    headers = {"User-Agent": _IMPORT_UA}
+    try:
+        resp = requests.get(url, timeout=15, headers=headers)
+        resp.raise_for_status()
+        html = resp.text
+    except requests.RequestException:
+        return jsonify({"error": "could not fetch that page"}), 502
+
+    base_match = re.search(r'baseTierImagePath\s*=\s*"([^"]+)"', html)
+    date_match = re.search(r'dateLastEdited\s*=\s*"([^"]*)"', html)
+    if base_match is None or date_match is None:
+        return jsonify({"error": "not a TierMaker template page"}), 400
+    base_path = base_match.group(1).rstrip("/")
+    slug = base_path.rsplit("/", 1)[-1]
+
+    api_url = ("https://tiermaker.com/api/?type=templates-v2&id="
+               + requests.utils.quote(slug) + "&lastEdited="
+               + requests.utils.quote(date_match.group(1)) + "&variation=")
+    try:
+        resp = requests.get(api_url, timeout=15, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+    except (requests.RequestException, ValueError):
+        return jsonify({"error": "could not load the list data"}), 502
+
+    filenames = []
+    if isinstance(data, list):
+        for entry in data[1:]:
+            if isinstance(entry, str):
+                filenames.append(entry)
+            elif isinstance(entry, dict):
+                src = entry.get("src")
+                if src:
+                    filenames.append(src)
+    if not filenames:
+        return jsonify({"error": "no images found in that list"}), 400
+    filenames = filenames[:MAX_IMPORT_ITEMS]
+
+    user_dir = _user_dir(user)
+    results, errors = [], []
+    for filename in filenames:
+        try:
+            if filename.startswith("http://") or filename.startswith("https://"):
+                image_url = filename
+            else:
+                image_url = "https://tiermaker.com" + base_path + "/" + filename
+            r = requests.get(image_url, timeout=15, headers=headers)
+            r.raise_for_status()
+            raw = r.content
+            if not raw:
+                raise ValueError("empty file")
+
+            full_bytes = _normalize_to_jpeg(raw, FULL_MAX_DIM, FULL_QUALITY)
+            thumb_bytes = _normalize_to_jpeg(raw, THUMB_MAX_DIM, THUMB_QUALITY)
+
+            image_id = uuid.uuid4().hex
+            orig_path, thumb_path = _safe_image_paths(user, image_id)
+            with open(orig_path, "wb") as f:
+                f.write(full_bytes)
+            with open(thumb_path, "wb") as f:
+                f.write(thumb_bytes)
+
+            results.append({
+                "id": image_id,
+                "name": _prettify_name(filename),
+                "thumbUrl": url_for("tierforge.get_image",
+                                    image_id=image_id, variant="thumb"),
+                "fullUrl": url_for("tierforge.get_image",
+                                   image_id=image_id, variant="full"),
+            })
+        except Exception as exc:
+            errors.append({"name": filename, "error": str(exc)})
+
+    if not results:
+        return jsonify({"error": "none of the images could be imported",
+                        "errors": errors}), 400
+
+    return jsonify({
+        "title": _prettify_title(slug),
+        "tiers": _default_import_tiers(),
+        "pool": results,
+        "errors": errors,
+    })

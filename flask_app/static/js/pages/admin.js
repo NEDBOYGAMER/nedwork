@@ -132,6 +132,9 @@ document.addEventListener("DOMContentLoaded", () => {
         location.href = "/admin/";
     });
 
+    // reload the console (handy after a server-side migration/restart)
+    document.getElementById("admin-reload")?.addEventListener("click", () => location.reload());
+
     // actions
     document.getElementById("pendingRefresh")?.addEventListener("click", loadPending);
     document.getElementById("pendingDenyAll")?.addEventListener("click", denyAllPending);

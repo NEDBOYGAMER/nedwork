@@ -34,6 +34,11 @@ events_bp = Blueprint('events', __name__, static_folder='../static')
 
 VALID_STATUS = ("draft", "published", "archived")
 VALID_RSVP = ("attending", "maybe", "cant")
+# Taking responsibility (bringing items, driving, voting, chatting) needs a
+# confirmed "attending". "maybe" may still signal that they need a ride;
+# "pending" and "cant" are read-only. Hosts always bypass (implicit going).
+PARTICIPATION_RSVP = ("attending",)
+RIDE_SIGNAL_RSVP = ("attending", "maybe")
 # "members" is FIXED — auto-seeded at create, not addable/removable.
 VALID_MODULE_TYPES = ("description", "image", "location", "doodle",
                       "bring", "rides", "chat", "announcement")
@@ -119,6 +124,19 @@ def _member(event, user):
 def _host(event, user):
     m = _member(event, user)
     return m if m is not None and m.role == "host" else None
+
+
+def _may_participate(member):
+    """May take on responsibilities (claim/bring/drive/seat/vote/chat):
+    hosts always, members only with a confirmed "attending" RSVP."""
+    return member is not None and (
+        member.role == "host" or member.rsvp in PARTICIPATION_RSVP)
+
+
+def _may_request_ride(member):
+    """May signal "I need a ride": hosts, attending, and maybe — not cant/pending."""
+    return member is not None and (
+        member.role == "host" or member.rsvp in RIDE_SIGNAL_RSVP)
 
 
 def _deny(msg, code):
@@ -833,6 +851,10 @@ def set_rsvp(user, event_id):
 
     me.rsvp = rsvp
     me.rsvp_stale = False
+    if rsvp == "cant":
+        # the ride signal only makes sense while going/maybe — don't leave
+        # a "needs ride" badge behind on someone who can't attend
+        me.needs_ride = False
     db.session.commit()
     return jsonify({"ok": True, "rsvp": me.rsvp})
 
@@ -846,7 +868,12 @@ def set_needs_ride(user, event_id):
         return _deny("not found", 404)
 
     payload = request.get_json(silent=True) or {}
-    me.needs_ride = bool(payload.get("value"))
+    value = bool(payload.get("value"))
+    # clearing the signal is always allowed (cleanup); raising it needs a
+    # going/maybe RSVP
+    if value and not _may_request_ride(me):
+        return _deny("Set your RSVP to Going or Maybe to request a ride", 403)
+    me.needs_ride = value
     db.session.commit()
     return jsonify({"ok": True, "needs_ride": me.needs_ride})
 
@@ -1228,6 +1255,8 @@ def vote(user, module_id):
     me = _member(module.event, user)
     if me is None:
         return _deny("forbidden", 403)
+    if not _may_participate(me):
+        return _deny("Only members marked Going can vote", 403)
 
     payload = request.get_json(silent=True) or {}
     option_ids = payload.get("option_ids")
@@ -1368,6 +1397,8 @@ def add_item(user, module_id):
     me = _member(module.event, user)
     if me is None:
         return _deny("forbidden", 403)
+    if not _may_participate(me):
+        return _deny("Only members marked Going can add or claim items", 403)
 
     payload = request.get_json(silent=True) or {}
     label = str(payload.get("label") or "").strip()[:120]
@@ -1428,6 +1459,9 @@ def claim_item(user, item_id):
     me = _member(item.module.event, user)
     if me is None:
         return _deny("forbidden", 403)
+    # releasing a claim (DELETE) stays allowed for cleanup; taking one does not
+    if request.method != 'DELETE' and not _may_participate(me):
+        return _deny("Only members marked Going can add or claim items", 403)
 
     existing = BringClaim.query.filter_by(item_id=item.id,
                                           member_id=me.id).first()
@@ -1481,6 +1515,8 @@ def offer_ride(user, module_id):
     me = _member(module.event, user)
     if me is None:
         return _deny("forbidden", 403)
+    if not _may_participate(me):
+        return _deny("Only members marked Going can offer a ride", 403)
 
     payload = request.get_json(silent=True) or {}
     try:
@@ -1585,6 +1621,9 @@ def ride_passengers(user, ride_id):
     me = _member(ride.module.event, user)
     if me is None:
         return _deny("forbidden", 403)
+    # releasing a seat (DELETE) stays allowed for cleanup; taking one does not
+    if request.method != 'DELETE' and not _may_participate(me):
+        return _deny("Only members marked Going can take a seat", 403)
 
     existing = RidePassenger.query.filter_by(ride_id=ride.id,
                                              member_id=me.id).first()
@@ -1624,6 +1663,8 @@ def send_chat(user, module_id):
     me = _member(module.event, user)
     if me is None:
         return _deny("forbidden", 403)
+    if not _may_participate(me):
+        return _deny("Only members marked Going can send messages", 403)
 
     payload = request.get_json(silent=True) or {}
     text = str(payload.get("text") or "").strip()[:MAX_CHAT_LEN]

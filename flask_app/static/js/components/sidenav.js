@@ -1,6 +1,7 @@
 /*  sidenav.js
     Active-state highlighting + routing for the shared side nav, plus the
-    mobile off-canvas drawer (hamburger toggle, backdrop, Esc/close wiring).
+    mobile off-canvas drawer (hamburger toggle, backdrop, Esc + swipe-left
+    close wiring).
 
     The drawer markup (toggle + backdrop) is created here, so every page
     that includes the sidenav gets mobile support for free — no HTML
@@ -107,6 +108,31 @@ document.addEventListener('DOMContentLoaded', () => {
         backdrop.addEventListener("click", closeMobileNav);
         document.addEventListener("keydown", (e) => {
             if (e.key === "Escape") closeMobileNav();
+        });
+
+        // Swipe left on the open drawer closes it (the natural "push the
+        // drawer back" gesture). Deliberate only: a horizontal drag past
+        // ~48px that is clearly more horizontal than vertical — vertical
+        // scrolling of the nav must never trigger it.
+        let swipeStartX = null;
+        let swipeStartY = null;
+        aside.addEventListener("touchstart", (e) => {
+            if (!drawerOpen()) return;
+            swipeStartX = e.touches[0].clientX;
+            swipeStartY = e.touches[0].clientY;
+        }, { passive: true });
+        aside.addEventListener("touchmove", (e) => {
+            if (swipeStartX === null || !drawerOpen()) return;
+            const dx = e.touches[0].clientX - swipeStartX;
+            const dy = e.touches[0].clientY - swipeStartY;
+            if (dx < -48 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                swipeStartX = null;
+                closeMobileNav();
+            }
+        }, { passive: true });
+        aside.addEventListener("touchend", () => {
+            swipeStartX = null;
+            swipeStartY = null;
         });
 
         // Tapping any nav item closes the drawer (covers no-op buttons too)

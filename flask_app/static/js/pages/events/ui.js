@@ -67,6 +67,62 @@ export function rsvpBadge(rsvp) {
     return el("span", `badge ${meta.cls}`, meta.label);
 }
 
+/* -- participation gates -----------------------------------------------
+   Responsibility actions (bring/claim/drive/seat/vote/chat) need a
+   confirmed "Going"; "maybe" may still signal a ride need. Hosts always
+   bypass (they are implicitly going). Mirrors PARTICIPATION_RSVP /
+   RIDE_SIGNAL_RSVP in flask_app/events/routes.py. */
+export function isGoing(ctx) {
+    return !!ctx.isHost || ctx.me?.rsvp === "attending";
+}
+
+export function mayRequestRide(ctx) {
+    return !!ctx.isHost || ctx.me?.rsvp === "attending" ||
+        ctx.me?.rsvp === "maybe";
+}
+
+/* Outstanding commitments (counts, not rows): bring claims, car seats and
+   rides the member drives. Used by the RSVP downgrade warning and the
+   read-only banner. */
+export function eventDuties(state, me) {
+    const out = { claims: 0, seats: 0, rides: 0 };
+    if (!me) return out;
+    for (const item of state.items || []) {
+        if ((item.claims || []).some((c) => c.member_id === me.id)) out.claims++;
+    }
+    for (const ride of state.rides || []) {
+        if ((ride.passengers || []).some((p) => p.member_id === me.id)) out.seats++;
+        if (ride.driver?.member_id === me.id) out.rides++;
+    }
+    return out;
+}
+
+export function dutiesText(duties) {
+    const parts = [];
+    if (duties.claims) {
+        parts.push(`${duties.claims} bring claim${duties.claims === 1 ? "" : "s"}`);
+    }
+    if (duties.seats) {
+        parts.push(`${duties.seats} car seat${duties.seats === 1 ? "" : "s"}`);
+    }
+    if (duties.rides) {
+        parts.push(`${duties.rides} offered ride${duties.rides === 1 ? "" : "s"}`);
+    }
+    return parts.join(", ");
+}
+
+/* Confirm an RSVP downgrade that would leave responsibilities behind —
+   the commitments are kept, the member just can't take on new ones. */
+export async function confirmRsvpChange(state, me, value) {
+    if (value === "attending") return true;
+    const text = dutiesText(eventDuties(state, me));
+    if (!text) return true;
+    return confirmDialog(
+        `You're still responsible for ${text}. They stay until you ` +
+        `release them yourself — you only can't take on new ones unless ` +
+        `you're Going. Change your RSVP anyway?`);
+}
+
 export function statusBadge(status) {
     const meta = {
         draft:     { label: "Draft",     cls: "badge-warning" },

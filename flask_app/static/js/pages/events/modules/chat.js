@@ -1,10 +1,11 @@
 /* Chat module — basic member chat. Newest last; deleted by host only;
    "left" members keep their messages (username shows as (left)). */
-import { el, icon, iconBtn, toast, fmtTime, fmtDate, confirmDialog } from "../ui.js";
+import { el, icon, iconBtn, toast, fmtTime, fmtDate, confirmDialog, isGoing } from "../ui.js";
 import { chatUrl, chatMsgUrl, api } from "../api.js";
 
 export function renderChat(root, ctx) {
     const { module, state, isHost, me, refresh } = ctx;
+    const going = isGoing(ctx);
     const messages = state.messages || [];
     const myUserId = window.EVENT_USER_ID;
     const log = el("div", "chat-log");
@@ -40,7 +41,12 @@ export function renderChat(root, ctx) {
     root.appendChild(log);
     log.scrollTop = log.scrollHeight;
 
-    if (me) {
+    if (me && !going) {
+        root.appendChild(el("p", "hint",
+            "Only members marked Going can send messages."));
+    }
+
+    if (me && going) {
         const form = el("form", "chat-form");
         form.onsubmit = (e) => e.preventDefault();
         const input = el("input", "field-input");

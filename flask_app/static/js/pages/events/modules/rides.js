@@ -3,15 +3,19 @@
    not in a car); "I need a ride" is a passive signal to drivers, not a
    competing action — it clears the moment you take a seat and comes back
    if your ride disappears. Drivers edit their ride in place. */
-import { el, toast, confirmDialog } from "../ui.js";
+import { el, toast, confirmDialog, isGoing, mayRequestRide } from "../ui.js";
 import { needsRideUrl, ridesUrl, rideUrl, passengersUrl, api } from "../api.js";
 
 export function renderRides(root, ctx) {
     const { module, event, state, isHost, me, refresh } = ctx;
     const rides = state.rides || [];
     const myMemberId = me?.id;
+    const going = isGoing(ctx);
+    const canNeed = mayRequestRide(ctx);
     const memberNames = new Map(
         (state.members || []).map((m) => [m.id, m.user.username]));
+    const memberRsvp = new Map(
+        (state.members || []).map((m) => [m.id, m.rsvp]));
 
     if (!me) return;
 
@@ -96,26 +100,35 @@ export function renderRides(root, ctx) {
     } else {
         status.appendChild(el("span", "rides-status-text",
             "You're not in a car yet"));
-        const offer = el("button", "btn btn-sm btn-primary", "Offer a ride");
-        offer.type = "button";
-        offer.onclick = () => showForm(buildForm(null), status);
-        status.appendChild(offer);
+        if (going) {
+            const offer = el("button", "btn btn-sm btn-primary", "Offer a ride");
+            offer.type = "button";
+            offer.onclick = () => showForm(buildForm(null), status);
+            status.appendChild(offer);
+        }
         // passive signal to drivers — the actual way to get a ride is the
-        // "Take a seat" action on an offered ride below
-        const need = el("button",
-            `btn btn-sm needs-ride${me.needs_ride ? " is-on" : ""}`,
-            "I need a ride");
-        need.type = "button";
-        need.onclick = async () => {
-            try {
-                await api(needsRideUrl(event.id), {
-                    method: "PATCH",
-                    body: JSON.stringify({ value: !me.needs_ride }),
-                });
-                await refresh();
-            } catch (e) { toast(e.message, "error"); }
-        };
-        status.appendChild(need);
+        // "Take a seat" action on an offered ride below (maybe may ask too)
+        if (canNeed) {
+            const need = el("button",
+                `btn btn-sm needs-ride${me.needs_ride ? " is-on" : ""}`,
+                "I need a ride");
+            need.type = "button";
+            need.onclick = async () => {
+                try {
+                    await api(needsRideUrl(event.id), {
+                        method: "PATCH",
+                        body: JSON.stringify({ value: !me.needs_ride }),
+                    });
+                    await refresh();
+                } catch (e) { toast(e.message, "error"); }
+            };
+            status.appendChild(need);
+        }
+    }
+
+    if (!going) {
+        root.appendChild(el("p", "hint",
+            "Only members marked Going can offer a ride or take a seat."));
     }
 
     // ── offered rides list ──────────────────────────────────────────────
@@ -136,6 +149,10 @@ export function renderRides(root, ctx) {
         const head = el("div", "ride-head");
         head.appendChild(el("span", "ride-driver",
             `${ride.driver.user.username} drives`));
+        const driverRsvp = memberRsvp.get(ride.driver?.member_id);
+        if (driverRsvp && driverRsvp !== "attending") {
+            head.appendChild(el("span", "badge badge-warning", "not going"));
+        }
         if (ride.departure) {
             head.appendChild(el("span", "badge badge-info mono", ride.departure));
         }
@@ -154,8 +171,14 @@ export function renderRides(root, ctx) {
         for (let i = 0; i < ride.seats; i++) {
             const p = passengers[i];
             const dot = el("span", `seat-dot${p ? " is-taken" : ""}`);
-            if (p) dot.title = memberNames.get(p.member_id) || "taken";
-            else dot.title = "Free seat";
+            if (p) {
+                const who = memberNames.get(p.member_id) || "taken";
+                const rsvp = memberRsvp.get(p.member_id);
+                dot.title = rsvp && rsvp !== "attending"
+                    ? `${who} (not going)` : who;
+            } else {
+                dot.title = "Free seat";
+            }
             diagram.appendChild(dot);
         }
         diagram.appendChild(el("span", "hint",
@@ -191,7 +214,7 @@ export function renderRides(root, ctx) {
                 catch (e) { toast(e.message, "error"); }
             };
             actions.appendChild(leave);
-        } else if (free > 0) {
+        } else if (free > 0 && going) {
             // other rides stay visible; if I already have a ride the join
             // is greyed out instead of hidden
             const join = el("button", "btn btn-primary btn-sm", "Take a seat");

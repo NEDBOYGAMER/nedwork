@@ -15,10 +15,17 @@ state, next steps, and file paths. See Temporary for the etiquette.
 
 ## Admin
 
+- The password minimum is **4 characters everywhere** (register, settings,
+  console password) — deliberately loose, no complexity rules. Keep it
+  that way; don't tighten it without asking. Single source:
+  `MIN_PASSWORD_LENGTH` in `flask_app/__init__.py`.
+- The rail footer has a **Reload** button (`#admin-reload` in
+  `admin_base.html`) that does a plain `location.reload()` — handy after
+  a server-side migration/restart.
 - [ ] **Site settings card** (Settings tab) is a placeholder — "Nothing
       to configure yet". First real site-wide setting goes there.
 
-(nothing else console-wide is open — phone pass verified 2026-11-03)
+(phone pass verified 2026-11-03)
 
 ## Home (Dashboard)
 
@@ -27,7 +34,12 @@ Notifications widget shipped 2026-11-03.)
 
 ## Events
 
-(none — no open items; shipped rounds are in git history)
+(none — no open items. Shipped 2026-11-08: responsibility actions
+(bring add/claim, offer ride, take seat, doodle vote, chat) require RSVP
+**Going**; `maybe` may still request a ride, `cant`/`pending` are
+read-only. Non-Going members see a read-only banner listing outstanding
+claims/seats/rides, and downgrading warns before keeping them. Existing
+garbled location addresses: re-search / drag the pin in Edit to re-fill.)
 
 ## Socials
 
@@ -65,7 +77,11 @@ the runtime truth); ids are a stable contract — never renumber or reuse.
 
 ### TierForge
 
-(none — no open items)
+(none — no open items. TierMaker **template** import shipped 2026-11-07
+(`POST /apps/tierforge/import`, "Import from link" in the File menu):
+fetches the template API, downloads items through the normal image
+pipeline, defaults S–F tiers. A *completed* user list with placements
+(share-code page type) is a possible future extension, not started.)
 
 ### Colors
 
@@ -121,10 +137,4 @@ its contents are done or moved to their real section.
 
 ### Small things
 
-Little stuff that doesn't warrant its own section:
-
-- [ ] **HTTPS/proxy scheme.** Cookies are set `secure=...` from
-      `request.is_secure`; login sets `Secure` unconditionally. If
-      nedwork.ch runs behind a TLS-terminating proxy without
-      `X-Forwarded-Proto` handling (ProxyFix), cookie behavior gets
-      inconsistent. Verify the scheme handling on the real host.
+Little stuff that doesn't warrant its own section: (empty)

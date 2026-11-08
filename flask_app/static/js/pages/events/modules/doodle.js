@@ -6,7 +6,7 @@
    Host finalizes manually (never auto-picked); finalize sets the
    canonical event_date. Options stay editable after votes — votes on
    removed/changed options are wiped with them (per-date rule). */
-import { el, icon, toast, fmtDate, fmtTime } from "../ui.js";
+import { el, icon, toast, fmtDate, fmtTime, isGoing } from "../ui.js";
 import { voteUrl, api } from "../api.js";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -17,6 +17,7 @@ export function renderDoodle(root, ctx) {
     const options = state.options || [];
     const votes = state.votes || [];
     const amHost = isHost;
+    const going = isGoing(ctx);
     const myUserId = window.EVENT_USER_ID;
     const timeMode = config.mode === "time";
 
@@ -42,7 +43,7 @@ export function renderDoodle(root, ctx) {
         const row = el("div", "doodle-row");
 
         const left = el("div", "doodle-when");
-        if (!amHost) {
+        if (!amHost && going) {
             const check = el("input");
             check.type = "checkbox";
             check.checked = myVotes.has(option.id);
@@ -90,6 +91,12 @@ export function renderDoodle(root, ctx) {
     }
     root.appendChild(table);
 
+    // non-Going members see the results but can't vote
+    if (!amHost && !going) {
+        root.appendChild(el("p", "hint",
+            "Only members marked Going can vote."));
+    }
+
     // host hint: options stay editable after votes now — editing in Edit
     // mode keeps votes on unchanged dates (per-date rule)
     if (amHost && anyoneVoted) {
@@ -101,7 +108,7 @@ export function renderDoodle(root, ctx) {
     }
 
     // "none of these work" comment vote
-    if (!amHost) {
+    if (!amHost && going) {
         const noneRow = el("div", "doodle-none");
         const noneInput = el("input", "field-input");
         noneInput.type = "text";

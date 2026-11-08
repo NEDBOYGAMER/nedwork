@@ -868,13 +868,14 @@ select.field-input { cursor: pointer; }
     .event-chat { margin-left: calc(-1 * var(--space-4)); margin-right: calc(-1 * var(--space-4)); }
     .event-chat-inner { padding: var(--space-4) var(--space-4) var(--space-6); }
 
-    /* edit mode: one column, thumb-sized sticky bar */
-    .event-edit { padding-bottom: 150px; }
+    /* edit mode: one column, compact sticky bar (smaller buttons) */
+    .event-edit { padding-bottom: 110px; }
     .edit-module-list { grid-template-columns: 1fr; }
     .edit-sticky-bar { padding: var(--space-2) var(--space-3); }
     .edit-sticky-inner { flex-direction: column-reverse; align-items: stretch; }
-    .edit-sticky-actions { flex-wrap: wrap; }
-    .edit-sticky-actions .btn { flex: 1 1 auto; }
+    .edit-sticky-actions { flex-wrap: wrap; gap: var(--space-1); }
+    .edit-sticky-actions .btn { flex: 1 1 auto; padding: 8px 12px; font-size: 13px; }
+    .edit-sticky-actions .btn-lg { padding: 10px 16px; font-size: 14px; }
     .edit-sticky-actions .btn-primary { min-width: 0; flex-basis: 100%; order: -1; }
 }
 

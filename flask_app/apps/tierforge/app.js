@@ -1053,6 +1053,63 @@ document.getElementById('loadFileInput').addEventListener('change', (e) => {
   e.target.value = '';
 });
 
+// ── Import from a TierMaker link ───────────────────────────────────
+// The server fetches the template page + item API, downloads every image
+// through the same normalize/thumbnail pipeline as an upload, and returns
+// {title, tiers, pool, errors} — so imported images behave exactly like
+// uploaded ones afterwards (drag, preview, save/load, PNG export).
+document.getElementById('importLinkBtn').addEventListener('click', async () => {
+  closeFileMenu();
+
+  const url = await promptDialog('Paste a TierMaker template link (tiermaker.com/create/…):', {
+    title: 'Import from link',
+    okText: 'Import',
+  });
+  if (!url) return;
+  if (!(await confirmDialog('Replace the current board with the imported list?', { danger: true }))) return;
+
+  const btn = document.getElementById('importLinkBtn');
+  const originalLabel = btn.innerHTML;
+  btn.textContent = 'Importing…';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API_BASE}/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: url.trim() }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((data && data.error) || `Import failed (${res.status})`);
+
+    // Same cleanup as Load: remember the current board so its images can be
+    // removed from the server once the imported board is in place — otherwise
+    // every import leaks the previous board's uploads on disk.
+    const oldIds = [...pool, ...tiers.flatMap(t => t.images)].map(i => i.id);
+
+    tiers = (data.tiers || []).map(t => ({
+      id: uid(), label: t.label, color: t.color, images: [],
+    }));
+    pool = (data.pool || []).map(i => ({
+      id: i.id, src: i.thumbUrl, fullUrl: i.fullUrl, name: i.name,
+    }));
+    if (data.title) {
+      document.getElementById('tierTitle').value = data.title;
+    }
+    render();
+    autosaveState();
+    oldIds.forEach(deleteImageFromServer);
+    if (data.errors && data.errors.length > 0) {
+      await alertDialog(`${data.errors.length} image(s) could not be imported: ` +
+        data.errors.map(er => er.name).join(', '));
+    }
+  } catch (err) {
+    await alertDialog('Import failed: ' + err.message);
+  } finally {
+    btn.innerHTML = originalLabel;
+    btn.disabled = false;
+  }
+});
+
 // ── Auto-scroll while dragging near the top/bottom of the viewport ──
 document.addEventListener('dragover', (e) => {
   if (!dragItem) return;

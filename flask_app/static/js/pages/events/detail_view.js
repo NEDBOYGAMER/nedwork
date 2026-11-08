@@ -20,10 +20,13 @@
                     not the host's module logic ("Bring list").
      event-chat     the conversation pinned to the page bottom — never a
                    reorderable card. */
-import { el, evIcon, statusBadge, fmtDate, countdown, toast, confirmDialog } from "./ui.js";
+import {
+    el, evIcon, statusBadge, fmtDate, countdown, toast, confirmDialog,
+    isGoing, eventDuties, dutiesText, confirmRsvpChange,
+} from "./ui.js";
 import { MODULE_META, MODULES } from "./modules/index.js";
 import { startPolling } from "./poller.js";
-import { joinUrl, leaveUrl, api } from "./api.js";
+import { joinUrl, leaveUrl, rsvpUrl, api } from "./api.js";
 
 let state = null;          // last server snapshot
 let poller = null;
@@ -84,6 +87,7 @@ function draw(wrap, prev, why) {
     const amHost = event.is_host;
     const myMemberId = event.my_member_id;
     const me = (state.members || []).find((m) => m.id === myMemberId);
+    const going = isGoing({ isHost: amHost, me });
 
     // (the prominent back button lives in the template header, §6)
 
@@ -114,10 +118,16 @@ function draw(wrap, prev, why) {
     // description and already renders in the hero under the title
     wrap.appendChild(renderHero(event, amHost));
 
-    // �"?�"? announcement: a yellow banner right under the title, not a
+    // ── announcement: a yellow banner right under the title, not a
     // section. Hidden once it expires or the event date has passed.
     const annBanner = announcementBanner(event, state);
     if (annBanner) wrap.appendChild(annBanner);
+
+    // non-Going members: read-only notice (+ outstanding duties). Sits
+    // under the hero so it's seen before the sections it restricts.
+    if (me && !amHost && !going) {
+        wrap.appendChild(participationBanner(state, me));
+    }
 
     // �"?�"? main column: info row first, then the member-operated sections
     // in the host's saved order
@@ -345,10 +355,65 @@ function chatSection(module, ctx) {
     return section;
 }
 
+/* -- read-only notice for non-Going members ------------------------------ */
+
+function participationBanner(state, me) {
+    const wrap = el("div", "event-detail-alerts");
+    const alert = el("div", "alert alert-warning");
+    const label = { maybe: "Maybe", cant: "Can't", pending: "Pending" }[me.rsvp]
+        || me.rsvp;
+    alert.appendChild(el("span", null,
+        `You're marked “${label}” — only members marked Going can add or ` +
+        `claim items, offer rides, take seats, vote or chat.`));
+
+    // commitments survive an RSVP downgrade — spell them out
+    const duties = dutiesText(eventDuties(state, me));
+    if (duties) {
+        alert.appendChild(el("br"));
+        alert.appendChild(el("span", null,
+            `You're still responsible for ${duties} — release them yourself ` +
+            `if you can't make it.`));
+    }
+
+    // The RSVP switch lives in the Members section; if the host hid that
+    // section, put the buttons here so nobody is locked out of changing
+    // their RSVP.
+    const membersVisible = (state.modules || []).some(
+        (m) => m.type === "members" && !m.hidden);
+    if (!membersVisible) {
+        const row = el("div", "rsvp-row");
+        const group = el("div", "rsvp-group");
+        for (const value of ["attending", "maybe", "cant"]) {
+            const btn = el("button", "btn btn-sm " +
+                (me.rsvp === value ? "btn-primary" : "btn-secondary"));
+            btn.type = "button";
+            btn.textContent = { attending: "Going", maybe: "Maybe", cant: "Can't" }[value];
+            btn.onclick = async () => {
+                if (!(await confirmRsvpChange(state, me, value))) return;
+                try {
+                    await api(rsvpUrl(state.event.id), {
+                        method: "POST",
+                        body: JSON.stringify({ rsvp: value }),
+                    });
+                    await refreshDetail();
+                } catch (e) { toast(e.message, "error"); }
+            };
+            group.appendChild(btn);
+        }
+        row.appendChild(group);
+        alert.appendChild(row);
+    }
+
+    wrap.appendChild(alert);
+    return wrap;
+}
+
 /* -- my duties rollup ----------------------------------------------------- */
 
 function myDuties(state, me) {
     if (!me) return null;
+    // non-Going members can't act on these suggestions anyway
+    if (!isGoing({ isHost: state.event.is_host, me })) return null;
     const duties = [];
     const event = state.event;
 
