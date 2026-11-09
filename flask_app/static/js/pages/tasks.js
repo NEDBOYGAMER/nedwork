@@ -1842,6 +1842,14 @@ async function init() {
     state.view = hashToView();
     await refreshView();
 
+    // deep link from a notification: /tasks#task=<id>
+    const taskMatch = location.hash.match(/^#task=(\d+)$/);
+    if (taskMatch) {
+        const task = findTask(Number(taskMatch[1]));
+        if (task) openTaskEditor(task);
+        window.history.replaceState(null, "", location.pathname);
+    }
+
     // live relative dates + stats, every minute, only while visible
     setInterval(() => {
         if (document.hidden) return;

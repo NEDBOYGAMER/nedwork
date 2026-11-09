@@ -18,11 +18,11 @@ Triggers in the MVP:
 import logging
 import os
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import render_template
 
-from .models import db, Notification, Event, EventMember, User
+from .models import db, Notification, Event, EventMember, User, Task
 from .notify import _send, RESEND_URL, _REPLY_TO
 
 logger = logging.getLogger("nedwork.notifications")
@@ -197,6 +197,39 @@ def scan_reminders(user):
         logger.exception("scan_reminders(%s) failed", user.id)
 
 
+def scan_task_deadlines(user):
+    """One nudge per task when its deadline enters the next 24h. Same
+    piggyback-and-dedupe shape as scan_reminders (the task id is the
+    marker). Private tasks are skipped: their name is ciphertext and the
+    payload would carry it in the clear. Never raises.
+
+    shortcut: only fires if the user opens the site inside the window,
+    and a moved deadline does not re-nudge the same task."""
+    try:
+        now = datetime.now()
+        due = Task.query.filter(
+            Task.user_id == user.id,
+            Task.done.is_(False),
+            Task.private.is_(False),
+            Task.deadline.isnot(None),
+            Task.deadline >= now,
+            Task.deadline <= now + timedelta(hours=24),
+        ).all()
+        sent = {n.payload.get("task_id")
+                for n in Notification.query.filter_by(
+                    user_id=user.id, type="task_deadline").all()}
+        for task in due:
+            if task.id in sent:
+                continue
+            notify_user(
+                user, "task_deadline",
+                payload={"task_id": task.id, "title": task.name},
+            )
+    except Exception:
+        db.session.rollback()
+        logger.exception("scan_task_deadlines(%s) failed", user.id)
+
+
 def notifications_for_user(user, limit=50):
     rows = (Notification.query
             .filter_by(user_id=user.id)
@@ -223,7 +256,11 @@ def notification_to_dict(n):
         "type": n.type,
         "payload": n.payload or {},
         "read": n.read,
-        "created_at": n.created_at.isoformat() if n.created_at else None,
+        # created_at comes from db.func.now() = UTC, but is naive. Tag it,
+        # or the browser parses it as local time and every fresh
+        # notification reads "1h ago" (the CET offset).
+        "created_at": (n.created_at.replace(tzinfo=timezone.utc).isoformat()
+                       if n.created_at else None),
     }
 
 

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LiveCursor</title>
+  <link rel="stylesheet" href="/apps/{{ app_name }}/livecursor.css" />
+  <script src="/apps/{{ app_name }}/livecursor.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="brand">Live<span>Cursor</span></div>
+    <div class="hint">Shared board — the same point is the same point on every PC.</div>
+    <div class="spacer"></div>
+    <span class="level" id="level"></span>
+    <span class="coords" id="coords">–</span>
+    <label class="field">Name <input id="name" maxlength="24" autocomplete="off" /></label>
+    <button class="btn" id="copy" type="button">Copy invite link</button>
+    <span class="status" id="status">connecting…</span>
+  </header>
+
+  <main class="stage">
+    <div class="board" id="board">
+      <div class="board-origin" title="origin (0, 0)">0,0</div>
+      <div class="point" style="left:6.6667%; top:10%"><span>P1</span></div>
+      <div class="point" style="left:93.3333%; top:10%"><span>P2</span></div>
+      <div class="point" style="left:6.6667%; top:90%"><span>P3</span></div>
+      <div class="point" style="left:93.3333%; top:90%"><span>P4</span></div>
+      <div id="overlay" aria-hidden="true"></div>
+    </div>
+  </main>
+</body>
+</html>

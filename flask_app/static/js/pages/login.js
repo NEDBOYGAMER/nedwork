@@ -58,13 +58,15 @@ async function register() {
 
         if (!response.ok) {
             const msg = data.error || `Registration failed (status ${response.status})`;
-            showAuthError(msg);
+            if (/\busername\b/i.test(msg)) showFieldError('username', msg);
+            else showAuthError(msg);
             console.error("Registration failed on server:", response.status, msg);
             return;
         }
 
         if (data.error) {
-            showAuthError(data.error);
+            if (/\busername\b/i.test(data.error)) showFieldError('username', data.error);
+            else showAuthError(data.error);
             return;
         }
 
@@ -94,6 +96,22 @@ function showAuthError(message) {
         msg.style.color = "var(--danger, #e5484d)";
         msg.style.margin = "8px 0";
         container.appendChild(msg);
+    }
+    msg.textContent = message;
+    setTimeout(() => { msg.textContent = ""; }, 6000);
+}
+
+function showFieldError(fieldId, message) {
+    const field = document.getElementById(fieldId);
+    const wrap = field?.closest('.field');
+    if (!wrap) { showAuthError(message); return; }
+    let msg = wrap.querySelector('.field-error');
+    if (!msg) {
+        msg = document.createElement('p');
+        msg.className = 'field-error hint';
+        msg.style.color = 'var(--danger, #e5484d)';
+        msg.style.margin = '4px 0 0';
+        wrap.appendChild(msg);
     }
     msg.textContent = message;
     setTimeout(() => { msg.textContent = ""; }, 6000);
@@ -184,7 +202,7 @@ function loadRegister() {
     const hint = document.createElement('p');
     hint.className = "hint";
     hint.textContent = "Not used for anything yet — just here for account recovery later.";
-    container.insertBefore(hint, container.lastChild);
+    container.appendChild(hint);
 
     const submit = document.createElement('button');
     submit.className = "btn btn-primary";

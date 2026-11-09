@@ -1019,6 +1019,8 @@
 
 .notification-item:last-child { border-bottom: none; }
 .notification-item.read { opacity: .55; }
+.notification-item.notification-link { cursor: pointer; }
+.notification-item.notification-link:hover .notification-message { color: var(--text); }
 
 .notification-dot {
     flex-shrink: 0;

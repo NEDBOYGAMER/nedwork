@@ -183,3 +183,30 @@ def ensure_all():
     ensure_permissions()
     ensure_admin_credential()
     ensure_apps()
+
+
+def grant_full_access(usernames):
+    """Grant every Permission row to each existing user in `usernames`.
+
+    Local-dev convenience only: `app.py` calls this from its
+    ``__main__`` block (i.e. `python app.py`), never from create_app(),
+    so the waitress/Docker deployment is untouched. Missing usernames are
+    skipped and reported; permissions added later are granted on the next
+    local boot.
+
+    Returns (granted_usernames, missing_usernames).
+    """
+    granted, missing = [], []
+    permissions = Permission.query.all()
+    for username in usernames:
+        user = User.query.filter_by(username=username).first()
+        if user is None:
+            missing.append(username)
+            continue
+        held = user._permission_names()
+        for permission in permissions:
+            if permission.name not in held:
+                user.grant_permission(permission.name)
+        granted.append(username)
+    db.session.commit()
+    return granted, missing

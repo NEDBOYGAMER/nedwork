@@ -117,6 +117,27 @@ body.no-sidenav #content {
     background: rgba(229, 72, 77, .1);
 }
 
+/* ---- notifications bell (bottom nav, above About) ---- */
+
+.nav-bell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+}
+
+.nav-bell .icon { width: 18px; height: 18px; }
+
+/* the unread dot — hidden until sidenav.js sees a non-zero count */
+.nav-bell-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    box-shadow: 0 0 0 2px var(--surface);
+}
+.nav-bell-dot[hidden] { display: none; }
+
 /* ---- icon-only nav items (About, Settings, Account) ---- */
 
 .icon-item {

@@ -24,21 +24,44 @@
       <img src="/static/img/apps/tier_forge.png" alt="TierForge" />
     </div>
     <div class="header-actions">
-      <label class="btn btn-primary" for="imageUpload">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Upload images
-      </label>
-      <input type="file" id="imageUpload" multiple accept="image/*,.zip" hidden />
-      <label class="btn btn-primary" for="loadFileInput">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Import from file
-      </label>
-      <input type="file" id="loadFileInput" accept=".tierforge" hidden />
-      <button class="btn btn-secondary" id="multiplayerBtn" title="Start a live session with an invite link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Multiplayer
-      </button>
       <button class="btn btn-secondary" id="addTierBtn">+ Add tier</button>
+
+      <div class="dropdown" id="importMenu">
+        <button class="btn btn-primary dropdown-toggle" id="importMenuBtn"
+                aria-haspopup="true" aria-expanded="false"
+                aria-controls="importMenuDropdown">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Import
+          <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dropdown-menu" id="importMenuDropdown" hidden>
+          <button class="dropdown-item" id="importImagesBtn">Images…</button>
+          <button class="dropdown-item" id="importZipBtn">ZIP archive…</button>
+          <button class="dropdown-item" id="importSaveBtn">Saved list (.tierforge)…</button>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item" id="importLinkBtn">From TierMaker link…</button>
+        </div>
+      </div>
+      <input type="file" id="imageUpload" multiple accept="image/*,.zip" hidden />
+      <input type="file" id="loadFileInput" accept=".tierforge" hidden />
+
+      <div class="dropdown" id="exportMenu">
+        <button class="btn btn-secondary dropdown-toggle" id="exportMenuBtn"
+                aria-haspopup="true" aria-expanded="false"
+                aria-controls="exportMenuDropdown">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export
+          <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dropdown-menu" id="exportMenuDropdown" hidden>
+          <button class="dropdown-item" id="saveBtn">Save as file (.tierforge)</button>
+          <button class="dropdown-item" id="exportPngBtn">Export as PNG</button>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary btn-icon" id="multiplayerBtn" title="Start a live session with an invite link" aria-label="Multiplayer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </button>
       <div class="dropdown split-dropdown" id="clearMenu">
         <button class="btn btn-secondary" id="clearAllBtn">Clear all</button>
         <button class="btn btn-secondary dropdown-toggle btn-icon" id="clearMenuBtn"
@@ -51,34 +74,9 @@
           <button class="dropdown-item" id="clearCompletelyBtn">Clear completely (delete all images)</button>
         </div>
       </div>
-      <button class="btn btn-ghost" id="settingsBtn" title="Settings">
+      <button class="btn btn-ghost btn-icon" id="settingsBtn" title="Settings" aria-label="Settings">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Settings
       </button>
-      <div class="dropdown" id="fileMenu">
-        <button class="btn btn-ghost dropdown-toggle" id="fileMenuBtn"
-                aria-haspopup="true" aria-expanded="false"
-                aria-controls="fileMenuDropdown">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          File
-          <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="dropdown-menu" id="fileMenuDropdown" hidden>
-          <button class="dropdown-item" id="saveBtn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Save
-          </button>
-          <button class="dropdown-item" id="importLinkBtn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            Import from link
-          </button>
-          <div class="dropdown-divider"></div>
-          <button class="dropdown-item" id="exportPngBtn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            Export PNG
-          </button>
-        </div>
-      </div>
 
       <div class="export-group">
         <a class="btn btn-ghost btn-icon" id="closeAppBtn" href="/app_corner" title="Back to App Corner">
@@ -88,46 +86,70 @@
     </div>
   </header>
 
+  <div class="import-progress" id="importProgress" hidden role="progressbar"
+       aria-label="Importing" aria-valuemin="0" aria-valuemax="100"
+       aria-valuenow="0">
+    <div class="import-progress-track">
+      <div class="import-progress-bar" id="importProgressBar"></div>
+    </div>
+    <span class="import-progress-label" id="importProgressLabel"></span>
+  </div>
+
   <div class="session-banner" id="sessionBanner" hidden>
     <div class="session-info">
       <span class="session-badge" id="sessionModeLabel">Co-op session</span>
+      <span class="session-badge session-level-badge" id="sessionLevel"></span>
       <span class="session-title" id="sessionTitleLabel"></span>
       <span class="session-members" id="sessionMembers"></span>
     </div>
     <div class="session-actions">
       <button class="btn btn-secondary btn-sm" id="copyInviteBtn">Copy invite link</button>
-      <button class="btn btn-secondary btn-sm" id="peerToggleBtn" hidden>Peer rankings</button>
+      <button class="btn btn-secondary btn-sm" id="inviteFriendsBtn" hidden>Invite friends</button>
       <button class="btn btn-danger btn-sm" id="endSessionBtn" hidden>End session</button>
       <button class="btn btn-secondary btn-sm" id="leaveSessionBtn" hidden>Leave session</button>
     </div>
   </div>
 
+  <a class="guest-close" id="guestCloseBtn" href="/app_corner" title="Close app">✕</a>
+
+  <div class="session-invite-popup" id="invitePopup" hidden role="status">
+    <span class="session-invite-text" id="invitePopupText"></span>
+    <button class="btn btn-primary btn-sm" id="invitePopupJoin">Join</button>
+    <button class="btn btn-ghost btn-icon btn-sm" id="invitePopupDismiss"
+            aria-label="Dismiss invite">✕</button>
+  </div>
+
   <main>
     <div class="tier-title-wrap">
       <input type="text" id="tierTitle" class="tier-title-input" placeholder="Name your tier list…" maxlength="80" spellcheck="false" />
+      <span class="tier-title-text" id="tierTitleText" hidden></span>
     </div>
 
-    <div class="peer-view" id="peerView" hidden>
-      <div class="peer-view-header">
-        <span class="peer-view-title">Live rankings</span>
-      </div>
-      <div class="peer-columns" id="peerColumns"></div>
-    </div>
+    <div class="session-layout">
+      <div class="board-area" id="boardArea">
+        <div class="tier-board" id="tierBoard">
+          <!-- Tiers rendered by JS -->
+        </div>
 
-    <div class="tier-board" id="tierBoard">
-      <!-- Tiers rendered by JS -->
-    </div>
-
-    <div class="image-pool-section">
-      <div class="pool-header">
-        <span class="pool-title">Unranked images</span>
-        <span class="pool-count" id="poolCount">0 images</span>
-      </div>
-      <div class="image-pool" id="imagePool">
-        <div class="pool-empty" id="poolEmpty">
-          Upload images to start ranking them
+        <div class="image-pool-section">
+          <div class="pool-header">
+            <span class="pool-title">Unranked images</span>
+            <span class="pool-count" id="poolCount">0 images</span>
+          </div>
+          <div class="image-pool" id="imagePool">
+            <div class="pool-empty" id="poolEmpty">
+              Upload images to start ranking them
+            </div>
+          </div>
         </div>
       </div>
+
+      <section class="partner-board" id="peerView" hidden>
+        <div class="partner-board-header">
+          <span class="partner-board-title" id="partnerBoardTitle">Partner board</span>
+        </div>
+        <div class="partner-board-body" id="partnerBoardBody"></div>
+      </section>
     </div>
   </main>
 
@@ -171,6 +193,25 @@
     </div>
   </div>
 
+  <!-- Invite friends modal -->
+  <div class="tf-modal-overlay" id="inviteModalOverlay" hidden>
+    <div class="tf-modal session-modal">
+      <div class="tf-modal-header">
+        <span>Invite friends</span>
+        <button class="tf-modal-close" id="inviteModalClose">✕</button>
+      </div>
+      <div class="tf-modal-body">
+        <div class="invite-section-label">Friends</div>
+        <div class="invite-list" id="inviteFriendsList"></div>
+        <div class="invite-section-label">Waiting for approval</div>
+        <div class="invite-list" id="invitePendingList"></div>
+      </div>
+      <div class="tf-modal-footer">
+        <button class="btn btn-ghost" id="inviteModalDone">Done</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Settings Modal -->
   <div class="tf-modal-overlay" id="settingsModalOverlay" hidden>
     <div class="tf-modal settings-modal">
@@ -179,21 +220,27 @@
         <button class="tf-modal-close" id="settingsModalClose">✕</button>
       </div>
       <div class="tf-modal-body">
-        <label>Unranked image size</label>
-        <select id="poolSizeSelect">
-          <option value="72">Small</option>
-          <option value="120" selected>Medium</option>
-          <option value="180">Large</option>
-          <option value="260">X-Large</option>
-        </select>
+        <div class="settings-size-group">
+          <label>Unranked image size</label>
+          <select id="poolSizeSelect">
+            <option value="72">Small</option>
+            <option value="120" selected>Medium</option>
+            <option value="180">Large</option>
+            <option value="260">X-Large</option>
+          </select>
 
-        <label>Ranked image size</label>
-        <select id="tierSizeSelect">
-          <option value="72">Small</option>
-          <option value="120" selected>Medium</option>
-          <option value="180">Large</option>
-          <option value="260">X-Large</option>
-        </select>
+          <label>Ranked image size</label>
+          <select id="tierSizeSelect">
+            <option value="72">Small</option>
+            <option value="120" selected>Medium</option>
+            <option value="180">Large</option>
+            <option value="260">X-Large</option>
+          </select>
+        </div>
+        <p class="settings-session-note">
+          Board scale is automatic in a session. Image sizes are shared live
+          with everyone in the session.
+        </p>
 
         <div class="settings-section-label">Appearance</div>
         <label class="settings-toggle-row">

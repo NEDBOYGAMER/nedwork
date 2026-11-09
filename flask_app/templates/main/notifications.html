@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}nedwork — Notifications{% endblock %}
+
+{% block extra_head %}
+    <meta name="description" content="Your latest notifications">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/notifications.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<main class="inbox-page">
+
+    <header class="inbox-hero">
+        <div>
+            <h1>Notifications</h1>
+            <p class="inbox-subtitle">What happened while you were away.</p>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="markAllBtn" hidden>Mark all read</button>
+    </header>
+
+    <nav class="tabs" id="inbox-nav" role="tablist" aria-label="Notification filters">
+        <button type="button" class="tab active" role="tab" aria-selected="true" data-filter="all">All</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-filter="unread">Unread</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-filter="event">Events</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-filter="message">Socials</button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-filter="task">Tasks</button>
+    </nav>
+
+    <ul class="inbox-list" id="inboxList" aria-live="polite"></ul>
+
+</main>
+
+{% endblock %}
+
+{% block extra_scripts %}
+    <script>window.STATIC_URL = "{{ url_for('static', filename='') }}";</script>
+    <script>
+        window.INBOX_API = {
+            list:  "{{ url_for('inbox.api_list') }}",
+            read:  "{{ url_for('inbox.api_read') }}",
+            acceptFriend: "{{ url_for('socials.accept_friend', sender_id=0) }}",
+            groupRequest: "{{ url_for('socials.handle_join_request', group_id=0, member_id=0, action='accept') }}",
+            event: "{{ url_for('events.event_page', event_id=0) }}",
+            tasks: "{{ url_for('tasks.tasks_page') }}",
+            socials: "{{ url_for('socials.socials_page') }}",
+        };
+        window.LOGIN_URL = "{{ url_for('auth.login_page') }}";
+    </script>
+    <script type="module" src="{{ url_for('static', filename='js/pages/notifications.js') }}"></script>
+{% endblock %}

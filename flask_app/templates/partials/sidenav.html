@@ -18,6 +18,12 @@
 
 
     <div class="nav-section" id="bottom-nav">
+        {% if nav_logged_in %}
+        <button class="nav-item nav-bell" id="notifications-btn" title="Notifications" aria-label="Notifications">
+            <span class="icon" style="--icon: url('{{ url_for('static', filename='img/icons/tabler-bell.svg') }}')"></span>
+            <span class="nav-bell-dot" id="notifications-dot" hidden aria-hidden="true"></span>
+        </button>
+        {% endif %}
         <button class="nav-item" id="about-btn" title="About">About</button>
         <button class="nav-item" id="settings-btn" title="Settings">Settings</button>
         {% if nav_logged_in %}

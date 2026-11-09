@@ -14,6 +14,7 @@ import os
 import re
 import secrets
 import shutil
+import uuid
 
 from flask import Blueprint, render_template, jsonify, request, make_response, current_app
 import sqlalchemy as sa
@@ -394,9 +395,44 @@ def _approve_pending(pending):
     db.session.add(user)
     db.session.flush()  # assign user.id before the Main dashboard
 
-    db.session.add(Dashboard(name="Main", user=user, widgets=[]))
+    # every new account starts with a welcome kit: a big welcome widget on
+    # the Main dashboard, a "look around" task, and a greeting notification
+    now = datetime.now()
+    db.session.add(Dashboard(name="Main", user=user, widgets=[{
+        "id": str(uuid.uuid4()),
+        "type": "welcome",
+        "settings": {"title": "Welcome", "show_date": True, "show_time": True},
+        "style": "tech",
+        "x": 0, "y": 0, "w": 12, "h": 4,
+    }]))
+    db.session.add(Task(
+        name="Look around",
+        text="Take a tour of nedwork and see what's here for you.",
+        importance="medium",
+        tags=[],
+        subtasks=[],
+        deadline=None,
+        private=False,
+        done=False,
+        working=False,
+        recurrence=None,
+        position=1,
+        created_at=now,
+        last_updated_at=now,
+        completed_at=None,
+        user_id=user.id,
+    ))
     db.session.delete(pending)
     db.session.commit()
+
+    # best-effort greeting notification (fires its own transaction, never
+    # breaks the approval when it fails)
+    try:
+        from ..notifications import notify_user
+        notify_user(user, "welcome", payload={"title": "Hello, have fun!"})
+    except Exception:
+        pass
+
     return user.username, user.id
 
 

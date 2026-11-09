@@ -22,10 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
         case "/socials/":     activeId = "socials-btn"; break;
         case "/tasks/":       activeId = "tasks-btn";  break;
         case "/app_corner/":  activeId = "apps-btn";   break;
+        case "/notifications/": activeId = "notifications-btn"; break;
         default:              activeId = "";
     }
 
-    ["home-btn", "events-btn", "socials-btn", "tasks-btn", "apps-btn"].forEach((id) => {
+    ["home-btn", "events-btn", "socials-btn", "tasks-btn", "apps-btn", "notifications-btn"].forEach((id) => {
         document.getElementById(id)?.classList.toggle("active", id === activeId);
     });
 
@@ -36,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "socials-btn":  "/socials",
         "tasks-btn":    "/tasks",
         "apps-btn":     "/app_corner",
+        "notifications-btn": "/notifications",
         "settings-btn": "/settings",
         "about-btn":    "/about",
         "login-btn":    "/auth/login",
@@ -58,6 +60,33 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Logout is a server-rendered form-POST in the markup (CSRF token in
        a hidden field): no JS involved on the logout path, and a stray
        third-party link can no longer end the session (GET answers 405). */
+
+    /* ── Unread dot ────────────────────────────────────────────────── */
+    /* One poll for the whole site: the endpoint also runs the reminder
+       scans, so this is the scheduler. Pauses while the tab is hidden. */
+    const dot = document.getElementById("notifications-dot");
+    if (dot) {
+        const refreshDot = async () => {
+            if (document.hidden) return;
+            try {
+                const res = await fetch("/notifications/api/unread",
+                                        { credentials: "same-origin" });
+                if (!res.ok) return;
+                const { unread } = await res.json();
+                // The dot means "you have not seen these yet", not just
+                // "unread rows exist": the inbox page records the count it
+                // showed, and the dot comes back only when the count grows
+                // past that (i.e. something new arrived).
+                const seen = Number(
+                    localStorage.getItem("notifSeenCount") || 0);
+                dot.hidden = unread <= seen;
+                dot.setAttribute("aria-label", `${unread} unread`);
+            } catch { /* offline — keep the last known state */ }
+        };
+        refreshDot();
+        setInterval(refreshDot, 60_000);
+        document.addEventListener("visibilitychange", refreshDot);
+    }
 
     /* ── Mobile drawer ─────────────────────────────────────────────── */
 

@@ -1,22 +1,24 @@
 /* ==========================================================================
-   TierForge — app-specific styles.
+   TierForge â€” app-specific styles.
    Depends on colors.css + ui-elements.css being loaded first (tokens,
    .btn/.field/.modal/.switch/etc. base components come from there).
    ========================================================================== */
 
 :root {
-  --pool-img-size: 120px;
-  --tier-img-size: 120px;
+  --base-pool-img-size: 120px;
+  --base-tier-img-size: 120px;
+  --pool-img-size: var(--base-pool-img-size, 120px);
+  --tier-img-size: var(--base-tier-img-size, 120px);
 }
 
 /* Ambient background: dot grid comes from ui-elements.css (body::before),
    already loaded via the shared stylesheets. The background-image layer
-   (.bg-image) is also defined there, driven by the --bg-image variable —
+   (.bg-image) is also defined there, driven by the --bg-image variable â€”
    it's set inline on the markup in tierforge.html since this app's
    templates can't include the shared partials/background.html file.
-   No glow/orb here — this app intentionally skips that layer. */
+   No glow/orb here â€” this app intentionally skips that layer. */
 
-/* ── Header ── */
+/* â”€â”€ Header â”€â”€ */
 header {
   display: flex;
   align-items: center;
@@ -45,7 +47,7 @@ header {
   align-items: center;
 }
 
-/* ── Icon button (square ghost/secondary button) ── */
+/* â”€â”€ Icon button (square ghost/secondary button) â”€â”€ */
 .btn-icon {
   width: 34px;
   height: 34px;
@@ -53,7 +55,7 @@ header {
   justify-content: center;
 }
 
-/* ── Main ── */
+/* â”€â”€ Main â”€â”€ */
 main {
   position: relative;
   z-index: 1;
@@ -72,8 +74,8 @@ body {
   flex-direction: column;
 }
 
-/* ── Tier list title ──
-   Intentional deviation from the standard .field input treatment (§6):
+/* â”€â”€ Tier list title â”€â”€
+   Intentional deviation from the standard .field input treatment (Â§6):
    this is an inline-editable page heading, not a form field, so it uses
    the display type role and a bottom-border-only style instead of the
    surface-2 filled box. */
@@ -84,7 +86,7 @@ body {
 .tier-title-input {
   background: transparent;
   border: none;
-  border-bottom: 2px solid var(--line);
+  border-bottom: 1px solid transparent;
   color: var(--text);
   font-family: var(--font-display);
   font-size: 32px;
@@ -92,8 +94,9 @@ body {
   width: 100%;
   padding: var(--space-2) 2px var(--space-3);
   outline: none;
-  transition: border-color 0.2s;
-  caret-color: var(--accent);
+}
+.tier-title-input:hover {
+  border-bottom-color: var(--line);
 }
 .tier-title-input:focus {
   border-bottom-color: var(--accent);
@@ -103,7 +106,7 @@ body {
   opacity: 0.7;
 }
 
-/* ── Tier board ── */
+/* â”€â”€ Tier board â”€â”€ */
 .tier-board {
   display: flex;
   flex-direction: column;
@@ -190,7 +193,7 @@ body {
   min-height: 100px;
 }
 
-/* ── Tier row controls ── */
+/* â”€â”€ Tier row controls â”€â”€ */
 .tier-controls {
   display: flex;
   flex-direction: column;
@@ -216,7 +219,7 @@ body {
 }
 .tier-ctrl-btn:hover { color: var(--text); background: var(--surface-2); }
 
-/* ── Image cards ── */
+/* â”€â”€ Image cards â”€â”€ */
 .img-card {
   max-width: var(--tier-img-size);
   max-height: var(--tier-img-size);
@@ -296,7 +299,7 @@ body {
 }
 .img-card:hover .img-remove { opacity: 1; }
 
-/* ── Image pool ── */
+/* â”€â”€ Image pool â”€â”€ */
 .image-pool-section {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -346,7 +349,7 @@ body {
   text-align: center;
 }
 
-/* ── Image preview overlay (right-click) ── */
+/* â”€â”€ Image preview overlay (right-click) â”€â”€ */
 .img-preview-overlay {
   position: fixed;
   inset: 0;
@@ -366,7 +369,7 @@ body {
   max-height: 85vh;
   /* Big-picture mode: small images must not render tiny. Scaling stays
      proportional (width/height auto below), so the image upscales until
-     it covers at least half the viewport on each axis — never stretched;
+     it covers at least half the viewport on each axis â€” never stretched;
      the max caps keep normal images within view. */
   min-width: 50vw;
   min-height: 50vh;
@@ -386,13 +389,13 @@ body {
 }
 
 /* While the full-resolution copy is still being fetched from the server,
-   the overlay already shows the on-screen thumbnail blown up — blur it
+   the overlay already shows the on-screen thumbnail blown up â€” blur it
    slightly so it reads as "still loading" rather than as the final image. */
 .img-preview-overlay.loading img {
   filter: blur(3px);
 }
 
-/* Thumbnails now arrive over the network instead of an instant blob: URL —
+/* Thumbnails now arrive over the network instead of an instant blob: URL â€”
    fade each one in as it finishes loading so a slow/large batch reads as
    progressive loading rather than a layout jump. */
 .img-card img {
@@ -403,7 +406,7 @@ body {
   to { opacity: 1; }
 }
 
-/* ── Modals ──
+/* â”€â”€ Modals â”€â”€
    Namespaced as .tf-modal* (rather than the shared .modal-backdrop/.modal)
    because this app's modal needs a header/body/footer split with its own
    internal dividers and padding, which would fight the shared component's
@@ -463,7 +466,7 @@ body {
   margin-bottom: -4px;
 }
 
-/* Tier label input — deviates from the default 14px field text: this is a
+/* Tier label input â€” deviates from the default 14px field text: this is a
    short, prominent, code-like value (a tier's key), so it uses mono at a
    larger size rather than body text. */
 .tier-label-input {
@@ -536,7 +539,7 @@ body.always-show-names .img-card .img-name { opacity: 1; }
   gap: var(--space-3);
 }
 
-/* ── Accent swatches (theme settings) ── */
+/* â”€â”€ Accent swatches (theme settings) â”€â”€ */
 .accent-dots {
   display: flex;
   gap: var(--space-2);
@@ -557,7 +560,7 @@ body.always-show-names .img-card .img-name { opacity: 1; }
   gap: var(--space-2);
 }
 
-/* ── Export group ── */
+/* â”€â”€ Export group â”€â”€ */
 .export-group {
   display: flex;
   gap: var(--space-2);
@@ -566,7 +569,7 @@ body.always-show-names .img-card .img-name { opacity: 1; }
   margin-left: 4px;
 }
 
-/* ── Ghost drag image ── */
+/* â”€â”€ Ghost drag image â”€â”€ */
 .drag-ghost {
   width: 72px;
   height: 72px;
@@ -579,7 +582,7 @@ body.always-show-names .img-card .img-name { opacity: 1; }
   z-index: 9999;
 }
 
-/* ── Dropdown (File menu) ── */
+/* â”€â”€ Dropdown (File menu) â”€â”€ */
 .dropdown {
   position: relative;
 }
@@ -602,6 +605,9 @@ body.always-show-names .img-card .img-name { opacity: 1; }
 .split-dropdown > .btn-icon {
   width: auto;
   padding: 0 8px;
+  /* The shared .btn-icon fixes height at 34px, which breaks the vertical
+     alignment with the main button in a split dropdown. */
+  height: auto;
 }
 .dropdown-toggle .caret {
   transition: transform 0.15s;
@@ -655,25 +661,25 @@ body.always-show-names .img-card .img-name { opacity: 1; }
   margin: 4px 2px;
 }
 
-/* ── Keyboard hint chip ──
+/* â”€â”€ Keyboard hint chip â”€â”€
    Uses the shared bare-kbd styling from ui-elements.css; only positioning
    is added here. */
 kbd {
   margin-left: 4px;
 }
 
-/* ── Wide table mode ── */
+/* â”€â”€ Wide table mode â”€â”€ */
 body.wide-table main {
   max-width: 80vw;
 }
 
-/* ── Blank mode (Space) — hides images, keeps the empty table ── */
+/* â”€â”€ Blank mode (Space) â€” hides images, keeps the empty table â”€â”€ */
 body.blank-mode .img-card,
 body.blank-mode .image-pool-section {
   visibility: hidden;
 }
 
-/* ── Drag reorder indicator ──
+/* â”€â”€ Drag reorder indicator â”€â”€
    Fixed height matching a populated card, so an empty container shows
    the same line length as one that already holds images. */
 .drop-indicator {
@@ -756,51 +762,35 @@ body.session-ended .session-badge {
 }
 
 /* Actions that don't apply while a session is live / has ended */
-body.in-session #multiplayerBtn,
-body.in-session #clearCompletelyBtn { display: none; }
+body.in-session #multiplayerBtn { display: none; }
+body.session-guest #clearCompletelyBtn,
+body.session-ended #clearCompletelyBtn { display: none; }
+body.session-guest .split-dropdown .dropdown-toggle,
+body.session-ended .split-dropdown .dropdown-toggle { display: none; }
 /* Split-screen: guests rank and un-rank, but only the host deletes shared
    pool images. */
 body.session-split:not(.session-host) .image-pool .img-remove { display: none; }
 body.session-ended .img-remove { display: none; }
 
 /* -- Live drag cursors from other session members -- */
-.session-cursors {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  /* above the page/header (100), below dialogs (300) */
-  z-index: 250;
-}
 .remote-cursor {
   position: absolute;
   display: flex;
   align-items: center;
   gap: 4px;
-  transform: translate(10px, 10px);
   will-change: left, top;
 }
 .remote-cursor::before {
   content: "";
   position: absolute;
-  top: -6px;
-  left: -6px;
+  top: -7px;
+  left: -7px;
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--accent);
+  background: currentColor;
   border: 2px solid var(--surface);
   box-shadow: var(--shadow);
-}
-.remote-drag-ghost {
-  width: 56px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: var(--radius-sm, 6px);
-  border: 2px solid var(--accent);
-  opacity: 0.85;
-  box-shadow: var(--shadow);
-  background: var(--surface-2);
-  pointer-events: none;
 }
 .remote-cursor-label {
   font-size: 11px;
@@ -811,95 +801,6 @@ body.session-ended .img-remove { display: none; }
   padding: 2px 8px;
   white-space: nowrap;
   pointer-events: none;
-}
-
-/* -- Split-screen: read-only peer rankings -- */
-.peer-view {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-}
-.peer-view[hidden] { display: none; }
-
-.peer-view-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--line);
-}
-
-.peer-view-title {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.peer-columns {
-  display: flex;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  overflow-x: auto;
-  align-items: flex-start;
-}
-
-.peer-column {
-  flex: 1 0 190px;
-  min-width: 190px;
-  max-width: 280px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.peer-name {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.peer-count {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.peer-tier {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-}
-
-.peer-tier-label {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 13px;
-  min-width: 18px;
-  text-align: center;
-  line-height: 1.4;
-}
-
-.peer-tier-images {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-}
-
-.peer-tier-images img {
-  width: 34px;
-  height: 34px;
-  object-fit: cover;
-  border-radius: 3px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-}
-
-.peer-empty {
-  color: var(--text-muted);
-  font-size: 14px;
-  padding: var(--space-2);
 }
 
 /* -- Session creation modal -- */
@@ -937,4 +838,362 @@ body.session-ended .img-remove { display: none; }
 .session-mode-option small {
   color: var(--text-muted);
   font-size: 12px;
+}
+
+/* ==========================================================================
+   Multiplayer session layout
+   --------------------------------------------------------------------------
+   During a session the board is rendered at a fixed pixel width picked from
+   one of four size buckets (set as --session-scale by app.js). Every
+   horizontal dimension that affects wrapping scales by that factor, so the
+   same board is geometrically identical (up to a uniform scale) on every
+   member's screen. That is what lets live cursors map exactly.
+   ========================================================================== */
+
+:root {
+  --session-scale: 1;
+}
+
+.session-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.board-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+  flex: 1;
+  position: relative;
+}
+
+body.in-session main {
+  width: calc(1200px * var(--session-scale));
+  max-width: none;
+  padding: calc(var(--space-2) * var(--session-scale))
+           calc(var(--space-6) * var(--session-scale));
+  gap: calc(var(--space-5) * var(--session-scale));
+}
+
+/* The session banner already shows the title; hiding the duplicate heading
+   is what lets the compact board fit a 1680x900-class viewport. */
+body.in-session .tier-title-wrap {
+  display: none;
+}
+
+body.in-session .session-layout,
+body.in-session .board-area {
+  gap: calc(var(--space-5) * var(--session-scale));
+}
+
+/* Image sizes are shared live inside a session and scaled by the board
+   bucket so the same board is geometrically identical for every member. */
+body.in-session {
+  --tier-img-size: calc(var(--base-tier-img-size) * var(--session-scale));
+  --pool-img-size: calc(var(--base-pool-img-size) * var(--session-scale));
+}
+
+body.in-session .tier-board {
+  gap: calc(var(--space-2) * var(--session-scale));
+}
+body.in-session .tier-row {
+  min-height: calc(100px * var(--session-scale));
+}
+body.in-session .tier-label-wrap {
+  width: calc(72px * var(--session-scale));
+  min-width: calc(72px * var(--session-scale));
+  max-width: calc(160px * var(--session-scale));
+  gap: calc(var(--space-2) * var(--session-scale));
+  padding: calc(var(--space-3) * var(--session-scale))
+           calc(var(--space-2) * var(--session-scale));
+}
+body.in-session .tier-label {
+  font-size: calc(24px * var(--session-scale));
+}
+body.in-session .tier-label[data-len="long"] {
+  font-size: calc(16px * var(--session-scale));
+}
+body.in-session .tier-label[data-len="very-long"] {
+  font-size: calc(12px * var(--session-scale));
+}
+body.in-session .tier-images {
+  gap: calc(var(--space-2) * var(--session-scale));
+  padding: calc(var(--space-3) * var(--session-scale));
+  min-height: calc(100px * var(--session-scale));
+}
+body.in-session .tier-controls {
+  gap: calc(4px * var(--session-scale));
+  padding: calc(var(--space-2) * var(--session-scale))
+           calc(4px * var(--session-scale));
+}
+body.in-session .tier-ctrl-btn {
+  font-size: calc(12px * var(--session-scale));
+  padding: calc(4px * var(--session-scale))
+           calc(6px * var(--session-scale));
+}
+body.in-session .img-card {
+  min-width: calc(48px * var(--session-scale));
+  border-width: calc(2px * var(--session-scale));
+}
+body.in-session .image-pool {
+  gap: calc(var(--space-2) * var(--session-scale));
+  padding: calc(var(--space-4) * var(--session-scale));
+  min-height: calc(100px * var(--session-scale));
+}
+body.in-session .pool-header {
+  padding: calc(var(--space-3) * var(--session-scale))
+           calc(var(--space-4) * var(--session-scale));
+}
+
+/* -- Split screen: one equal-width column per member -- */
+body.session-split .session-layout {
+  flex-direction: row;
+  align-items: stretch;
+  gap: calc(var(--space-5) * var(--session-scale));
+}
+body.session-split .board-area,
+body.session-split .partner-board:not([hidden]) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.partner-board {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  overflow: visible;
+}
+.partner-board[hidden] { display: none; }
+.partner-board-header {
+  padding: calc(var(--space-3) * var(--session-scale))
+           calc(var(--space-4) * var(--session-scale));
+  border-bottom: 1px solid var(--line);
+}
+.partner-board-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: calc(14px * var(--session-scale));
+}
+.partner-board-body {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: calc(var(--space-5) * var(--session-scale));
+  padding: 0;
+}
+.partner-board-inner {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  gap: calc(var(--space-3) * var(--session-scale));
+}
+/* Same shape/gap as .board-area, so cursor fractions map 1:1 between the
+   sender's own board and this read-only rendering of it. */
+.partner-surface {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-5) * var(--session-scale));
+  min-width: 0;
+  position: relative;
+}
+.session-level-badge {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.partner-board-name {
+  font-size: calc(13px * var(--session-scale));
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.partner-board .img-card { cursor: default; }
+.partner-board .img-card:hover {
+  border-color: transparent;
+  transform: none;
+}
+.partner-empty {
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: var(--space-3);
+}
+
+/* -- Import progress (determinate) -- */
+.import-progress {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 400;
+  width: min(380px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+.import-progress[hidden] { display: none; }
+.import-progress-track {
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.import-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.15s linear;
+}
+.import-progress-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* -- Tier title: plain line once it has text -- */
+.tier-title-text {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text);
+  padding: var(--space-2) 2px var(--space-3);
+  border-bottom: 2px solid transparent;
+  cursor: text;
+  overflow-wrap: anywhere;
+}
+.tier-title-text[hidden] { display: none; }
+
+/* -- Guest chrome: no header, only a floating close button -- */
+body.session-guest header {
+  display: none;
+}
+body.session-guest .tier-controls,
+body.session-guest .edit-hint {
+  display: none;
+}
+body.session-guest .tier-label-wrap {
+  cursor: default;
+}
+body.session-guest.session-coop .img-remove {
+  display: none;
+}
+body.session-guest #copyInviteBtn {
+  display: none;
+}
+body.session-guest .session-banner {
+  padding-left: 64px;
+}
+
+.guest-close {
+  display: none;
+}
+body.session-guest .guest-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 150;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 16px;
+  line-height: 1;
+  box-shadow: var(--shadow);
+}
+body.session-guest .guest-close:hover {
+  background: var(--surface-2);
+}
+
+/* Settings that don't apply during a session */
+.settings-session-note {
+  display: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0 0 var(--space-3);
+}
+body.in-session .settings-session-note {
+  display: block;
+}
+
+/* -- Invite popup (top of the page, above app chrome) -- */
+.session-invite-popup {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 420;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: min(560px, calc(100vw - 24px));
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+}
+.session-invite-popup[hidden] { display: none; }
+.session-invite-text {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* Multiplayer is not available on phones */
+@media (max-width: 999px) {
+  #multiplayerBtn { display: none !important; }
+}
+
+/* -- Invite friends modal -- */
+.invite-section-label {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.invite-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.invite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.invite-row-name {
+  font-size: 14px;
+}
+.invite-row-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.invite-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: var(--space-2) 0;
 }

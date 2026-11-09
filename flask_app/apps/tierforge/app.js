@@ -38,7 +38,6 @@ let hoveredImgId = null; // image currently under the mouse cursor
 // in-flight push notice that new local edits landed while it was away.
 const SESSION_POLL_MS = 1000;
 const SESSION_PUSH_MS = 350;
-const PRESENCE_SEND_MS = 100;
 const ME = (window.TIERFORGE_USER && window.TIERFORGE_USER.id) || null;
 
 let sessionToken   = null;
@@ -50,13 +49,29 @@ let sessionDirty     = false;
 let applyingRemote   = false;
 let localChangeSeq   = 0;
 
-// Ephemeral drag presence: what we're dragging (sent to the server) and the
-// last snapshot of everyone else's drags (rendered as remote cursors).
-let sessionPresence  = {};
-let presenceRef      = null;
-let presenceXY       = { x: 0, y: 0 };
-let presenceTimer    = null;
-let presencePending  = false;
+// Live cursors come over the shared WebSocket relay: we send our pointer
+// relative to our own board and render everyone else's cursors on the
+// shared co-op board or on the peer's board column in split mode.
+let presencePointer  = { x: 0, y: 0 };
+let sessionWs        = null;
+let sessionWsRetry   = null;
+let wsFrame          = 0;
+let wsKeepalive      = null;
+let wsCursors        = new Map(); // ws client id -> {uid, name, color, x, y, scroll, el}
+let sessionPreloaded = new Set(); // catalogue keys already warmed in the browser cache
+let sessionSettingsTimer = null;
+let sessionEndSent   = false;
+const wsClientId = (() => {
+  try { return crypto.randomUUID(); }
+  catch (_) { return `c-${Math.random().toString(36).slice(2)}`; }
+})();
+const WS_PALETTE = ['#6c5ce7', '#22c58b', '#e5484d', '#f4a261',
+                    '#4ea8de', '#e9c46a', '#ff6b9d'];
+let wsHash = 0;
+for (const ch of String(ME || 'guest')) {
+  wsHash = (wsHash * 31 + ch.charCodeAt(0)) >>> 0;
+}
+const wsColor = WS_PALETTE[wsHash % WS_PALETTE.length];
 
 let settings = {
   poolImgSize: 120,
@@ -101,19 +116,35 @@ function removeImageFromEverywhere(imgId) {
 // never stalls while it's happening.
 const API_BASE = '/apps/tierforge';
 
-async function uploadImagesToServer(files) {
-  const formData = new FormData();
-  files.forEach(f => formData.append('images', f, f.name));
+function uploadImagesToServer(files, onProgress) {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    files.forEach(f => formData.append('images', f, f.name));
 
-  const res = await fetch(`${API_BASE}/images`, { method: 'POST', body: formData });
-  let body = null;
-  try { body = await res.json(); } catch (_) { /* fall through to status-based error */ }
-
-  if (!res.ok && (!body || !body.images || body.images.length === 0)) {
-    const msg = (body && body.error) || `Upload failed (${res.status})`;
-    throw new Error(msg);
-  }
-  return { images: (body && body.images) || [], errors: (body && body.errors) || [] };
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}/images`);
+    xhr.upload.addEventListener('progress', (e) => {
+      if (!onProgress) return;
+      onProgress(e.lengthComputable ? e.loaded : 0, e.total || 0);
+    });
+    xhr.addEventListener('load', () => {
+      let body = null;
+      try { body = JSON.parse(xhr.responseText); } catch (_) { /* status-based error */ }
+      const ok = xhr.status >= 200 && xhr.status < 300;
+      if (!ok && (!body || !body.images || body.images.length === 0)) {
+        reject(new Error((body && body.error) || `Upload failed (${xhr.status})`));
+        return;
+      }
+      resolve({
+        images: (body && body.images) || [],
+        errors: (body && body.errors) || [],
+      });
+    });
+    xhr.addEventListener('error', () => {
+      reject(new Error('Upload failed (network error)'));
+    });
+    xhr.send(formData);
+  });
 }
 
 // Fire-and-forget: an orphaned file left on the server isn't worth
@@ -213,9 +244,9 @@ async function autosaveState() {
         id: t.id,
         label: t.label,
         color: t.color,
-        images: t.images.map(i => ({ id: i.id, src: i.src, fullUrl: i.fullUrl, name: i.name })),
+        images: t.images.map(i => ({ id: i.id, owner: i.owner, src: i.src, fullUrl: i.fullUrl, name: i.name })),
       })),
-      pool: pool.map(i => ({ id: i.id, src: i.src, fullUrl: i.fullUrl, name: i.name })),
+      pool: pool.map(i => ({ id: i.id, owner: i.owner, src: i.src, fullUrl: i.fullUrl, name: i.name })),
       settings,
     };
     await idbPut(IDB_KEY, data);
@@ -227,6 +258,15 @@ async function autosaveState() {
       console.warn('Autosave failed:', err);
     }
   }
+}
+
+// Starting a session parks the personal autosave, so flush any pending
+// debounced save first or the last edits would be lost on exit.
+async function parkPersonalBoard() {
+  if (sessionToken) return;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = null;
+  await autosaveState();
 }
 
 // One-time migration: earlier versions stored a base64 snapshot (title/
@@ -300,9 +340,9 @@ async function loadAutosave() {
           id: t.id || uid(),
           label: t.label,
           color: t.color,
-          images: (t.images || []).map(i => ({ id: i.id, src: i.src, fullUrl: i.fullUrl, name: i.name })),
+          images: (t.images || []).map(i => ({ id: i.id, owner: i.owner, src: i.src, fullUrl: i.fullUrl, name: i.name })),
         })),
-        pool: (data.pool || []).map(i => ({ id: i.id, src: i.src, fullUrl: i.fullUrl, name: i.name })),
+        pool: (data.pool || []).map(i => ({ id: i.id, owner: i.owner, src: i.src, fullUrl: i.fullUrl, name: i.name })),
       };
     }
 
@@ -327,6 +367,8 @@ async function loadAutosave() {
 function render() {
   renderTiers();
   renderPool();
+  syncTierTitle();
+  if (sessionToken) updateSessionScale();
   schedulePersist();
 }
 
@@ -439,22 +481,33 @@ function makeCard(img, tierId) {
 
   const removeBtn = document.createElement('button');
   removeBtn.className = 'img-remove';
-  const inSplit = sessionToken && sessionState && sessionState.mode === 'split';
-  if (inSplit) {
-    removeBtn.title = tierId === null
-      ? 'Delete from the shared pool'
-      : 'Return to my unranked pool';
-  } else if (sessionToken) {
-    removeBtn.title = 'Delete from the shared pool';
-  } else {
-    removeBtn.title = 'Remove image';
-  }
+  // Cards are relocated between the pool and tiers without being re-created
+  // (moveImageCardDom), so the original tierId is stale after a drag. Read
+  // the current container instead of trusting a captured value.
+  const isInPool = () => card.closest('.image-pool') !== null;
+  const updateRemoveTitle = () => {
+    const split = !!(sessionToken && sessionState
+                     && sessionState.mode === 'split');
+    if (split) {
+      removeBtn.title = isInPool()
+        ? 'Delete from the shared pool'
+        : 'Return to my unranked pool';
+    } else if (sessionToken) {
+      removeBtn.title = 'Delete from the shared pool';
+    } else {
+      removeBtn.title = 'Remove image';
+    }
+  };
+  updateRemoveTitle();
   removeBtn.textContent = '✕';
   removeBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
+    const inPool = isInPool();
+    const split = !!(sessionToken && sessionState
+                     && sessionState.mode === 'split');
 
-    if (inSplit) {
-      if (tierId === null) {
+    if (split) {
+      if (inPool) {
         // Shared catalogue: only the host may delete an image for everyone.
         if (!isSessionHost()) return;
         if (settings.confirmDelete && !(await confirmDialog(
@@ -466,13 +519,19 @@ function makeCard(img, tierId) {
         removeImageFromEverywhere(img.id);
         pool.push(img);
         render();
+        if (sessionToken) {
+          broadcastBoardEvent('move', {
+            ref: imageToRef(img), tier: null, before: null,
+          });
+        }
       }
       return;
     }
 
     if (sessionToken) {
-      // Co-op: one shared board, so every member can delete. Bytes stay in
-      // the owner's personal uploads; only the session board forgets them.
+      // Co-op: one shared board; only the host curates it. Guests move and
+      // arrange images but do not delete them for everyone.
+      if (isSessionGuest()) return;
       if (settings.confirmDelete && !(await confirmDialog(
           `Delete "${img.name}" from the shared pool for everyone?`,
           { danger: true }))) return;
@@ -491,7 +550,10 @@ function makeCard(img, tierId) {
   card.appendChild(removeBtn);
 
   // Track hover so a number-key press knows which image to move
-  card.addEventListener('mouseenter', () => { hoveredImgId = img.id; });
+  card.addEventListener('mouseenter', () => {
+    hoveredImgId = img.id;
+    updateRemoveTitle();
+  });
   card.addEventListener('mouseleave', () => {
     if (hoveredImgId === img.id) hoveredImgId = null;
   });
@@ -504,30 +566,43 @@ function makeCard(img, tierId) {
     showImagePreview(img);
   });
 
-  // Double-click an unranked image to bring it to the front of the pool
-  if (tierId === null) {
-    card.addEventListener('dblclick', (e) => {
-      e.preventDefault();
+  // Double-click an unranked image to bring it to the front of the pool;
+  // double-click a ranked image to send it back to the unranked pool.
+  // Check the current container, not the creation-time tierId: drags move
+  // the same DOM node between the pool and tiers without re-creating it.
+  card.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    if (card.closest('.image-pool')) {
       const idx = pool.findIndex(i => i.id === img.id);
       if (idx > 0) {
         const [item] = pool.splice(idx, 1);
         pool.unshift(item);
         render();
+        if (sessionToken) {
+          broadcastBoardEvent('move', {
+            ref: imageToRef(item),
+            tier: null,
+            before: pool[1] ? imageToRef(pool[1]) : null,
+          });
+        }
       }
-    });
-  }
+    } else {
+      removeImageFromEverywhere(img.id);
+      pool.push(img);
+      render();
+      if (sessionToken) {
+        broadcastBoardEvent('move', {
+          ref: imageToRef(img), tier: null, before: null,
+        });
+      }
+    }
+  });
 
   // Drag events
   card.addEventListener('dragstart', (e) => {
     hideImagePreview();
     dragItem = { imgId: img.id, fromTierId: tierId || null };
     card.classList.add('dragging');
-
-    if (sessionToken) {
-      presenceRef = imageToRef(img);
-      presenceXY = { x: e.clientX, y: e.clientY };
-      sendPresence();
-    }
 
     // Custom ghost
     const ghost = document.getElementById('dragGhost');
@@ -544,10 +619,6 @@ function makeCard(img, tierId) {
     card.classList.remove('dragging');
     dragItem = null;
     cancelPendingDragOverUpdate();
-    if (sessionToken) {
-      presenceRef = null;
-      sendPresence();
-    }
     document.querySelectorAll('.drag-active').forEach(el => el.classList.remove('drag-active'));
     document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
     hideDropIndicator();
@@ -669,8 +740,8 @@ function scheduleDragOverUpdate(el, clientX, clientY) {
     pendingDragOver = null;
     if (!pending || !dragItem) return;
     if (sessionToken) {
-      presenceXY = { x: pending.clientX, y: pending.clientY };
-      sendPresence();
+      presencePointer = { x: pending.clientX, y: pending.clientY };
+      sendWsCursor();
     }
     const afterElement = getDragAfterElement(pending.el, pending.clientX, pending.clientY);
     showDropIndicator(pending.el, afterElement);
@@ -767,6 +838,16 @@ function setupDropZone(el, tierId) {
     }
 
     moveImageCardDom(img, el, afterElement, false);
+
+    if (sessionToken) {
+      const beforeImg = afterElement
+        ? getImage(afterElement.dataset.imgId) : null;
+      broadcastBoardEvent('move', {
+        ref: imageToRef(img),
+        tier: tierId,
+        before: beforeImg ? imageToRef(beforeImg) : null,
+      });
+    }
   });
 }
 
@@ -824,6 +905,16 @@ function setupPoolDropZone() {
     removeImageFromEverywhere(img.id);
     insertImageAt(pool, img, afterElement);
     moveImageCardDom(img, poolEl, afterElement, true);
+
+    if (sessionToken) {
+      const beforeImg = afterElement
+        ? getImage(afterElement.dataset.imgId) : null;
+      broadcastBoardEvent('move', {
+        ref: imageToRef(img),
+        tier: null,
+        before: beforeImg ? imageToRef(beforeImg) : null,
+      });
+    }
   });
 }
 
@@ -837,29 +928,40 @@ document.getElementById('imageUpload').addEventListener('change', async (e) => {
   const files = Array.from(e.target.files);
   if (files.length === 0) return;
 
-  const uploadLabel = document.querySelector('label[for="imageUpload"]');
-  const originalLabelHTML = uploadLabel ? uploadLabel.innerHTML : null;
-
+  showImportProgress('Uploading…');
   try {
-    if (uploadLabel) {
-      uploadLabel.style.pointerEvents = 'none';
-      const isArchive = files.some(f => /\.zip$/i.test(f.name));
-      uploadLabel.textContent = isArchive
-        ? 'Uploading archive…'
-        : (files.length > 1 ? `Uploading ${files.length} images…` : 'Uploading…');
-    }
-
-    const { images, errors } = await uploadImagesToServer(files);
+    const { images, errors } = await uploadImagesToServer(files, (loaded, total) => {
+      if (!total) {
+        setImportProgress(0, 'Uploading…');
+        return;
+      }
+      if (loaded >= total) {
+        setImportProgress(1, 'Processing images…');
+        return;
+      }
+      setImportProgress(loaded / total,
+        `Uploading ${formatBytes(loaded)} of ${formatBytes(total)}…`);
+    });
 
     if (images.length > 0) {
-      pool.push(...images.map(img => ({
+      const added = images.map(img => ({
         id: img.id,
         owner: ME,
         src: img.thumbUrl,
         fullUrl: img.fullUrl,
         name: img.name,
-      })));
+      }));
+      pool.push(...added);
       render();
+      if (sessionToken) {
+        const refs = added.map(imageToRef);
+        refs.forEach(ref => {
+          if (!sessionCatalog.some(r => refKey(r) === refKey(ref))) {
+            sessionCatalog.push(ref);
+          }
+        });
+        broadcastBoardEvent('add', { refs });
+      }
     }
 
     if (errors.length > 0) {
@@ -873,15 +975,38 @@ document.getElementById('imageUpload').addEventListener('change', async (e) => {
   } catch (err) {
     await alertDialog('Upload failed: ' + err.message);
   } finally {
-    if (uploadLabel) {
-      uploadLabel.style.pointerEvents = '';
-      uploadLabel.innerHTML = originalLabelHTML;
-    }
+    hideImportProgress();
     e.target.value = '';
   }
 });
 
-document.getElementById('tierTitle').addEventListener('input', scheduleAutosave);
+// ── Tier title: plain line once it has text ─────────────────────────
+const tierTitleInput = document.getElementById('tierTitle');
+const tierTitleText = document.getElementById('tierTitleText');
+
+function syncTierTitle() {
+  const input = document.getElementById('tierTitle');
+  const text = document.getElementById('tierTitleText');
+  if (!input || !text) return;
+  const value = input.value.trim();
+  const editing = document.activeElement === input;
+  const showText = !!value && !editing;
+  input.hidden = showText;
+  text.hidden = !showText;
+  if (showText) text.textContent = value;
+}
+
+tierTitleInput.addEventListener('input', () => {
+  syncTierTitle();
+  scheduleAutosave();
+});
+tierTitleInput.addEventListener('focus', syncTierTitle);
+tierTitleInput.addEventListener('blur', syncTierTitle);
+tierTitleText.addEventListener('click', () => {
+  tierTitleInput.hidden = false;
+  tierTitleText.hidden = true;
+  tierTitleInput.focus();
+});
 
 // ── Add Tier ───────────────────────────────────────────────────────
 document.getElementById('addTierBtn').addEventListener('click', () => {
@@ -920,7 +1045,14 @@ document.getElementById('clearAllBtn').addEventListener('click', async () => {
 // ranked images to the pool (nothing is deleted).
 document.getElementById('clearCompletelyBtn').addEventListener('click', async () => {
   closeClearMenu();
-  if (sessionToken) return; // never delete shared/personal bytes from a session
+  if (sessionToken) {
+    if (!isSessionHost()) return;
+    if (settings.confirmClear && !(await confirmDialog(
+        'Delete ALL images from this session for everyone? This cannot be undone.',
+        { danger: true }))) return;
+    await removeAllSessionImages();
+    return;
+  }
   if (settings.confirmClear && !(await confirmDialog(
       'Delete ALL images from the board and the server? This cannot be undone.',
       { danger: true }))) return;
@@ -932,8 +1064,48 @@ document.getElementById('clearCompletelyBtn').addEventListener('click', async ()
   oldIds.forEach(deleteImageFromServer);
 });
 
+// Host-only in sessions: delete the whole shared catalogue in chunks that
+// respect the per-request removal cap, then apply the final response.
+async function removeAllSessionImages() {
+  if (!sessionToken || !isSessionHost()) return;
+  try { await pollSession(); } catch (_) { /* use the last known board */ }
+  if (!sessionToken || !sessionState) return;
+  const refs = ((sessionState.board && sessionState.board.catalog) || [])
+    .map(ref => ({ owner: ref.owner, id: ref.id }));
+  if (!refs.length) return;
+  let data = null;
+  for (let i = 0; i < refs.length; i += 200) {
+    const chunk = refs.slice(i, i + 200);
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${sessionToken}/remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refs: chunk }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!sessionToken) return;
+      if (!res.ok) {
+        await alertDialog(body.error
+          || `Could not clear the session (${res.status})`);
+        return;
+      }
+      data = body;
+    } catch (_) {
+      await alertDialog('Could not reach the server.');
+      return;
+    }
+  }
+  if (!data || !sessionToken) return;
+  broadcastBoardEvent('remove', { refs });
+  applyingRemote = true;
+  applySessionState(data);
+  render();
+  applyingRemote = false;
+}
+
 // ── Modal ──────────────────────────────────────────────────────────
 function openModal(tierId) {
+  if (isSessionGuest()) return; // guests arrange images, not tier structure
   editing = tierId;
   const tier = tiers.find(t => t.id === tierId);
   if (!tier) return;
@@ -1023,15 +1195,77 @@ function setupDropdown(menuId, toggleId, dropdownId) {
   return { close: () => setOpen(false) };
 }
 
-const fileMenu = setupDropdown('fileMenu', 'fileMenuBtn', 'fileMenuDropdown');
+const importMenu = setupDropdown('importMenu', 'importMenuBtn', 'importMenuDropdown');
+const exportMenu = setupDropdown('exportMenu', 'exportMenuBtn', 'exportMenuDropdown');
 const clearMenu = setupDropdown('clearMenu', 'clearMenuBtn', 'clearMenuDropdown');
 
-function closeFileMenu() { fileMenu.close(); }
+function closeImportMenu() { importMenu.close(); }
+function closeExportMenu() { exportMenu.close(); }
 function closeClearMenu() { clearMenu.close(); }
+
+// -- Import progress (determinate) -------------------------------------
+const importProgressEl = document.getElementById('importProgress');
+const importProgressBar = document.getElementById('importProgressBar');
+const importProgressLabel = document.getElementById('importProgressLabel');
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+}
+
+function setImportProgress(fraction, label) {
+  const pct = Number.isFinite(fraction)
+    ? Math.max(0, Math.min(100, Math.round(fraction * 100)))
+    : 0;
+  if (importProgressBar) importProgressBar.style.width = `${pct}%`;
+  if (importProgressEl) {
+    importProgressEl.setAttribute('aria-valuenow', String(pct));
+    importProgressEl.hidden = false;
+  }
+  if (label !== undefined && importProgressLabel) {
+    importProgressLabel.textContent = label;
+  }
+}
+
+function showImportProgress(label) {
+  setImportProgress(0, label || 'Preparing…');
+}
+
+function hideImportProgress() {
+  if (!importProgressEl) return;
+  importProgressEl.hidden = true;
+  if (importProgressBar) importProgressBar.style.width = '0%';
+  if (importProgressLabel) importProgressLabel.textContent = '';
+}
+
+// -- Import menu: choose accept type, then open the shared file input --
+document.getElementById('importImagesBtn').addEventListener('click', () => {
+  closeImportMenu();
+  const input = document.getElementById('imageUpload');
+  input.accept = 'image/*';
+  input.click();
+});
+document.getElementById('importZipBtn').addEventListener('click', () => {
+  closeImportMenu();
+  const input = document.getElementById('imageUpload');
+  input.accept = '.zip';
+  input.click();
+});
+document.getElementById('importSaveBtn').addEventListener('click', () => {
+  closeImportMenu();
+  document.getElementById('loadFileInput').click();
+});
 
 // ── Export PNG ─────────────────────────────────────────────────────
 document.getElementById('exportPngBtn').addEventListener('click', async () => {
-  closeFileMenu();
+  closeExportMenu();
   const title = document.getElementById('tierTitle').value.trim() || 'tier-list';
   const board = document.getElementById('tierBoard');
   const titleEl = document.querySelector('.tier-title-wrap');
@@ -1049,16 +1283,18 @@ document.getElementById('exportPngBtn').addEventListener('click', async () => {
     font-family: 'Inter', system-ui, sans-serif;
   `;
 
-  // Title
+  // Title (always use the live input value; it is hidden behind the
+  // plain-text line whenever it has content)
   if (titleEl) {
     const titleClone = titleEl.cloneNode(true);
-    const inp = titleClone.querySelector('.tier-title-input');
-    if (inp) {
-      const span = document.createElement('div');
-      span.style.cssText = `font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 600; color: ${textColor}; padding-bottom: 12px;`;
-      span.textContent = inp.value || '';
-      titleClone.replaceChild(span, inp);
-    }
+    titleClone.innerHTML = '';
+    // In-session CSS hides the duplicate heading on screen; the export
+    // should still carry the title.
+    titleClone.style.display = 'block';
+    const span = document.createElement('div');
+    span.style.cssText = `font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 600; color: ${textColor}; padding-bottom: 12px;`;
+    span.textContent = document.getElementById('tierTitle').value || '';
+    titleClone.appendChild(span);
     capture.appendChild(titleClone);
   }
   capture.appendChild(board.cloneNode(true));
@@ -1091,7 +1327,7 @@ document.getElementById('exportPngBtn').addEventListener('click', async () => {
 // full-resolution copy from the server once, at export time, instead of
 // reading it out of an in-memory Blob.
 document.getElementById('saveBtn').addEventListener('click', async () => {
-  closeFileMenu();
+  closeExportMenu();
   const title = document.getElementById('tierTitle').value.trim() || 'Untitled Tier List';
 
   const fetchAsDataURL = async (img) => {
@@ -1131,6 +1367,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
 document.getElementById('loadFileInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  showImportProgress();
   const reader = new FileReader();
   reader.onload = async (ev) => {
     try {
@@ -1142,11 +1379,21 @@ document.getElementById('loadFileInput').addEventListener('change', (e) => {
       // every previous session's uploads just leak on disk.
       const oldIds = [...pool, ...tiers.flatMap(t => t.images)].map(i => i.id);
 
+      const totalImages =
+        data.tiers.reduce((n, t) => n + (t.images || []).length, 0)
+        + (data.pool || []).length;
+      let uploadedCount = 0;
+      showImportProgress(`Re-uploading 0 of ${totalImages} images…`);
+
       const toImage = async (i) => {
         const blob = dataURLtoBlob(i.src);
         const { images } = await uploadImagesToServer([new File([blob], (i.name || 'image') + '.jpg')]);
         const uploaded = images[0];
         if (!uploaded) throw new Error(`Failed to re-upload "${i.name}"`);
+        uploadedCount += 1;
+        setImportProgress(
+          totalImages ? uploadedCount / totalImages : 1,
+          `Re-uploading ${uploadedCount} of ${totalImages} images…`);
         return { id: uploaded.id, owner: ME, src: uploaded.thumbUrl, fullUrl: uploaded.fullUrl, name: i.name };
       };
       const tierImages = await Promise.all(data.tiers.map(t => Promise.all((t.images || []).map(toImage))));
@@ -1175,6 +1422,8 @@ document.getElementById('loadFileInput').addEventListener('change', (e) => {
       }
     } catch (err) {
       await alertDialog('Could not load file: ' + err.message);
+    } finally {
+      hideImportProgress();
     }
   };
   reader.readAsText(file);
@@ -1187,7 +1436,7 @@ document.getElementById('loadFileInput').addEventListener('change', (e) => {
 // {title, tiers, pool, errors} — so imported images behave exactly like
 // uploaded ones afterwards (drag, preview, save/load, PNG export).
 document.getElementById('importLinkBtn').addEventListener('click', async () => {
-  closeFileMenu();
+  closeImportMenu();
 
   const url = await promptDialog('Paste a TierMaker template link (tiermaker.com/create/…):', {
     title: 'Import from link',
@@ -1197,17 +1446,43 @@ document.getElementById('importLinkBtn').addEventListener('click', async () => {
   if (!(await confirmDialog('Replace the current board with the imported list?', { danger: true }))) return;
 
   const btn = document.getElementById('importLinkBtn');
-  const originalLabel = btn.innerHTML;
-  btn.textContent = 'Importing…';
   btn.disabled = true;
+  showImportProgress('Preparing import…');
   try {
     const res = await fetch(`${API_BASE}/import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: url.trim() }),
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((data && data.error) || `Import failed (${res.status})`);
+    const start = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((start && start.error) || `Import failed (${res.status})`);
+
+    const jobId = start.job;
+    const total = start.total || 0;
+    setImportProgress(0, `Importing 0 of ${total} images…`);
+
+    let data = null;
+    const deadline = Date.now() + 10 * 60 * 1000;
+    while (!data) {
+      await new Promise(r => setTimeout(r, 300));
+      if (Date.now() > deadline) throw new Error('Import timed out');
+      const poll = await fetch(`${API_BASE}/import/${jobId}`);
+      const state = await poll.json().catch(() => ({}));
+      if (!poll.ok) {
+        throw new Error((state && state.error) || `Import failed (${poll.status})`);
+      }
+      const done = state.done || 0;
+      const totalCount = state.total || total || 0;
+      setImportProgress(
+        totalCount ? done / totalCount : 0,
+        `Importing ${done} of ${totalCount} images…`);
+      if (state.status === 'error') {
+        throw new Error((state && state.error) || 'Import failed');
+      }
+      if (state.status === 'done') {
+        data = state;
+      }
+    }
 
     // Same cleanup as Load: remember the current board so its images can be
     // removed from the server once the imported board is in place — otherwise
@@ -1240,7 +1515,7 @@ document.getElementById('importLinkBtn').addEventListener('click', async () => {
   } catch (err) {
     await alertDialog('Import failed: ' + err.message);
   } finally {
-    btn.innerHTML = originalLabel;
+    hideImportProgress();
     btn.disabled = false;
   }
 });
@@ -1354,6 +1629,11 @@ document.addEventListener('keydown', (e) => {
         removeImageFromEverywhere(img.id);
         targetTier.images.push(img);
         render();
+        if (sessionToken) {
+          broadcastBoardEvent('move', {
+            ref: imageToRef(img), tier: targetTier.id, before: null,
+          });
+        }
       }
     }
     return;
@@ -1388,12 +1668,15 @@ const DEFAULT_SETTINGS = {
 };
 
 function applySettings() {
-  document.documentElement.style.setProperty('--pool-img-size', settings.poolImgSize + 'px');
-  document.documentElement.style.setProperty('--tier-img-size', settings.tierImgSize + 'px');
+  document.documentElement.style.setProperty(
+    '--base-pool-img-size', settings.poolImgSize + 'px');
+  document.documentElement.style.setProperty(
+    '--base-tier-img-size', settings.tierImgSize + 'px');
   document.body.classList.toggle('always-show-names', settings.showNames);
   document.body.classList.toggle('wide-table', settings.fullscreenTable);
   document.documentElement.setAttribute('data-theme', settings.theme);
   document.documentElement.setAttribute('data-accent', settings.accent);
+  if (sessionToken) updateSessionScale();
 }
 
 function syncSettingsForm() {
@@ -1429,15 +1712,24 @@ document.getElementById('settingsModalOverlay').addEventListener('click', (e) =>
   if (e.target === document.getElementById('settingsModalOverlay')) closeSettingsModal();
 });
 
-document.getElementById('poolSizeSelect').addEventListener('change', (e) => {
-  settings.poolImgSize = parseInt(e.target.value, 10);
+function changeSessionImageSize(key, value) {
+  const size = parseInt(value, 10);
+  if (!Number.isFinite(size)) return;
+  settings[key] = size;
   applySettings();
-  scheduleAutosave();
+  if (isSettingsModalOpen()) syncSettingsForm();
+  if (sessionToken && sessionState && sessionState.status === 'open') {
+    sendSessionSettingsSoon();
+  } else {
+    scheduleAutosave();
+  }
+}
+
+document.getElementById('poolSizeSelect').addEventListener('change', (e) => {
+  changeSessionImageSize('poolImgSize', e.target.value);
 });
 document.getElementById('tierSizeSelect').addEventListener('change', (e) => {
-  settings.tierImgSize = parseInt(e.target.value, 10);
-  applySettings();
-  scheduleAutosave();
+  changeSessionImageSize('tierImgSize', e.target.value);
 });
 document.getElementById('showNamesToggle').addEventListener('change', (e) => {
   settings.showNames = e.target.checked;
@@ -1461,7 +1753,11 @@ document.getElementById('resetSettingsBtn').addEventListener('click', () => {
   settings = { ...DEFAULT_SETTINGS };
   syncSettingsForm();
   applySettings();
-  scheduleAutosave();
+  if (sessionToken && sessionState && sessionState.status === 'open') {
+    sendSessionSettingsSoon();
+  } else {
+    scheduleAutosave();
+  }
 });
 
 document.getElementById('themeLightBtn').addEventListener('click', () => {
@@ -1515,6 +1811,36 @@ function imageToRef(img) {
     owner: Number.isInteger(img.owner) ? img.owner : ME,
     name: img.name || 'image',
   };
+}
+
+// Warm the browser cache for the whole shared catalogue as soon as the
+// catalogue arrives, so a placement change never waits on an image
+// download. Deduped per session; a handful of concurrent decodes is fine.
+function preloadSessionCatalog(refs) {
+  if (!sessionToken) return;
+  let active = 0;
+  const queue = [];
+  const pump = () => {
+    while (active < 4 && queue.length) {
+      const ref = queue.shift();
+      active += 1;
+      const image = new Image();
+      image.decoding = 'async';
+      image.onload = image.onerror = () => {
+        active -= 1;
+        pump();
+      };
+      image.src = sessionImageUrl(ref.owner, ref.id, 'thumb');
+    }
+  };
+  (refs || []).forEach(ref => {
+    if (!ref || !ref.id) return;
+    const key = refKey(ref);
+    if (sessionPreloaded.has(key)) return;
+    sessionPreloaded.add(key);
+    queue.push(ref);
+  });
+  pump();
 }
 
 function tiersToWire() {
@@ -1577,8 +1903,149 @@ function sessionBoardPayload() {
   };
 }
 
+function sendWsMessage(payload) {
+  if (!sessionWs || sessionWs.readyState !== WebSocket.OPEN) return;
+  try {
+    sessionWs.send(JSON.stringify(payload));
+  } catch (_) {
+    // cursors/events are best-effort — polling still reconciles the board
+  }
+}
+
+// Instant, best-effort board event. The authoritative state still goes
+// through the normal debounced POST; this just lets peers repaint before
+// the next push/poll round trip completes.
+function broadcastBoardEvent(kind, extra = {}) {
+  if (!sessionToken || applyingRemote) return;
+  sendWsMessage({ type: 'board', kind, uid: ME, ...extra });
+}
+
+function sendSessionSettingsSoon() {
+  if (!sessionToken || !sessionState || sessionState.status !== 'open') return;
+  broadcastBoardEvent('settings', {
+    settings: {
+      poolImgSize: settings.poolImgSize,
+      tierImgSize: settings.tierImgSize,
+    },
+  });
+  clearTimeout(sessionSettingsTimer);
+  sessionSettingsTimer = setTimeout(pushSessionSettings, 150);
+}
+
+async function pushSessionSettings() {
+  if (!sessionToken || !sessionState || sessionState.status !== 'open') return;
+  try {
+    const res = await fetch(`${API_BASE}/sessions/${sessionToken}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        poolImgSize: settings.poolImgSize,
+        tierImgSize: settings.tierImgSize,
+      }),
+    });
+    if (!res.ok || !sessionToken || !sessionState) return;
+    const data = await res.json();
+    if (!Number.isFinite(data.version)
+        || data.version < (sessionState.version || 0)) return;
+    const board = { ...(sessionState.board || {}) };
+    if (data.board && data.board.settings) {
+      board.settings = data.board.settings;
+    }
+    sessionState = {
+      ...sessionState,
+      version: data.version,
+      updatedAt: data.updatedAt,
+      board,
+    };
+    updateSessionBanner();
+  } catch (_) {
+    // the next settings change or board push retries naturally
+  }
+}
+
 function isSessionHost() {
   return !!(sessionState && ME && sessionState.hostId === ME);
+}
+
+function isSessionGuest() {
+  return !!sessionToken && !isSessionHost();
+}
+
+function isCoopSession() {
+  return !!(sessionState && sessionState.mode === 'coop');
+}
+
+// Board layout arrives in one of four fixed size buckets. Everything that
+// affects wrapping is scaled by the same factor, so every bucket is a
+// uniform scale of the same design — that is what lets live cursors map
+// between members exactly. The compact bucket kicks in on 1680×900-class
+// screens so five tiers plus the pool still fit without feeling cramped.
+const SESSION_LEVELS = [
+  { name: 'large', scale: 1.25 },
+  { name: 'medium', scale: 1 },
+  { name: 'small', scale: 0.8 },
+  { name: 'compact', scale: 0.68 },
+];
+const SESSION_IMAGE_SIZES = new Set([72, 120, 180, 260]);
+
+function sessionScale() {
+  // Largest level whose 1200px board fits both axes; step down when the
+  // window is too narrow OR too short, and fall back to the smallest
+  // level (scroll) on tiny screens.
+  const availW = Math.max(320, document.documentElement.clientWidth - 32);
+  const header = document.querySelector('header');
+  const headerH = header && getComputedStyle(header).display !== 'none'
+    ? header.offsetHeight : 0;
+  const banner = document.getElementById('sessionBanner');
+  const bannerH = banner && !banner.hidden ? banner.offsetHeight : 0;
+  const availH = Math.max(360,
+    document.documentElement.clientHeight - headerH - bannerH - 28);
+  const rowCount = Math.max(1, tiers.length || 5);
+  const rowH = Math.max(96, Number(settings.tierImgSize) + 24);
+  const poolH = Math.max(123, Number(settings.poolImgSize) + 24);
+  const designH = 78 + rowCount * rowH
+    + Math.max(0, rowCount - 1) * 10 + 25 + poolH + 40;
+  const level = SESSION_LEVELS.find(l =>
+    1200 * l.scale <= availW && designH * l.scale <= availH)
+    || SESSION_LEVELS[SESSION_LEVELS.length - 1];
+  return level.scale;
+}
+
+function sessionLevelName() {
+  const scale = sessionScale();
+  const level = SESSION_LEVELS.find(l => l.scale === scale);
+  return level ? level.name : 'small';
+}
+
+function updateSessionScale() {
+  document.documentElement.style.setProperty(
+    '--session-scale', String(sessionScale()));
+  const label = document.getElementById('sessionLevel');
+  if (label) label.textContent = sessionLevelName();
+  renderWsCursors();
+}
+
+// Multiplayer is desktop-only; phones get the app but not sessions.
+function isMobileViewport() {
+  return window.innerWidth < 1000;
+}
+
+function adoptSessionSettings(board) {
+  const shared = board && board.settings;
+  if (!shared) return false;
+  let changed = false;
+  ['poolImgSize', 'tierImgSize'].forEach(key => {
+    const value = Number(shared[key]);
+    if (SESSION_IMAGE_SIZES.has(value) && settings[key] !== value) {
+      settings[key] = value;
+      changed = true;
+    }
+  });
+  if (changed) {
+    applySettings();
+    if (isSettingsModalOpen()) syncSettingsForm();
+  }
+  return changed;
 }
 
 // Server session payload -> local board. In split mode the member's pool is
@@ -1589,6 +2056,7 @@ function applySessionState(state) {
   sessionCatalog = Array.isArray(board.catalog)
     ? board.catalog.map(ref => ({ ...ref }))
     : [];
+  preloadSessionCatalog(sessionCatalog);
 
   const toLocalTiers = (wireTiers) => (wireTiers || []).map(t => ({
     id: t.id || uid(),
@@ -1624,9 +2092,13 @@ function applySessionState(state) {
     pool = (coop.pool || []).map(refToImage);
   }
 
+  const shared = board.settings;
+  if (shared) adoptSessionSettings(board);
+
   sessionDirty = false;
   updateSessionBanner();
   updatePeerView();
+  renderWsCursors();
 }
 
 function updateSessionBanner() {
@@ -1653,93 +2125,136 @@ function updateSessionBanner() {
     ended ? 'Session ended' : names.join(' · ');
 
   document.getElementById('copyInviteBtn').hidden = ended;
-  document.getElementById('peerToggleBtn').hidden =
-    sessionState.mode !== 'split' || ended;
+  document.getElementById('inviteFriendsBtn').hidden =
+    ended || !isSessionHost();
   document.getElementById('endSessionBtn').hidden = ended || !isSessionHost();
 
   const leaveBtn = document.getElementById('leaveSessionBtn');
   leaveBtn.hidden = !ended && isSessionHost();
   leaveBtn.textContent = ended ? 'Exit session' : 'Leave session';
 
-  if (sessionState.mode !== 'split' || ended) {
-    document.getElementById('peerView').hidden = true;
-    document.getElementById('peerToggleBtn').textContent = 'Peer rankings';
-  }
+  // Split-screen shows the partner board in an equal-width column; co-op
+  // already shows the same board, so there is nothing extra to show.
+  document.getElementById('peerView').hidden = sessionState.mode !== 'split';
 }
 
-// Read-only live view of every other member's split-screen board.
+// Read-only full-size render of every other member's split-screen board.
 function updatePeerView() {
   const panel = document.getElementById('peerView');
-  const columns = document.getElementById('peerColumns');
+  const body = document.getElementById('partnerBoardBody');
+  const title = document.getElementById('partnerBoardTitle');
   if (!sessionState || sessionState.mode !== 'split') {
     panel.hidden = true;
-    columns.innerHTML = '';
+    body.innerHTML = '';
     return;
   }
+  panel.hidden = false;
+  body.innerHTML = '';
 
   const board = sessionState.board || {};
   const split = board.split || {};
   const catalog = board.catalog || [];
   const peers = (sessionState.members || []).filter(m => m.userId !== ME);
-  columns.innerHTML = '';
+  // Own board and every peer get an equal-width column: the panel grows
+  // by one part per peer, and each peer inner takes one of those parts.
+  panel.style.flexGrow = String(Math.max(1, peers.length));
+  title.textContent = peers.length === 1
+    ? `${peers[0].username}'s board`
+    : 'Partner boards';
 
   if (peers.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'peer-empty';
-    empty.textContent = 'Share the invite link — nobody else has joined yet.';
-    columns.appendChild(empty);
+    panel.hidden = true;
+    body.innerHTML = '';
     return;
   }
 
   peers.forEach(member => {
     const entry = split[String(member.userId)]
       || { tiers: [], pool_order: [] };
-    const column = document.createElement('div');
-    column.className = 'peer-column';
+    const inner = document.createElement('div');
+    inner.className = 'partner-board-inner';
 
     const name = document.createElement('div');
-    name.className = 'peer-name';
+    name.className = 'partner-board-name';
     name.textContent = member.username
       + (member.role === 'host' ? ' (host)' : '');
-    column.appendChild(name);
+    inner.appendChild(name);
 
+    const tierBoard = document.createElement('div');
+    tierBoard.className = 'tier-board';
+    (entry.tiers || []).forEach(tier => {
+      tierBoard.appendChild(makePartnerTierRow(tier));
+    });
+
+    // Unranked pool = shared catalog minus this member's ranked refs.
     const ranked = new Set();
     (entry.tiers || []).forEach(tier =>
       (tier.images || []).forEach(ref => ranked.add(refKey(ref))));
-    const poolCount = catalog.filter(ref => !ranked.has(refKey(ref))).length;
+    const poolRefs = catalog.filter(ref => !ranked.has(refKey(ref)));
 
-    const count = document.createElement('div');
-    count.className = 'peer-count';
-    count.textContent = `${poolCount} unranked`;
-    column.appendChild(count);
+    const poolSection = document.createElement('div');
+    poolSection.className = 'image-pool-section';
+    const poolHeader = document.createElement('div');
+    poolHeader.className = 'pool-header';
+    const poolTitle = document.createElement('span');
+    poolTitle.className = 'pool-title';
+    poolTitle.textContent = 'Unranked images';
+    const poolCount = document.createElement('span');
+    poolCount.className = 'pool-count';
+    poolCount.textContent =
+      `${poolRefs.length} image${poolRefs.length !== 1 ? 's' : ''}`;
+    poolHeader.append(poolTitle, poolCount);
+    const poolEl = document.createElement('div');
+    poolEl.className = 'image-pool';
+    poolRefs.forEach(ref => poolEl.appendChild(makePartnerCard(ref)));
+    poolSection.append(poolHeader, poolEl);
 
-    (entry.tiers || []).forEach(tier => {
-      const row = document.createElement('div');
-      row.className = 'peer-tier';
+    // Same structure/gap as the member's own .board-area, so cursor
+    // fractions from that member map 1:1 onto this rendering.
+    const surface = document.createElement('div');
+    surface.className = 'partner-surface';
+    surface.dataset.uid = String(member.userId);
+    surface.appendChild(tierBoard);
+    surface.appendChild(poolSection);
+    inner.appendChild(surface);
 
-      const label = document.createElement('span');
-      label.className = 'peer-tier-label';
-      label.textContent = tier.label;
-      label.style.color = tier.color || '';
-      row.appendChild(label);
-
-      const images = document.createElement('div');
-      images.className = 'peer-tier-images';
-      (tier.images || []).forEach(ref => {
-        const local = refToImage(ref);
-        const image = document.createElement('img');
-        image.src = local.src;
-        image.alt = ref.name || '';
-        image.title = ref.name || '';
-        image.loading = 'lazy';
-        images.appendChild(image);
-      });
-      row.appendChild(images);
-      column.appendChild(row);
-    });
-
-    columns.appendChild(column);
+    body.appendChild(inner);
   });
+}
+
+function makePartnerTierRow(tier) {
+  const row = document.createElement('div');
+  row.className = 'tier-row';
+
+  const labelWrap = document.createElement('div');
+  labelWrap.className = 'tier-label-wrap';
+  labelWrap.style.background = (tier.color || '#6c757d') + '60';
+  const label = document.createElement('div');
+  label.className = 'tier-label';
+  label.textContent = tier.label;
+  label.style.color = tier.color || '';
+  labelWrap.appendChild(label);
+
+  const images = document.createElement('div');
+  images.className = 'tier-images';
+  (tier.images || []).forEach(ref =>
+    images.appendChild(makePartnerCard(ref)));
+
+  row.append(labelWrap, images);
+  return row;
+}
+
+function makePartnerCard(ref) {
+  const card = document.createElement('div');
+  card.className = 'img-card';
+  const image = document.createElement('img');
+  image.src = sessionImageUrl(ref.owner, ref.id, 'thumb');
+  image.alt = ref.name || '';
+  image.title = ref.name || '';
+  image.loading = 'lazy';
+  image.draggable = false;
+  card.appendChild(image);
+  return card;
 }
 
 function startSessionPolling() {
@@ -1766,18 +2281,9 @@ function handleSessionUpdate(data) {
   const membersChanged = !prev
     || membersKey(prev.members) !== membersKey(data.members);
   const titleChanged = !prev || prev.title !== data.title;
-  const presenceChanged = !!data.presence
-    && presenceKey(data.presence) !== presenceKey(sessionPresence);
-  const boardChanged = !prev || data.version !== prev.version
-    || statusChanged || membersChanged || titleChanged;
 
-  // Cursor movement is the common case at 1s polling: repaint just the
-  // overlay instead of rebuilding every card on the board.
-  if (!boardChanged) {
-    if (presenceChanged) {
-      sessionPresence = data.presence;
-      renderRemoteCursors();
-    }
+  if (prev && data.version === prev.version && !statusChanged
+      && !membersChanged && !titleChanged) {
     return;
   }
 
@@ -1790,7 +2296,6 @@ function handleSessionUpdate(data) {
     } else {
       sessionState = data;
     }
-    if (data.presence) sessionPresence = data.presence;
     onSessionEnded();
     return;
   }
@@ -1798,11 +2303,19 @@ function handleSessionUpdate(data) {
   if (sessionDirty || dragItem) {
     // Keep the local board (the user is mid-edit); only adopt metadata and
     // the server version so the next push isn't permanently rejected.
-    sessionState = { ...data, board: prev ? prev.board : data.board };
-    if (data.presence) sessionPresence = data.presence;
+    const keptBoard = { ...((prev && prev.board) || data.board || {}) };
+    if (data.board && data.board.settings) {
+      keptBoard.settings = data.board.settings;
+    }
+    sessionState = { ...data, board: keptBoard };
+    if (data.board && data.board.catalog) {
+      sessionCatalog = data.board.catalog;
+      preloadSessionCatalog(sessionCatalog);
+    }
+    adoptSessionSettings(data.board || {});
     updateSessionBanner();
     if (sessionState.mode === 'split') updatePeerView();
-    renderRemoteCursors();
+    renderWsCursors();
     return;
   }
 
@@ -1810,8 +2323,6 @@ function handleSessionUpdate(data) {
   applySessionState(data);
   render();
   applyingRemote = false;
-  if (data.presence) sessionPresence = data.presence;
-  renderRemoteCursors();
 }
 
 async function pollSession() {
@@ -1900,7 +2411,9 @@ async function pushSessionBoard(attempt = 0) {
         sessionDirty = false;
         if (data.board && data.board.catalog) {
           sessionCatalog = data.board.catalog;
+          preloadSessionCatalog(sessionCatalog);
         }
+        adoptSessionSettings(data.board || {});
         updateSessionBanner();
         if (data.mode === 'split') updatePeerView();
       } else {
@@ -1914,7 +2427,9 @@ async function pushSessionBoard(attempt = 0) {
     } else {
       if (data.board && data.board.catalog) {
         sessionCatalog = data.board.catalog;
+        preloadSessionCatalog(sessionCatalog);
       }
+      adoptSessionSettings(data.board || {});
       scheduleSessionPush(); // edits landed while this push was in flight
       updateSessionBanner();
     }
@@ -1947,6 +2462,7 @@ async function removeFromSession(img) {
         || `Could not delete the image (${res.status})`);
       return;
     }
+    broadcastBoardEvent('remove', { refs: [{ owner, id: img.id }] });
     if (sessionDirty) {
       // Keep pending local edits; the server tombstone keeps the removed
       // ref out of the next push.
@@ -1965,104 +2481,419 @@ async function removeFromSession(img) {
   }
 }
 
-function presenceKey(presence) {
-  if (!presence) return '';
-  return Object.keys(presence).sort().map(uid => {
-    const entry = presence[uid];
-    return `${uid}:${entry.x}:${entry.y}:`
-      + (entry.image ? refKey(entry.image) : '');
-  }).join('|');
+function scrollFraction() {
+  const max = document.documentElement.scrollHeight - window.innerHeight;
+  return max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
 }
 
-// Draw other members' drag cursors. The ghost is loaded through the same
-// board-gated image route as the board, so it only shows refs we could
-// already see.
-function renderRemoteCursors() {
-  if (!sessionCursorsEl) return;
-  sessionCursorsEl.innerHTML = '';
-  if (!sessionToken || !sessionState) return;
-  Object.keys(sessionPresence).forEach(uid => {
-    if (Number(uid) === ME) return;
-    const entry = sessionPresence[uid];
-    if (!entry || !entry.image) return;
-    const cursor = document.createElement('div');
-    cursor.className = 'remote-cursor';
-    cursor.style.left = `${entry.x}px`;
-    cursor.style.top = `${entry.y}px`;
+function sessionName() {
+  return (window.TIERFORGE_USER && window.TIERFORGE_USER.username) || 'Guest';
+}
 
-    const image = document.createElement('img');
-    image.className = 'remote-drag-ghost';
-    image.src = sessionImageUrl(entry.image.owner, entry.image.id, 'thumb');
-    image.alt = '';
-    image.draggable = false;
-    cursor.appendChild(image);
+function sessionWsUrl() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const isLocal = location.hostname === 'localhost'
+    || location.hostname === '127.0.0.1';
+  const devPort = location.port ? Number(location.port) + 1 : 5001;
+  const base = (isLocal || location.port === '5000')
+    ? `${proto}://${location.hostname}:${devPort}`
+    : `${proto}://${location.host}`;
+  return `${base}/apps/tierforge/ws`
+    + `?room=${encodeURIComponent(sessionToken)}`
+    + `&client=${encodeURIComponent(wsClientId)}`;
+}
 
-    const label = document.createElement('span');
-    label.className = 'remote-cursor-label';
-    label.textContent = entry.username || `user ${uid}`;
-    cursor.appendChild(label);
-
-    sessionCursorsEl.appendChild(cursor);
+function connectSessionWs() {
+  disconnectSessionWs();
+  if (!sessionToken) return;
+  const socket = new WebSocket(sessionWsUrl());
+  sessionWs = socket;
+  socket.addEventListener('message', handleSessionWsMessage);
+  socket.addEventListener('close', () => {
+    if (sessionWs !== socket) return;
+    sessionWs = null;
+    if (!sessionToken) return;
+    sessionWsRetry = setTimeout(connectSessionWs, 1000);
   });
 }
 
-// Coalesce drag movement into ~10 presence posts per second. Presence is
-// best-effort: failures are ignored and stale entries expire server-side.
-function sendPresence() {
-  if (!sessionToken || !sessionState || sessionState.status !== 'open') return;
-  presencePending = true;
-  if (presenceTimer) return;
-  presenceTimer = setTimeout(async () => {
-    presenceTimer = null;
-    if (!sessionToken || !sessionState
-        || sessionState.status !== 'open') {
-      presencePending = false;
-      return;
-    }
-    const body = JSON.stringify({
-      image: presenceRef,
-      x: presenceXY.x,
-      y: presenceXY.y,
-    });
-    presencePending = false;
-    try {
-      await fetch(`${API_BASE}/sessions/${sessionToken}/presence`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-      });
-    } catch (_) {
-      // ignore — presence is best-effort
-    }
-    if (presencePending) sendPresence();
-  }, PRESENCE_SEND_MS);
+function disconnectSessionWs() {
+  stopWsKeepalive();
+  clearTimeout(sessionWsRetry);
+  sessionWsRetry = null;
+  const socket = sessionWs;
+  sessionWs = null;
+  if (socket) {
+    try { socket.close(); } catch (_) { /* ignore */ }
+  }
+  clearWsCursors();
 }
 
-function onSessionEnded() {
+// Re-send the last pointer every couple of seconds so an idle cursor stays
+// visible (also lets someone who just joined see it without waiting for a
+// mouse move).
+function startWsKeepalive() {
+  stopWsKeepalive();
+  wsKeepalive = setInterval(() => {
+    if (sessionToken) sendWsCursor();
+  }, 2000);
+}
+
+function stopWsKeepalive() {
+  if (wsKeepalive) {
+    clearInterval(wsKeepalive);
+    wsKeepalive = null;
+  }
+}
+
+// Send the pointer relative to our own board (the shared co-op board, or
+// our left board in split). The receiver maps that fraction onto the same
+// board as it renders it.
+function sendWsCursor() {
+  if (!sessionWs || sessionWs.readyState !== WebSocket.OPEN) return;
+  if (!sessionToken) return;
+  const surface = document.getElementById('boardArea');
+  if (!surface) return;
+  const rect = surface.getBoundingClientRect();
+  const w = surface.clientWidth || 1;
+  const h = surface.clientHeight || 1;
+  // Keep tracking slightly outside the board so a cursor moving into the
+  // page margins glides off the edge instead of freezing at the border.
+  const x = Math.max(-0.25, Math.min(1.25,
+    (presencePointer.x - rect.left - surface.clientLeft) / w));
+  const y = Math.max(-0.25, Math.min(1.25,
+    (presencePointer.y - rect.top - surface.clientTop) / h));
+  try {
+    sessionWs.send(JSON.stringify({
+      type: 'cursor',
+      uid: ME,
+      name: sessionName(),
+      color: wsColor,
+      x,
+      y,
+      dragging: !!dragItem,
+      scroll: scrollFraction(),
+    }));
+  } catch (_) {
+    // ignore — cursors are best-effort
+  }
+}
+
+function cursorTargetFor(entry) {
+  if (!sessionState) return null;
+  if (sessionState.mode === 'coop') {
+    return document.getElementById('boardArea');
+  }
+  if (entry.uid) {
+    return document.querySelector(
+      `.partner-surface[data-uid="${entry.uid}"]`);
+  }
+  return null;
+}
+
+function ensureWsCursor(client, entry) {
+  const target = cursorTargetFor(entry);
+  if (!target) {
+    if (entry.el) {
+      entry.el.remove();
+      entry.el = null;
+    }
+    return;
+  }
+  let el = entry.el;
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'remote-cursor';
+    el.innerHTML = '<span class="remote-cursor-label"></span>';
+    entry.el = el;
+  }
+  if (el.parentElement !== target) target.appendChild(el);
+  el.style.left = `${entry.x * (target.clientWidth || 1)}px`;
+  el.style.top = `${entry.y * (target.clientHeight || 1)}px`;
+  el.style.color = entry.color || '#fff';
+  const label = el.querySelector('.remote-cursor-label');
+  label.textContent = entry.name || 'Guest';
+  label.style.background = entry.color || '#6c5ce7';
+}
+
+function renderWsCursors() {
+  wsCursors.forEach((entry, client) => ensureWsCursor(client, entry));
+}
+
+function removeWsCursor(client) {
+  const entry = wsCursors.get(client);
+  if (entry && entry.el) entry.el.remove();
+  wsCursors.delete(client);
+}
+
+function clearWsCursors() {
+  wsCursors.forEach(entry => {
+    if (entry.el) entry.el.remove();
+  });
+  wsCursors.clear();
+}
+
+function findRefIndex(list, ref) {
+  if (!ref) return -1;
+  return (list || []).findIndex(item =>
+    item && item.id === ref.id
+    && Number(item.owner) === Number(ref.owner));
+}
+
+function insertImageAtRef(list, img, beforeRef) {
+  const idx = findRefIndex(list, beforeRef);
+  if (idx >= 0) list.splice(idx, 0, img);
+  else list.push(img);
+}
+
+function removeRefFromEntry(entry, ref) {
+  (entry.tiers || []).forEach(tier => {
+    tier.images = (tier.images || []).filter(
+      r => refKey(r) !== refKey(ref));
+  });
+  entry.pool_order = (entry.pool_order || []).filter(
+    r => refKey(r) !== refKey(ref));
+}
+
+// Apply an instant board event from a peer. The remote user id is the
+// member whose split column changes; in co-op we simply mirror the move.
+// These are hints only — the next POST/poll response stays authoritative.
+function applyRemoteBoardEvent(msg) {
+  if (!sessionToken || !sessionState || sessionState.status !== 'open') return;
+  if (applyingRemote) return;
+
+  if (msg.kind === 'settings') {
+    adoptSessionSettings({ settings: msg.settings });
+    return;
+  }
+  if (msg.uid === ME) return;
+  if (sessionDirty || dragItem) return;
+
+  if (msg.kind === 'move') {
+    const ref = msg.ref;
+    if (!ref || !ref.id) return;
+    if (sessionState.mode === 'split') {
+      const split = (sessionState.board || {}).split || {};
+      const entry = split[String(msg.uid)];
+      if (!entry) return;
+      removeRefFromEntry(entry, ref);
+      if (msg.tier) {
+        const tier = (entry.tiers || []).find(t => t.id === msg.tier);
+        if (tier) {
+          tier.images = tier.images || [];
+          insertImageAtRef(tier.images, ref, msg.before);
+        }
+      } else {
+        entry.pool_order = entry.pool_order || [];
+        insertImageAtRef(entry.pool_order, ref, msg.before);
+      }
+      updatePeerView();
+      return;
+    }
+    const img = getImage(ref.id);
+    if (!img) return;
+    applyingRemote = true;
+    removeImageFromEverywhere(img.id);
+    if (msg.tier) {
+      const tier = tiers.find(t => t.id === msg.tier);
+      if (tier) insertImageAtRef(tier.images, img, msg.before);
+      else pool.push(img);
+    } else {
+      insertImageAtRef(pool, img, msg.before);
+    }
+    render();
+    applyingRemote = false;
+    return;
+  }
+
+  if (msg.kind === 'add') {
+    const refs = msg.refs || [];
+    refs.forEach(ref => {
+      if (!ref || !ref.id) return;
+      if (!sessionCatalog.some(r => refKey(r) === refKey(ref))) {
+        sessionCatalog.push({
+          id: ref.id, owner: ref.owner, name: ref.name || 'image',
+        });
+      }
+    });
+    preloadSessionCatalog(refs);
+    if (sessionState.mode === 'coop') {
+      applyingRemote = true;
+      refs.forEach(ref => {
+        if (!ref || !ref.id || getImage(ref.id)) return;
+        pool.push(refToImage(ref));
+      });
+      render();
+      applyingRemote = false;
+    } else {
+      updatePeerView();
+    }
+    return;
+  }
+
+  if (msg.kind === 'remove') {
+    const refs = msg.refs || (msg.ref ? [msg.ref] : []);
+    if (!refs.length) return;
+    applyingRemote = true;
+    refs.forEach(ref => {
+      if (!ref || !ref.id) return;
+      sessionCatalog = sessionCatalog.filter(
+        r => refKey(r) !== refKey(ref));
+      if (sessionState.mode === 'coop') removeImageFromEverywhere(ref.id);
+    });
+    if (sessionState.mode === 'split') updatePeerView();
+    else render();
+    applyingRemote = false;
+  }
+}
+
+function handleSessionWsMessage(event) {
+  let msg;
+  try { msg = JSON.parse(event.data); } catch (_) { return; }
+  if (!msg || !msg.type) return;
+  if (msg.type === 'leave') {
+    removeWsCursor(msg.client);
+    return;
+  }
+  if (msg.type === 'board') {
+    if (msg.client !== wsClientId) applyRemoteBoardEvent(msg);
+    return;
+  }
+  if (msg.type !== 'cursor' || msg.client === wsClientId) return;
+  const previous = wsCursors.get(msg.client);
+  const entry = {
+    uid: msg.uid,
+    name: msg.name,
+    color: msg.color,
+    x: Math.min(1.25, Math.max(-0.25, Number(msg.x) || 0)),
+    y: Math.min(1.25, Math.max(-0.25, Number(msg.y) || 0)),
+    dragging: !!msg.dragging,
+    scroll: Number(msg.scroll) || 0,
+    el: previous ? previous.el : null,
+  };
+  wsCursors.set(msg.client, entry);
+  ensureWsCursor(msg.client, entry);
+  applyHostScrollWs();
+}
+
+// While the host drags, the guest follows the host's scroll so it reads as
+// a live stream of their screen (idle scrolling never yanks the guest).
+function applyHostScrollWs() {
+  if (!sessionToken || isSessionHost() || dragItem) return;
+  if (!sessionState || sessionState.status !== 'open'
+      || !isCoopSession()) return;
+  let host = null;
+  wsCursors.forEach(entry => {
+    if (entry.uid === sessionState.hostId) host = entry;
+  });
+  if (!host || !host.dragging || typeof host.scroll !== 'number') return;
+  const max = document.documentElement.scrollHeight - window.innerHeight;
+  if (max <= 0) return;
+  const target = host.scroll * max;
+  if (Math.abs(window.scrollY - target) < 32) return;
+  window.scrollTo({ top: target, behavior: 'smooth' });
+}
+
+
+// A guest keeps the final board after the host closes the session. We
+// snapshot the server's last board into the personal IndexedDB autosave,
+// pointing at the still-served session image URLs, then reload into it.
+async function persistSessionBoardLocally(state) {
+  if (!state || !state.token) return;
+  const board = state.board || {};
+  const toImage = ref => ({
+    id: ref.id,
+    owner: ref.owner,
+    name: ref.name || 'image',
+    src: `${API_BASE}/sessions/${state.token}/images/${ref.owner}/${ref.id}/thumb`,
+    fullUrl: `${API_BASE}/sessions/${state.token}/images/${ref.owner}/${ref.id}/full`,
+  });
+
+  let outTiers = [];
+  let outPool = [];
+  if (state.mode === 'split') {
+    const entry = (board.split || {})[String(ME)]
+      || { tiers: [], pool_order: [] };
+    outTiers = (entry.tiers || []).map(t => ({
+      id: t.id || uid(),
+      label: t.label || '?',
+      color: t.color || '#6c757d',
+      images: (t.images || []).map(toImage),
+    }));
+    const ranked = new Set(
+      outTiers.flatMap(t => t.images.map(refKey)));
+    const byKey = new Map((board.catalog || []).map(
+      ref => [refKey(ref), ref]));
+    const ordered = [];
+    const seen = new Set();
+    const pushRef = (ref) => {
+      if (!ref || !ref.id) return;
+      const key = refKey(ref);
+      if (ranked.has(key) || seen.has(key)) return;
+      const canonical = byKey.get(key);
+      if (!canonical) return;
+      seen.add(key);
+      ordered.push(canonical);
+    };
+    (entry.pool_order || []).forEach(pushRef);
+    (board.catalog || []).forEach(pushRef);
+    outPool = ordered.map(toImage);
+  } else {
+    const coop = board.coop || {};
+    outTiers = (coop.tiers || []).map(t => ({
+      id: t.id || uid(),
+      label: t.label || '?',
+      color: t.color || '#6c757d',
+      images: (t.images || []).map(toImage),
+    }));
+    outPool = (coop.pool || []).map(toImage);
+  }
+
+  const data = {
+    _version: 4,
+    title: state.title || '',
+    savedAt: new Date().toISOString(),
+    tiers: outTiers,
+    pool: outPool,
+    settings: { ...settings },
+  };
+  try {
+    await idbPut(IDB_KEY, data);
+  } catch (err) {
+    console.warn('Could not keep the session board after it ended:', err);
+  }
+}
+
+async function onSessionEnded() {
+  const state = sessionState;
   stopSessionPolling();
+  disconnectSessionWs();
   clearTimeout(sessionPushTimer);
+  clearTimeout(sessionSettingsTimer);
   sessionPushTimer = null;
-  clearTimeout(presenceTimer);
-  presenceTimer = null;
-  presencePending = false;
-  presenceRef = null;
+  sessionSettingsTimer = null;
   sessionDirty = false;
-  sessionPresence = {};
-  renderRemoteCursors();
-  document.body.classList.add('session-ended');
-  updateSessionBanner();
-  document.getElementById('peerView').hidden = true;
+  if (state && state.status === 'ended' && !isSessionHost()) {
+    await persistSessionBoardLocally(state);
+  }
+  // No "ended" screen: reload to the personal board (autosaved locally).
+  window.location.href = window.location.pathname;
 }
 
 function enterSessionState(state) {
   sessionToken = state.token;
   sessionState = state;
-  sessionPresence = {};
-  presenceRef = null;
+  sessionPreloaded = new Set();
+  sessionEndSent = false;
+  clearTimeout(sessionSettingsTimer);
+  sessionSettingsTimer = null;
+  updateSessionScale();
+  const host = !!(ME && state.hostId === ME);
   document.body.classList.add('in-session');
+  document.body.classList.toggle('session-coop', state.mode === 'coop');
   document.body.classList.toggle('session-split', state.mode === 'split');
-  document.body.classList.toggle(
-    'session-host', !!(ME && state.hostId === ME));
+  document.body.classList.toggle('session-host', host);
+  document.body.classList.toggle('session-guest', !host);
   document.body.classList.remove('session-ended');
   // The banner owns the session title; don't let edits to the personal
   // title box silently vanish when the personal board is restored on exit.
@@ -2076,11 +2907,16 @@ function enterSessionState(state) {
   applySessionState(state);
   render();
   applyingRemote = false;
-  renderRemoteCursors();
   startSessionPolling();
+  connectSessionWs();
+  startWsKeepalive();
 }
 
 async function enterSessionFromLink(token) {
+  if (isMobileViewport()) {
+    await alertDialog('Multiplayer is not available on phones — use a laptop or desktop.');
+    return false;
+  }
   try {
     const res = await fetch(`${API_BASE}/sessions/${token}/join`, {
       method: 'POST',
@@ -2099,25 +2935,23 @@ async function enterSessionFromLink(token) {
 
 function exitSession() {
   stopSessionPolling();
+  disconnectSessionWs();
   clearTimeout(sessionPushTimer);
+  clearTimeout(sessionSettingsTimer);
   sessionPushTimer = null;
-  clearTimeout(presenceTimer);
-  presenceTimer = null;
-  presencePending = false;
-  presenceRef = null;
-  sessionPresence = {};
-  renderRemoteCursors();
+  sessionSettingsTimer = null;
   sessionToken = null;
   sessionState = null;
   sessionCatalog = [];
+  sessionPreloaded = new Set();
   sessionDirty = false;
   applyingRemote = false;
   document.body.classList.remove(
-    'in-session', 'session-split', 'session-ended', 'session-host');
+    'in-session', 'session-coop', 'session-split', 'session-ended',
+    'session-host', 'session-guest');
   history.replaceState(null, '', location.pathname);
   document.getElementById('sessionBanner').hidden = true;
   document.getElementById('peerView').hidden = true;
-  document.getElementById('peerToggleBtn').textContent = 'Peer rankings';
 
   // Restore the personal board parked in IndexedDB while in the session.
   // Settings changed during the session stay in effect (they're local
@@ -2165,9 +2999,29 @@ async function endSession() {
       throw new Error(data.error || `Could not end the session (${res.status})`);
     }
     sessionState = data;
+    sessionEndSent = true;
     onSessionEnded();
   } catch (err) {
     await alertDialog('Could not end the session: ' + err.message);
+  }
+}
+
+// Closing the app tab/page counts as ending the session for the host.
+// keepalive lets the request survive the unload; onSessionEnded fires the
+// guest's "keep the final board" path.
+function endSessionKeepalive() {
+  if (!sessionToken || !sessionState || sessionState.status !== 'open'
+      || !isSessionHost() || sessionEndSent) return;
+  sessionEndSent = true;
+  try {
+    fetch(`${API_BASE}/sessions/${sessionToken}/end`, {
+      method: 'POST',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+  } catch (_) {
+    // best effort — a reload that misses this still expires after 6 h
   }
 }
 
@@ -2191,9 +3045,242 @@ function closeSessionModal() {
   document.getElementById('sessionModalOverlay').hidden = true;
 }
 
+// ── Friend invites (host-only) ─────────────────────────────────────
+function closeInviteModal() {
+  document.getElementById('inviteModalOverlay').hidden = true;
+}
+
+function inviteRow(name, buttons) {
+  const row = document.createElement('div');
+  row.className = 'invite-row';
+  const label = document.createElement('span');
+  label.className = 'invite-row-name';
+  label.textContent = name;
+  const actions = document.createElement('div');
+  actions.className = 'invite-row-actions';
+  buttons.forEach(btn => actions.appendChild(btn));
+  row.append(label, actions);
+  return row;
+}
+
+function inviteActionBtn(text, cls, onClick) {
+  const btn = document.createElement('button');
+  btn.className = `btn ${cls} btn-sm`;
+  btn.textContent = text;
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
+async function renderInviteModal() {
+  if (!sessionToken || !isSessionHost()) return;
+  const friendsEl = document.getElementById('inviteFriendsList');
+  const pendingEl = document.getElementById('invitePendingList');
+  const pending = (sessionState && sessionState.pending) || [];
+  const memberIds = new Set(
+    ((sessionState && sessionState.members) || []).map(m => m.userId));
+  const pendingIds = new Set(pending.map(p => p.userId));
+
+  pendingEl.innerHTML = '';
+  if (pending.length === 0) {
+    pendingEl.innerHTML =
+      '<div class="invite-empty">No pending invites.</div>';
+  } else {
+    pending.forEach(p => {
+      pendingEl.appendChild(inviteRow(p.username, [
+        inviteActionBtn('Approve', 'btn-primary',
+          () => approveInvite(p.userId)),
+        inviteActionBtn('Deny', 'btn-secondary',
+          () => denyInvite(p.userId)),
+      ]));
+    });
+  }
+
+  friendsEl.textContent = 'Loading…';
+  let friends = [];
+  try {
+    const res = await fetch('/socials/api/friends');
+    if (res.ok) {
+      const data = await res.json();
+      friends = data.friends || [];
+    }
+  } catch (_) { /* offline — show the empty state */ }
+
+  friendsEl.innerHTML = '';
+  const available = friends.filter(
+    f => !memberIds.has(f.id) && !pendingIds.has(f.id));
+  if (available.length === 0) {
+    friendsEl.innerHTML =
+      '<div class="invite-empty">No friends left to invite.</div>';
+    return;
+  }
+  available.forEach(f => {
+    friendsEl.appendChild(inviteRow(f.username, [
+      inviteActionBtn('Invite', 'btn-primary', () => inviteFriend(f.id)),
+    ]));
+  });
+}
+
+function openInviteModal() {
+  if (!sessionToken || !isSessionHost()) return;
+  document.getElementById('inviteModalOverlay').hidden = false;
+  renderInviteModal();
+}
+
+async function inviteFriend(userId) {
+  try {
+    const res = await fetch(`${API_BASE}/sessions/${sessionToken}/invite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!sessionToken) return;
+    if (!res.ok) {
+      await alertDialog(data.error || `Could not invite (${res.status})`);
+      return;
+    }
+    sessionState = data;
+    updateSessionBanner();
+    if (sessionState.mode === 'split') updatePeerView();
+    renderInviteModal();
+  } catch (_) {
+    await alertDialog('Could not reach the server.');
+  }
+}
+
+async function memberAction(path) {
+  try {
+    const res = await fetch(`${API_BASE}/sessions/${sessionToken}${path}`, {
+      method: 'POST',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!sessionToken) return;
+    if (!res.ok) {
+      await alertDialog(data.error || `Action failed (${res.status})`);
+      return;
+    }
+    sessionState = data;
+    updateSessionBanner();
+    if (sessionState.mode === 'split') updatePeerView();
+    renderInviteModal();
+  } catch (_) {
+    await alertDialog('Could not reach the server.');
+  }
+}
+
+function approveInvite(userId) {
+  return memberAction(`/members/${userId}/approve`);
+}
+function denyInvite(userId) {
+  return memberAction(`/members/${userId}/deny`);
+}
+
+// ── In-app invite popup ────────────────────────────────────────────
+// Friend invites now join directly, so the notification carries the whole
+// action. Poll the shared inbox API (same one the bell uses) and offer a
+// one-click Join button; dismissed invites stay dismissed for the tab.
+const INVITE_POLL_MS = 12000;
+const inviteDismissed = new Set();
+try {
+  (JSON.parse(sessionStorage.getItem('tfInviteDismissed') || '[]') || [])
+    .forEach(id => inviteDismissed.add(id));
+} catch (_) { /* private mode / corrupt value */ }
+let invitePopupState = null;
+
+function saveDismissedInvites() {
+  try {
+    sessionStorage.setItem('tfInviteDismissed',
+      JSON.stringify([...inviteDismissed]));
+  } catch (_) { /* best effort */ }
+}
+
+function hideInvitePopup() {
+  const popup = document.getElementById('invitePopup');
+  if (popup) popup.hidden = true;
+  invitePopupState = null;
+}
+
+function showInvitePopup(n) {
+  const popup = document.getElementById('invitePopup');
+  if (!popup) return;
+  if (invitePopupState && invitePopupState.id === n.id && !popup.hidden) {
+    return;
+  }
+  invitePopupState = {
+    id: n.id,
+    token: n.payload.session_token,
+  };
+  document.getElementById('invitePopupText').textContent =
+    `${n.payload.actor || 'Someone'} invited you to `
+    + `${n.payload.session_title || 'a TierForge session'}`;
+  popup.hidden = false;
+}
+
+async function pollInvites() {
+  if (!ME || document.hidden) return;
+  try {
+    const res = await fetch('/notifications/api/list');
+    if (!res.ok) return;
+    const data = await res.json();
+    const rows = (data.notifications || []).filter(n => {
+      if (n.read || !n.payload || !n.payload.session_token) return false;
+      if (n.payload.session_token === sessionToken) return false;
+      if (n.type !== 'tierforge_join_request'
+          && n.type !== 'tierforge_invite_approved') return false;
+      return !inviteDismissed.has(n.id);
+    });
+    if (rows.length === 0) hideInvitePopup();
+    else showInvitePopup(rows[0]);
+  } catch (_) {
+    // offline — the next poll retries
+  }
+}
+
+async function markInviteRead(id) {
+  try {
+    await fetch('/notifications/api/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [id] }),
+    });
+  } catch (_) { /* best effort */ }
+}
+
+document.getElementById('invitePopupJoin').addEventListener('click', async () => {
+  const invite = invitePopupState;
+  if (!invite) return;
+  hideInvitePopup();
+  if (sessionToken) {
+    await alertDialog(
+      'Finish or leave your current session before joining another one.');
+    return;
+  }
+  markInviteRead(invite.id);
+  await parkPersonalBoard();
+  if (await enterSessionFromLink(invite.token)) {
+    history.replaceState(
+      null, '', `${location.pathname}?s=${invite.token}`);
+  }
+});
+
+document.getElementById('invitePopupDismiss').addEventListener('click', () => {
+  if (invitePopupState) {
+    inviteDismissed.add(invitePopupState.id);
+    saveDismissedInvites();
+  }
+  hideInvitePopup();
+});
+
+setTimeout(pollInvites, 1500);
+setInterval(pollInvites, INVITE_POLL_MS);
+
 document.getElementById('multiplayerBtn').addEventListener('click', () => {
   if (!ME) {
     alertDialog('Sign in to start a multiplayer session.');
+    return;
+  }
+  if (isMobileViewport()) {
+    alertDialog('Multiplayer is not available on phones — use a laptop or desktop.');
     return;
   }
   const titleInput = document.getElementById('sessionTitleInput');
@@ -2211,6 +3298,13 @@ document.getElementById('sessionModalOverlay').addEventListener('click', (e) => 
   if (e.target === document.getElementById('sessionModalOverlay')) closeSessionModal();
 });
 
+document.getElementById('inviteFriendsBtn').addEventListener('click', openInviteModal);
+document.getElementById('inviteModalClose').addEventListener('click', closeInviteModal);
+document.getElementById('inviteModalDone').addEventListener('click', closeInviteModal);
+document.getElementById('inviteModalOverlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('inviteModalOverlay')) closeInviteModal();
+});
+
 document.getElementById('createSessionBtn').addEventListener('click', async () => {
   const btn = document.getElementById('createSessionBtn');
   const modeEl = document.querySelector('input[name="sessionMode"]:checked');
@@ -2220,6 +3314,10 @@ document.getElementById('createSessionBtn').addEventListener('click', async () =
     catalog: collectBoardRefs(tiers, pool),
     tiers: tiersToWire(),
     pool: pool.map(imageToRef),
+    settings: {
+      poolImgSize: settings.poolImgSize,
+      tierImgSize: settings.tierImgSize,
+    },
   };
 
   const original = btn.textContent;
@@ -2236,6 +3334,7 @@ document.getElementById('createSessionBtn').addEventListener('click', async () =
       throw new Error(data.error || `Could not create the session (${res.status})`);
     }
     closeSessionModal();
+    await parkPersonalBoard();
     history.replaceState(null, '', `${location.pathname}?s=${data.token}`);
     enterSessionState(data);
   } catch (err) {
@@ -2255,13 +3354,49 @@ document.getElementById('leaveSessionBtn').addEventListener('click', () => {
     leaveSession();
   }
 });
-document.getElementById('peerToggleBtn').addEventListener('click', () => {
-  const panel = document.getElementById('peerView');
-  const show = panel.hidden;
-  if (show) updatePeerView();
-  panel.hidden = !show;
-  document.getElementById('peerToggleBtn').textContent =
-    show ? 'Hide peer rankings' : 'Peer rankings';
+
+// Floating close button shown instead of the header for guests: leave the
+// session (best effort) and go back to the App Corner.
+document.getElementById('guestCloseBtn').addEventListener('click', async (e) => {
+  e.preventDefault();
+  if (sessionToken && sessionState && sessionState.status === 'open'
+      && !isSessionHost()) {
+    try {
+      await fetch(`${API_BASE}/sessions/${sessionToken}/leave`, {
+        method: 'POST',
+      });
+    } catch (_) {
+      // best effort — closing must never be blocked
+    }
+  }
+  location.href = '/app_corner';
+});
+
+// The header close button is the host's "close the app" action: end the
+// session for everyone before navigating away.
+document.getElementById('closeAppBtn').addEventListener('click', () => {
+  if (sessionToken && sessionState && sessionState.status === 'open'
+      && isSessionHost()) {
+    endSessionKeepalive();
+  }
+});
+
+window.addEventListener('pagehide', endSessionKeepalive);
+
+window.addEventListener('resize', updateSessionScale);
+
+// Stream the pointer continuously while in a session so peers always see a
+// live cursor. Peers never receive a dragged-image ghost; the local drag
+// image below is browser-only.
+document.addEventListener('mousemove', (e) => {
+  if (!sessionToken) return;
+  presencePointer = { x: e.clientX, y: e.clientY };
+  if (!wsFrame) {
+    wsFrame = requestAnimationFrame(() => {
+      wsFrame = 0;
+      sendWsCursor();
+    });
+  }
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -2274,17 +3409,12 @@ ghost.id = 'dragGhost';
 ghost.style.cssText = 'position:fixed;top:-200px;left:-200px;width:72px;height:72px;pointer-events:none;z-index:9999;border-radius:4px;overflow:hidden;';
 document.body.appendChild(ghost);
 
-// ── Overlay for other members' drag cursors ────────────────────────
-const sessionCursorsEl = document.createElement('div');
-sessionCursorsEl.id = 'sessionCursors';
-sessionCursorsEl.className = 'session-cursors';
-document.body.appendChild(sessionCursorsEl);
-
 // ── Init ───────────────────────────────────────────────────────────
 // If a previous session exists (e.g. the browser crashed or the tab was
 // closed/reloaded), silently restore it so nothing is lost. IndexedDB
 // access is async, so the rest of setup waits on this IIFE.
 (async () => {
+  updateSessionScale();
   const token = new URLSearchParams(location.search).get('s');
   if (token && /^[0-9a-f]{32}$/.test(token) && ME) {
     if (await enterSessionFromLink(token)) {

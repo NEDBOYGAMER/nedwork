@@ -90,18 +90,12 @@ def purge_user(user: User) -> None:
     # membership rows; joined sessions keep going without the user, so only
     # their split-screen board entry is removed. Assign a fresh dict to the
     # JSON column — mutating it in place would not be tracked by SQLAlchemy.
-    # Drag presence is in-memory only, so drop the purged user's entries
-    # explicitly instead of waiting for the TTL sweep.
-    from .apps.tierforge.routes import clear_session_presence
     for session in TierForgeSession.query.filter_by(host_id=user.id).all():
-        clear_session_presence(session.token)
         db.session.delete(session)
     db.session.flush()
     for membership in TierForgeSessionMember.query.filter_by(
             user_id=user.id).all():
         session = membership.session
-        if session is not None:
-            clear_session_presence(session.token, user.id)
         if session is not None and isinstance(session.board, dict):
             split = session.board.get("split")
             if isinstance(split, dict) and str(user.id) in split:

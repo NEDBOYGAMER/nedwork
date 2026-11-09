@@ -61,5 +61,14 @@
     "url": "/timetable",
     "type": "Organizing",
     "description": "Timetablemaker"
+  },
+  {
+    "id": 17,
+    "name": "LiveCursor",
+    "image": null,
+    "permissions": [],
+    "url": "/livecursor",
+    "type": "Tools",
+    "description": "Move your mouse — the other person sees your cursor live."
   }
 ]
