@@ -5,11 +5,13 @@ import re
 from ..models import Session
 from ..permissions import required_permissions_for
 
+# No static_folder on purpose: Flask would auto-register /apps/static/<path>
+# serving every file under flask_app/apps/ raw (all .py sources, app data
+# JSON, uploads). The allowlisted catch-all below is the ONLY static door.
 apps_bp = Blueprint(
     'apps',
     __name__,
-    template_folder='.',    # Tells Flask to look inside flask_app/apps/ for templates
-    static_folder='.'
+    template_folder='.'    # Tells Flask to look inside flask_app/apps/ for templates
 )
 
 # The app's HTML page is the true gate: the catalog decides which

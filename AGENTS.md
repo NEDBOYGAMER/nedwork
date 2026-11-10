@@ -124,9 +124,12 @@ Apps live in `flask_app/apps/<name>/` and are self-contained:
 | static app (no API) | `controller_tester`, `trivia` | **no** | dynamic route `/<app_name>` in `flask_app/apps/routes.py` |
 | API app | `colors`, `links`, `townclaim`, `tierforge`, `timetable` | yes, own blueprint at `/apps/<name>` | registered in `blueprint_imports/apps.py` |
 
-- `apps_bp` is registered with `template_folder='.'` / `static_folder='.'`
-  pointing at `flask_app/apps/` itself — app HTML is `<app>/<app>.html`
-  colocated with the app folder, NOT in `flask_app/templates/`.
+- `apps_bp` is registered with `template_folder='.'` pointing at
+  `flask_app/apps/` itself — app HTML is `<app>/<app>.html` colocated with
+  the app folder, NOT in `flask_app/templates/`. There is deliberately NO
+  `static_folder` (Flask would auto-serve `/apps/static/<path>` raw — all
+  `.py` sources, app data JSON, uploads): the allowlisted
+  `/apps/<name>/<file>` catch-all is the only static door.
 - **`_page_gate(app_name)`** in `flask_app/apps/routes.py` is the single
   permission gate; it covers both the page route and the static catch-all
   (so `.html` files can't bypass permissions). Static JS/CSS is public by
@@ -192,12 +195,14 @@ stores now live in `instance/data/`).
   produce an inbox/TierForge-popup Join action; the host closing/reloading
   the app ends the session and guests keep the final board in their local
   autosave (starting/joining first flushes the pending personal autosave,
-  since session mode parks it); in-session boards use 4 auto-fit size levels
-  (height-aware, incl. compact) so live cursors (board fractions streamed
-  over the shared relay in `flask_app/apps/livecursor/ws_server.py`, co-op
-  and split) map across screen sizes; the Docker image starts that relay
-  beside waitress, and nginx still needs Upgrade proxying. The relay keeps
-  rooms in memory only. Full model + API in `__docs/apps.md`.
+  since session mode parks it); in-session boards are always 1:1 (no auto-fit
+  levels; oversized boards scroll), and live cursors (board-relative
+  fractions streamed over the WebSocket relay in
+  `flask_app/apps/tierforge/websocket.py`, co-op and split) track across the
+  whole window; the session banner is an actions-only bar (copy/person/✕,
+  host vs guest); the Docker image starts that relay beside waitress, and
+  nginx still needs Upgrade proxying. The relay keeps rooms in memory only.
+  Full model + API in `__docs/apps.md`.
 - **All cookies are unconditionally `Secure`** (session, csrf, admin —
   issued *and* cleared; no scheme sniffing left, so `X-Forwarded-Proto`
   / `PROXY_FIX_X_FOR` no longer matter for cookies). Consequences:

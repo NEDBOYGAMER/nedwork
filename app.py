@@ -47,13 +47,12 @@ def _grant_local_full_access():
                   f"{', '.join(missing)}", flush=True)
 
 
-def _start_live_cursor_ws():
-    """Local demo: run the LiveCursor WebSocket relay next to the dev server."""
+def _start_tierforge_ws():
     import threading
-    from flask_app.apps.livecursor.ws_server import run_server
+    from flask_app.apps.tierforge.websocket import run_server
     threading.Thread(
         target=run_server, args=("0.0.0.0", 5001), daemon=True).start()
-    print("[dev] LiveCursor WebSocket: ws://0.0.0.0:5001", flush=True)
+    print("[dev] Tierforge WebSocket: ws://0.0.0.0:5001", flush=True)
 
 
 if __name__ == '__main__':
@@ -61,5 +60,5 @@ if __name__ == '__main__':
     # The reloader runs this module in a parent and a serving child; only
     # the child must bind the WebSocket port.
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-        _start_live_cursor_ws()
+        _start_tierforge_ws()
     app.run(debug=True, use_reloader=True)

@@ -1994,80 +1994,26 @@ function isCoopSession() {
   return !!(sessionState && sessionState.mode === 'coop');
 }
 
-// Board layout arrives in one of four fixed size buckets. Everything that
-// affects wrapping is scaled by the same factor, so every bucket is a
-// uniform scale of the same design — that is what lets live cursors map
-// between members exactly. The compact bucket kicks in on 1680×900-class
-// screens so five tiers plus the pool still fit without feeling cramped.
-const SESSION_LEVELS = [
-  { name: 'large', scale: 1.25 },
-  { name: 'medium', scale: 1 },
-  { name: 'small', scale: 0.8 },
-  { name: 'compact', scale: 0.68 },
-];
-const SESSION_WIDTH_LEVELS = [
-  { name: 'large', minWidth: 1532 },
-  { name: 'medium', minWidth: 1232 },
-  { name: 'small', minWidth: 992 },
-  { name: 'compact', minWidth: 848 },
-];
+// The board is always laid out 1:1 (--session-scale stays at its default of
+// 1) — no size buckets to step through. Split-screen columns are the only
+// thing that still needs measuring: one equal-width column per member,
+// fitted to the viewport.
 const SESSION_GAP_PX = 24;
 const SESSION_IMAGE_SIZES = new Set([72, 120, 180, 260]);
 
-function sessionScale() {
-  // Largest level whose 1200px board fits both axes; step down when the
-  // window is too narrow OR too short, and fall back to the smallest
-  // level (scroll) on tiny screens.
-  const availW = Math.max(320, document.documentElement.clientWidth - 32);
-  const header = document.querySelector('header');
-  const headerH = header && getComputedStyle(header).display !== 'none'
-    ? header.offsetHeight : 0;
-  const banner = document.getElementById('sessionBanner');
-  const bannerH = banner && !banner.hidden ? banner.offsetHeight : 0;
-  const availH = Math.max(360,
-    document.documentElement.clientHeight - headerH - bannerH - 28);
-  const rowCount = Math.max(1, tiers.length || 5);
-  const rowH = Math.max(96, Number(settings.tierImgSize) + 24);
-  const poolH = Math.max(123, Number(settings.poolImgSize) + 24);
-  const designH = 78 + rowCount * rowH
-    + Math.max(0, rowCount - 1) * 10 + 25 + poolH + 40;
-  const level = SESSION_LEVELS.find(l =>
-    1200 * l.scale <= availW && designH * l.scale <= availH)
-    || SESSION_LEVELS[SESSION_LEVELS.length - 1];
-  return level.scale;
-}
-
-function sessionLevelName() {
-  const scale = sessionScale();
-  const level = SESSION_LEVELS.find(l => l.scale === scale);
-  return level ? level.name : 'small';
-}
-
-function sessionWidthLevel() {
-  const width = document.documentElement.clientWidth;
-  return SESSION_WIDTH_LEVELS.find(level => level.minWidth <= width)
-    || SESSION_WIDTH_LEVELS[SESSION_WIDTH_LEVELS.length - 1];
-}
-
-// Split columns use fixed pixel widths derived from the width level's
-// minimum screen width. The height-driven scale may differ between
-// members, but every split column at the same width level has identical
-// geometry, so cursor fractions still line up.
 function updateSplitWidth() {
   if (!sessionState || sessionState.mode !== 'split') return;
   const main = document.querySelector('main');
   if (!main) return;
   const members = Math.max(1, (sessionState.members || []).length);
-  const scale = sessionScale();
-  const level = sessionWidthLevel();
   const style = getComputedStyle(main);
   const padding = (parseFloat(style.paddingLeft) || 0)
     + (parseFloat(style.paddingRight) || 0);
-  const gap = SESSION_GAP_PX * scale;
+  const gap = SESSION_GAP_PX;
   const viewportWidth = document.documentElement.clientWidth;
   const mainWidth = members > 1
-    ? Math.max(320, Math.min(level.minWidth, viewportWidth - 8))
-    : 1200 * scale;
+    ? Math.max(360, viewportWidth - 8)
+    : 1200;
   const columnWidth = Math.max(180, Math.floor(
     (mainWidth - padding - (members - 1) * gap) / members));
   const peerCount = Math.max(1, members - 1);
@@ -2079,11 +2025,7 @@ function updateSplitWidth() {
 }
 
 function updateSessionScale() {
-  document.documentElement.style.setProperty(
-    '--session-scale', String(sessionScale()));
   updateSplitWidth();
-  const label = document.getElementById('sessionLevel');
-  if (label) label.textContent = sessionLevelName();
   renderWsCursors();
 }
 
@@ -2171,29 +2113,28 @@ function updateSessionBanner() {
   }
   const ended = sessionState.status === 'ended';
   banner.hidden = false;
+  const host = isSessionHost();
 
-  document.getElementById('sessionModeLabel').textContent =
-    sessionState.mode === 'coop' ? 'Co-op session' : 'Split-screen session';
-  document.getElementById('sessionTitleLabel').textContent =
-    sessionState.title || '';
+  // The banner is actions only: copy + invite for the host, and a single X
+  // that ends the session (host) or leaves it (guest).
+  document.getElementById('copyInviteBtn').hidden = ended || !host;
+  document.getElementById('inviteFriendsBtn').hidden = ended || !host;
 
-  const names = (sessionState.members || []).map(m => {
-    let label = m.username;
-    if (m.role === 'host') label += ' (host)';
-    if (m.userId === ME) label += ' (you)';
-    return label;
-  });
-  document.getElementById('sessionMembers').textContent =
-    ended ? 'Session ended' : names.join(' · ');
-
-  document.getElementById('copyInviteBtn').hidden = ended;
-  document.getElementById('inviteFriendsBtn').hidden =
-    ended || !isSessionHost();
-  document.getElementById('endSessionBtn').hidden = ended || !isSessionHost();
-
-  const leaveBtn = document.getElementById('leaveSessionBtn');
-  leaveBtn.hidden = !ended && isSessionHost();
-  leaveBtn.textContent = ended ? 'Exit session' : 'Leave session';
+  const xBtn = document.getElementById('endSessionBtn');
+  xBtn.hidden = false;
+  if (ended) {
+    xBtn.title = 'Exit session';
+    xBtn.classList.remove('btn-danger');
+    xBtn.classList.add('btn-secondary');
+  } else if (host) {
+    xBtn.title = 'End session';
+    xBtn.classList.add('btn-danger');
+    xBtn.classList.remove('btn-secondary');
+  } else {
+    xBtn.title = 'Leave session';
+    xBtn.classList.remove('btn-danger');
+    xBtn.classList.add('btn-secondary');
+  }
 
   // Split-screen shows the partner board in an equal-width column; co-op
   // already shows the same board, so there is nothing extra to show.
@@ -2239,8 +2180,16 @@ function updatePeerView() {
 
     const name = document.createElement('div');
     name.className = 'partner-board-name';
-    name.textContent = member.username
-      + (member.role === 'host' ? ' (host)' : '');
+    const nameText = document.createElement('span');
+    nameText.className = 'partner-board-name-text';
+    nameText.textContent = member.username;
+    name.appendChild(nameText);
+    if (member.role === 'host') {
+      const tag = document.createElement('span');
+      tag.className = 'partner-host-tag';
+      tag.textContent = 'Host';
+      name.appendChild(tag);
+    }
     inner.appendChild(name);
 
     const tierBoard = document.createElement('div');
@@ -2625,11 +2574,16 @@ function sendWsCursor() {
   const rect = surface.getBoundingClientRect();
   const w = surface.clientWidth || 1;
   const h = surface.clientHeight || 1;
-  // Keep tracking slightly outside the board so a cursor moving into the
-  // page margins glides off the edge instead of freezing at the border.
-  const x = Math.max(-0.25, Math.min(1.25,
+  // Track across the whole window: the fraction stays relative to the board
+  // but is clamped only by the window edges, so the cursor never freezes at
+  // the board border — it keeps moving until it leaves the window.
+  const minX = (0 - rect.left - surface.clientLeft) / w;
+  const maxX = (window.innerWidth - rect.left - surface.clientLeft) / w;
+  const minY = (0 - rect.top - surface.clientTop) / h;
+  const maxY = (window.innerHeight - rect.top - surface.clientTop) / h;
+  const x = Math.max(minX, Math.min(maxX,
     (presencePointer.x - rect.left - surface.clientLeft) / w));
-  const y = Math.max(-0.25, Math.min(1.25,
+  const y = Math.max(minY, Math.min(maxY,
     (presencePointer.y - rect.top - surface.clientTop) / h));
   const dragged = dragItem ? getImage(dragItem.imgId) : null;
   try {
@@ -2852,8 +2806,8 @@ function handleSessionWsMessage(event) {
     uid: msg.uid,
     name: msg.name,
     color: msg.color,
-    x: Math.min(1.25, Math.max(-0.25, Number(msg.x) || 0)),
-    y: Math.min(1.25, Math.max(-0.25, Number(msg.y) || 0)),
+    x: Math.min(4, Math.max(-4, Number(msg.x) || 0)),
+    y: Math.min(4, Math.max(-4, Number(msg.y) || 0)),
     dragging: !!msg.dragging,
     ref: msg.ref && msg.ref.id
       ? { owner: Number(msg.ref.owner), id: String(msg.ref.id) }
@@ -3408,10 +3362,11 @@ document.getElementById('createSessionBtn').addEventListener('click', async () =
 });
 
 document.getElementById('copyInviteBtn').addEventListener('click', copyInviteLink);
-document.getElementById('endSessionBtn').addEventListener('click', endSession);
-document.getElementById('leaveSessionBtn').addEventListener('click', () => {
+document.getElementById('endSessionBtn').addEventListener('click', () => {
   if (sessionState && sessionState.status === 'ended') {
     exitSession();
+  } else if (isSessionHost()) {
+    endSession();
   } else {
     leaveSession();
   }

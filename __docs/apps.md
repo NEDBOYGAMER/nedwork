@@ -74,26 +74,23 @@ phones (< 1000 px) cannot start or join a session.
   user's rows by `purge_user`. Both modes enforce member caps server-side:
   co-op 10, split 3 (host included); a full session answers `409`.
 
-### Screen-size levels and live cursors
+### Board layout and live cursors
 
-- In sessions the board is a fixed "whiteboard": `--session-scale` is picked
-  automatically as the largest level whose 1200 px board fits the window
-  both horizontally and vertically — 1.25 (1500 px, large), 1.0 (1200 px,
-  medium), 0.8 (960 px, small), 0.68 (816 px, compact); the smallest is used
-  (with scrolling) if even that overflows. The compact bucket is aimed at a
-  five-tier board plus pool fitting a 1680×900-class browser window without
-  scrolling. The session banner shows the active level. Every dimension that
-  affects wrapping (image sizes, label width, gaps, paddings) scales by the
-  same factor, so each level is a uniform scale of the same layout. The
-  duplicate board title is hidden in sessions (the banner owns the session
-  title), which keeps the compact board inside a 1680×900-class viewport.
-  The header, banner and background stay fluid HUD; only the tierlist is the
-  shared fixed board.
-- Split-screen columns are sized in **fixed pixels** from a separate
-  width-only level table (minimum viewport widths 1532 / 1232 / 992 / 848).
-  Each column is `(level min width − horizontal padding − gaps) / members`,
-  so two- and three-member columns stay geometrically identical to their
-  peers even when the height-driven content scale differs.
+- The board is always laid out **1:1**: `--session-scale` stays at its
+  default of 1 and there are no size buckets. Every dimension that affects
+  wrapping (image sizes, label width, gaps, paddings) is identical on every
+  member's screen, which is exactly what lets live cursors map between
+  members. There is no auto-shrink — a board larger than the window just
+  scrolls. The tier title stays in its normal spot above the board, same as
+  single-player mode.
+- Split-screen columns are sized in **fixed pixels** fitted to the viewport:
+  each column is `(viewport width − horizontal padding − gaps) / members`.
+  Two- and three-member columns at the same viewport width are geometrically
+  identical to their peers, so cursor fractions still line up.
+- The session banner is an actions-only bar (copy invite link / invite
+  friends for the host, plus a single ✕ that ends the session for the host
+  or leaves it for a guest) — the session title and mode are no longer shown
+  there.
 - Image sizes are shared live inside a session: the settings modal's two
   size selects write `board["settings"]` through
   `POST /apps/tierforge/sessions/<token>/settings` and every member adopts
@@ -105,12 +102,13 @@ phones (< 1000 px) cannot start or join a session.
   the shared relay at `/apps/tierforge/ws?room=<sessionToken>&client=<id>`
   (the session token is the capability, like the invite link). Each client
   sends its pointer as a fraction of its own board, and peers render it on
-  the same board at the same fraction - levels differ per screen, the
-  uniform scale makes the point identical. Cursors carry the member's name
-  and a per-user color, and keep tracking slightly outside the board edges
-  (clamped to -0.25…1.25) instead of freezing at the border. While dragging,
-  the cursor message carries the image `{owner, id}` and peers render a
-  thumbnail ghost beside the cursor.
+  the same board at the same fraction — the uniform 1:1 scale makes the point
+  identical. Cursors carry the member's name and a per-user color, and track
+  across the whole window: the pointer is a fraction of the sender's board
+  clamped only by the window edges, so it glides off the board and keeps
+  moving until it leaves the page instead of freezing at the border. While
+  dragging, the cursor message carries the image `{owner, id}` and peers
+  render a thumbnail ghost beside the cursor.
 - While the host drags, guests follow the host's scroll fraction; idle
   scrolling never yanks the guest. The relay also forwards discrete
   `board` events (`move` / `add` / `remove` / `settings`) so placements
@@ -139,14 +137,13 @@ phones (< 1000 px) cannot start or join a session.
   joining from an already loaded board flushes the pending personal
   autosave first, so the session's "parked board" never loses recent edits.
 - **Live cursors and board hints over WebSocket**:
-  `flask_app/apps/livecursor/ws_server.py` is a shared relay (also used by
-  LiveCursor). Rooms are capability-token keyed; the relay forwards
-  `{name, color, x, y, dragging?, ref?, scroll?}` cursor messages plus
-  sanitised TierForge `board` events to the other room members and
-  broadcasts a leave on disconnect. The Docker image starts the relay on
-  port 5001 beside waitress; nginx still has to proxy
-  `/apps/tierforge/ws` and `/apps/livecursor/ws` to it with Upgrade headers
-  (see `__docs/structure.md` §6).
+  `flask_app/apps/tierforge/websocket.py` is the relay. Rooms are
+  capability-token keyed; the relay forwards `{name, color, x, y, dragging?,
+  ref?, scroll?}` cursor messages plus sanitised TierForge `board` events to
+  the other room members and broadcasts a leave on disconnect. The Docker
+  image starts the relay on port 5001 beside waitress; nginx still has to
+  proxy `/apps/tierforge/ws` to it with Upgrade headers (see
+  `__docs/structure.md` §6).
 - **Idle sessions auto-end after 6 hours** without a join/board/remove
   write. The check is lazy: every session route calls `_maybe_end_idle` via
   `_get_session_by_token` (presence pings deliberately do not count — they

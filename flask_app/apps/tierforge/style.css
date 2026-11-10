@@ -703,10 +703,9 @@ body.blank-mode .image-pool-section {
 .session-banner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-  padding: var(--space-3) var(--space-6);
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
   background: var(--accent-soft);
   border-bottom: 1px solid var(--accent);
   position: relative;
@@ -714,51 +713,15 @@ body.blank-mode .image-pool-section {
 }
 .session-banner[hidden] { display: none; }
 
-.session-info {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  min-width: 0;
-}
-
-.session-badge {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--accent-ink);
-  background: var(--accent);
-  border-radius: 999px;
-  padding: 3px 10px;
-  white-space: nowrap;
-}
-
-.session-title {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 15px;
-}
-
-.session-members {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
 .session-actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
 }
 
 body.session-ended .session-banner {
   background: var(--surface-2);
   border-bottom-color: var(--line);
-}
-body.session-ended .session-badge {
-  background: var(--text-muted);
-  color: var(--surface);
 }
 
 /* Actions that don't apply while a session is live / has ended */
@@ -858,11 +821,9 @@ body.session-ended .img-remove { display: none; }
 /* ==========================================================================
    Multiplayer session layout
    --------------------------------------------------------------------------
-   During a session the board is rendered at a fixed pixel width picked from
-   one of four size buckets (set as --session-scale by app.js). Every
-   horizontal dimension that affects wrapping scales by that factor, so the
-   same board is geometrically identical (up to a uniform scale) on every
-   member's screen. That is what lets live cursors map exactly.
+   The board is always laid out 1:1 (--session-scale stays at its default of
+   1) — no size buckets. The uniform scale is what lets live cursors map
+   exactly between members' screens.
    ========================================================================== */
 
 :root {
@@ -892,12 +853,8 @@ body.in-session main {
   gap: calc(var(--space-5) * var(--session-scale));
 }
 
-/* The session banner already shows the title; hiding the duplicate heading
-   is what lets the compact board fit a 1680x900-class viewport. */
-body.in-session .tier-title-wrap {
-  display: none;
-}
-
+/* The tier title stays in its normal spot above the board, exactly like
+   single-player mode. */
 body.in-session .session-layout,
 body.in-session .board-area {
   gap: calc(var(--space-5) * var(--session-scale));
@@ -1025,14 +982,32 @@ body.session-split .partner-board-inner {
   min-width: 0;
   position: relative;
 }
-.session-level-badge {
-  background: var(--surface-2);
-  color: var(--text-muted);
-}
 .partner-board-name {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(6px * var(--session-scale));
   font-size: calc(13px * var(--session-scale));
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--text);
+}
+.partner-board-name::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  flex-shrink: 0;
+}
+.partner-host-tag {
+  font-size: calc(10px * var(--session-scale));
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 1px calc(6px * var(--session-scale));
 }
 .partner-board .img-card { cursor: default; }
 .partner-board .img-card:hover {
@@ -1114,9 +1089,6 @@ body.session-guest.session-coop .img-remove {
 }
 body.session-guest #copyInviteBtn {
   display: none;
-}
-body.session-guest .session-banner {
-  padding-left: 64px;
 }
 
 .guest-close {

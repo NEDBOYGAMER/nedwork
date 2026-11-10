@@ -96,17 +96,16 @@
   </div>
 
   <div class="session-banner" id="sessionBanner" hidden>
-    <div class="session-info">
-      <span class="session-badge" id="sessionModeLabel">Co-op session</span>
-      <span class="session-badge session-level-badge" id="sessionLevel"></span>
-      <span class="session-title" id="sessionTitleLabel"></span>
-      <span class="session-members" id="sessionMembers"></span>
-    </div>
     <div class="session-actions">
-      <button class="btn btn-secondary btn-sm" id="copyInviteBtn">Copy invite link</button>
-      <button class="btn btn-secondary btn-sm" id="inviteFriendsBtn" hidden>Invite friends</button>
-      <button class="btn btn-danger btn-sm" id="endSessionBtn" hidden>End session</button>
-      <button class="btn btn-secondary btn-sm" id="leaveSessionBtn" hidden>Leave session</button>
+      <button class="btn btn-secondary btn-icon" id="copyInviteBtn" title="Copy invite link" aria-label="Copy invite link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+      <button class="btn btn-secondary btn-icon" id="inviteFriendsBtn" hidden title="Invite friends" aria-label="Invite friends">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </button>
+      <button class="btn btn-secondary btn-icon" id="endSessionBtn" title="End session" aria-label="End or leave session">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
     </div>
   </div>
 
