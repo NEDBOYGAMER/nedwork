@@ -48,6 +48,9 @@ let sessionPushTimer = null;
 let sessionDirty     = false;
 let applyingRemote   = false;
 let localChangeSeq   = 0;
+let initialJoinToken = new URLSearchParams(location.search).get('s');
+let replaceCatalogOnPush = false;
+let replaceCatalogGeneration = 0;
 
 // Live cursors come over the shared WebSocket relay: we send our pointer
 // relative to our own board and render everyone else's cursors on the
@@ -613,6 +616,7 @@ function makeCard(img, tierId) {
     ghost.appendChild(gi);
     e.dataTransfer.setDragImage(ghost, 36, 36);
     e.dataTransfer.effectAllowed = 'move';
+    sendWsCursor();
   });
 
   card.addEventListener('dragend', () => {
@@ -622,6 +626,7 @@ function makeCard(img, tierId) {
     document.querySelectorAll('.drag-active').forEach(el => el.classList.remove('drag-active'));
     document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
     hideDropIndicator();
+    sendWsCursor();
   });
 
   return card;
@@ -1438,12 +1443,21 @@ document.getElementById('loadFileInput').addEventListener('change', (e) => {
 document.getElementById('importLinkBtn').addEventListener('click', async () => {
   closeImportMenu();
 
+  if (sessionToken && !isSessionHost()) {
+    await alertDialog(
+      'Only the session host can replace the shared board. Ask the host to import it.');
+    return;
+  }
+
   const url = await promptDialog('Paste a TierMaker template link (tiermaker.com/create/…):', {
     title: 'Import from link',
     okText: 'Import',
   });
   if (!url) return;
-  if (!(await confirmDialog('Replace the current board with the imported list?', { danger: true }))) return;
+  const confirmText = sessionToken
+    ? 'Replace the shared board for everyone with the imported list?'
+    : 'Replace the current board with the imported list?';
+  if (!(await confirmDialog(confirmText, { danger: true }))) return;
 
   const btn = document.getElementById('importLinkBtn');
   btn.disabled = true;
@@ -1499,9 +1513,12 @@ document.getElementById('importLinkBtn').addEventListener('click', async () => {
       document.getElementById('tierTitle').value = data.title;
     }
     if (sessionToken) {
-      if (sessionState && sessionState.mode === 'coop') {
-        sessionCatalog = collectBoardRefs(tiers, pool);
-      }
+      // Only the host reaches this path. The next board push replaces the
+      // shared catalog atomically so an older import can't linger as
+      // duplicate pool entries.
+      replaceCatalogOnPush = true;
+      replaceCatalogGeneration += 1;
+      sessionCatalog = collectBoardRefs(tiers, pool);
       render();
     } else {
       render();
@@ -1893,6 +1910,7 @@ function sessionBoardPayload() {
       catalog,
       tiers: tiersToWire(),
       pool: pool.map(imageToRef),
+      replace_catalog: replaceCatalogOnPush,
     };
   }
   return {
@@ -1900,6 +1918,7 @@ function sessionBoardPayload() {
     catalog,
     my_tiers: tiersToWire(),
     my_pool_order: pool.map(imageToRef),
+    replace_catalog: replaceCatalogOnPush,
   };
 }
 
@@ -1986,6 +2005,13 @@ const SESSION_LEVELS = [
   { name: 'small', scale: 0.8 },
   { name: 'compact', scale: 0.68 },
 ];
+const SESSION_WIDTH_LEVELS = [
+  { name: 'large', minWidth: 1532 },
+  { name: 'medium', minWidth: 1232 },
+  { name: 'small', minWidth: 992 },
+  { name: 'compact', minWidth: 848 },
+];
+const SESSION_GAP_PX = 24;
 const SESSION_IMAGE_SIZES = new Set([72, 120, 180, 260]);
 
 function sessionScale() {
@@ -2017,9 +2043,45 @@ function sessionLevelName() {
   return level ? level.name : 'small';
 }
 
+function sessionWidthLevel() {
+  const width = document.documentElement.clientWidth;
+  return SESSION_WIDTH_LEVELS.find(level => level.minWidth <= width)
+    || SESSION_WIDTH_LEVELS[SESSION_WIDTH_LEVELS.length - 1];
+}
+
+// Split columns use fixed pixel widths derived from the width level's
+// minimum screen width. The height-driven scale may differ between
+// members, but every split column at the same width level has identical
+// geometry, so cursor fractions still line up.
+function updateSplitWidth() {
+  if (!sessionState || sessionState.mode !== 'split') return;
+  const main = document.querySelector('main');
+  if (!main) return;
+  const members = Math.max(1, (sessionState.members || []).length);
+  const scale = sessionScale();
+  const level = sessionWidthLevel();
+  const style = getComputedStyle(main);
+  const padding = (parseFloat(style.paddingLeft) || 0)
+    + (parseFloat(style.paddingRight) || 0);
+  const gap = SESSION_GAP_PX * scale;
+  const viewportWidth = document.documentElement.clientWidth;
+  const mainWidth = members > 1
+    ? Math.max(320, Math.min(level.minWidth, viewportWidth - 8))
+    : 1200 * scale;
+  const columnWidth = Math.max(180, Math.floor(
+    (mainWidth - padding - (members - 1) * gap) / members));
+  const peerCount = Math.max(1, members - 1);
+  const peerWidth = peerCount * columnWidth + (peerCount - 1) * gap;
+  const root = document.documentElement.style;
+  root.setProperty('--split-main-w', `${mainWidth}px`);
+  root.setProperty('--split-col-w', `${columnWidth}px`);
+  root.setProperty('--split-peer-w', `${peerWidth}px`);
+}
+
 function updateSessionScale() {
   document.documentElement.style.setProperty(
     '--session-scale', String(sessionScale()));
+  updateSplitWidth();
   const label = document.getElementById('sessionLevel');
   if (label) label.textContent = sessionLevelName();
   renderWsCursors();
@@ -2136,6 +2198,7 @@ function updateSessionBanner() {
   // Split-screen shows the partner board in an equal-width column; co-op
   // already shows the same board, so there is nothing extra to show.
   document.getElementById('peerView').hidden = sessionState.mode !== 'split';
+  if (sessionState.mode === 'split') updateSessionScale();
 }
 
 // Read-only full-size render of every other member's split-screen board.
@@ -2359,6 +2422,8 @@ async function pushSessionBoard(attempt = 0) {
   if (sessionState.status !== 'open') return;
 
   const seqAtSend = localChangeSeq;
+  const replaceSent = replaceCatalogOnPush;
+  const replaceGeneration = replaceCatalogGeneration;
   try {
     const res = await fetch(`${API_BASE}/sessions/${sessionToken}/board`, {
       method: 'POST',
@@ -2401,6 +2466,9 @@ async function pushSessionBoard(attempt = 0) {
     }
     if (!res.ok) throw new Error(`Sync failed (${res.status})`);
 
+    if (replaceSent && replaceGeneration === replaceCatalogGeneration) {
+      replaceCatalogOnPush = false;
+    }
     const data = await res.json();
     if (!sessionToken) return;
     sessionState = data;
@@ -2563,6 +2631,7 @@ function sendWsCursor() {
     (presencePointer.x - rect.left - surface.clientLeft) / w));
   const y = Math.max(-0.25, Math.min(1.25,
     (presencePointer.y - rect.top - surface.clientTop) / h));
+  const dragged = dragItem ? getImage(dragItem.imgId) : null;
   try {
     sessionWs.send(JSON.stringify({
       type: 'cursor',
@@ -2572,6 +2641,7 @@ function sendWsCursor() {
       x,
       y,
       dragging: !!dragItem,
+      ref: dragged ? imageToRef(dragged) : null,
       scroll: scrollFraction(),
     }));
   } catch (_) {
@@ -2614,6 +2684,23 @@ function ensureWsCursor(client, entry) {
   const label = el.querySelector('.remote-cursor-label');
   label.textContent = entry.name || 'Guest';
   label.style.background = entry.color || '#6c5ce7';
+  let ghost = el.querySelector('.remote-cursor-ghost');
+  if (entry.dragging && entry.ref && entry.ref.id) {
+    if (!ghost) {
+      ghost = document.createElement('img');
+      ghost.className = 'remote-cursor-ghost';
+      ghost.alt = '';
+      el.appendChild(ghost);
+    }
+    const refKey = `${entry.ref.owner}:${entry.ref.id}`;
+    if (ghost.dataset.refKey !== refKey) {
+      ghost.src = sessionImageUrl(entry.ref.owner, entry.ref.id, 'thumb');
+      ghost.dataset.refKey = refKey;
+    }
+    ghost.hidden = false;
+  } else if (ghost) {
+    ghost.hidden = true;
+  }
 }
 
 function renderWsCursors() {
@@ -2768,6 +2855,9 @@ function handleSessionWsMessage(event) {
     x: Math.min(1.25, Math.max(-0.25, Number(msg.x) || 0)),
     y: Math.min(1.25, Math.max(-0.25, Number(msg.y) || 0)),
     dragging: !!msg.dragging,
+    ref: msg.ref && msg.ref.id
+      ? { owner: Number(msg.ref.owner), id: String(msg.ref.id) }
+      : null,
     scroll: Number(msg.scroll) || 0,
     el: previous ? previous.el : null,
   };
@@ -2885,6 +2975,12 @@ function enterSessionState(state) {
   sessionState = state;
   sessionPreloaded = new Set();
   sessionEndSent = false;
+  replaceCatalogOnPush = false;
+  replaceCatalogGeneration += 1;
+  initialJoinToken = null;
+  if (invitePopupState && invitePopupState.token === state.token) {
+    hideInvitePopup();
+  }
   clearTimeout(sessionSettingsTimer);
   sessionSettingsTimer = null;
   updateSessionScale();
@@ -2946,6 +3042,8 @@ function exitSession() {
   sessionPreloaded = new Set();
   sessionDirty = false;
   applyingRemote = false;
+  replaceCatalogOnPush = false;
+  replaceCatalogGeneration += 1;
   document.body.classList.remove(
     'in-session', 'session-coop', 'session-split', 'session-ended',
     'session-host', 'session-guest');
@@ -3074,26 +3172,8 @@ function inviteActionBtn(text, cls, onClick) {
 async function renderInviteModal() {
   if (!sessionToken || !isSessionHost()) return;
   const friendsEl = document.getElementById('inviteFriendsList');
-  const pendingEl = document.getElementById('invitePendingList');
-  const pending = (sessionState && sessionState.pending) || [];
   const memberIds = new Set(
     ((sessionState && sessionState.members) || []).map(m => m.userId));
-  const pendingIds = new Set(pending.map(p => p.userId));
-
-  pendingEl.innerHTML = '';
-  if (pending.length === 0) {
-    pendingEl.innerHTML =
-      '<div class="invite-empty">No pending invites.</div>';
-  } else {
-    pending.forEach(p => {
-      pendingEl.appendChild(inviteRow(p.username, [
-        inviteActionBtn('Approve', 'btn-primary',
-          () => approveInvite(p.userId)),
-        inviteActionBtn('Deny', 'btn-secondary',
-          () => denyInvite(p.userId)),
-      ]));
-    });
-  }
 
   friendsEl.textContent = 'Loading…';
   let friends = [];
@@ -3106,8 +3186,7 @@ async function renderInviteModal() {
   } catch (_) { /* offline — show the empty state */ }
 
   friendsEl.innerHTML = '';
-  const available = friends.filter(
-    f => !memberIds.has(f.id) && !pendingIds.has(f.id));
+  const available = friends.filter(f => !memberIds.has(f.id));
   if (available.length === 0) {
     friendsEl.innerHTML =
       '<div class="invite-empty">No friends left to invite.</div>';
@@ -3146,33 +3225,6 @@ async function inviteFriend(userId) {
   } catch (_) {
     await alertDialog('Could not reach the server.');
   }
-}
-
-async function memberAction(path) {
-  try {
-    const res = await fetch(`${API_BASE}/sessions/${sessionToken}${path}`, {
-      method: 'POST',
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!sessionToken) return;
-    if (!res.ok) {
-      await alertDialog(data.error || `Action failed (${res.status})`);
-      return;
-    }
-    sessionState = data;
-    updateSessionBanner();
-    if (sessionState.mode === 'split') updatePeerView();
-    renderInviteModal();
-  } catch (_) {
-    await alertDialog('Could not reach the server.');
-  }
-}
-
-function approveInvite(userId) {
-  return memberAction(`/members/${userId}/approve`);
-}
-function denyInvite(userId) {
-  return memberAction(`/members/${userId}/deny`);
 }
 
 // ── In-app invite popup ────────────────────────────────────────────
@@ -3222,11 +3274,13 @@ async function pollInvites() {
     const res = await fetch('/notifications/api/list');
     if (!res.ok) return;
     const data = await res.json();
+    const activeToken = sessionToken || initialJoinToken;
     const rows = (data.notifications || []).filter(n => {
       if (n.read || !n.payload || !n.payload.session_token) return false;
-      if (n.payload.session_token === sessionToken) return false;
+      if (n.payload.session_token === activeToken) return false;
       if (n.type !== 'tierforge_join_request'
           && n.type !== 'tierforge_invite_approved') return false;
+      if (!n.action || n.action.kind !== 'tierforge') return false;
       return !inviteDismissed.has(n.id);
     });
     if (rows.length === 0) hideInvitePopup();
@@ -3246,6 +3300,14 @@ async function markInviteRead(id) {
   } catch (_) { /* best effort */ }
 }
 
+let invitePollStarted = false;
+function startInvitePolling() {
+  if (invitePollStarted) return;
+  invitePollStarted = true;
+  setTimeout(pollInvites, 1500);
+  setInterval(pollInvites, INVITE_POLL_MS);
+}
+
 document.getElementById('invitePopupJoin').addEventListener('click', async () => {
   const invite = invitePopupState;
   if (!invite) return;
@@ -3256,10 +3318,13 @@ document.getElementById('invitePopupJoin').addEventListener('click', async () =>
     return;
   }
   markInviteRead(invite.id);
+  initialJoinToken = invite.token;
   await parkPersonalBoard();
   if (await enterSessionFromLink(invite.token)) {
     history.replaceState(
       null, '', `${location.pathname}?s=${invite.token}`);
+  } else {
+    initialJoinToken = null;
   }
 });
 
@@ -3270,9 +3335,6 @@ document.getElementById('invitePopupDismiss').addEventListener('click', () => {
   }
   hideInvitePopup();
 });
-
-setTimeout(pollInvites, 1500);
-setInterval(pollInvites, INVITE_POLL_MS);
 
 document.getElementById('multiplayerBtn').addEventListener('click', () => {
   if (!ME) {
@@ -3415,13 +3477,17 @@ document.body.appendChild(ghost);
 // access is async, so the rest of setup waits on this IIFE.
 (async () => {
   updateSessionScale();
-  const token = new URLSearchParams(location.search).get('s');
+  const token = initialJoinToken;
   if (token && /^[0-9a-f]{32}$/.test(token) && ME) {
     if (await enterSessionFromLink(token)) {
+      startInvitePolling();
       setupPoolDropZone();
       return;
     }
+    initialJoinToken = null;
     history.replaceState(null, '', location.pathname);
+  } else {
+    initialJoinToken = null;
   }
 
   if (await loadAutosave()) {
@@ -3429,6 +3495,7 @@ document.body.appendChild(ghost);
   }
   setupPoolDropZone();
   render();
+  startInvitePolling();
 })();
 
 // Also catch the moment the page is about to unload, as a last-chance save.

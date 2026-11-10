@@ -6,9 +6,11 @@ touched). Four logged-in users walk the whole link-session flow:
   upload -> create co-op session -> guest joins -> guest re-ranks only
   within the host's tier structure -> stale-version 409 -> push -> leave /
   end -> split session (shared catalog, per-member ranking, three-member
-  cap, shared image sizes) -> host-only tombstoned deletions -> direct
-  friend invites + inbox action ->
-  account purge cleans hosted sessions and the member's split board entry.
+  cap, shared image sizes) -> host-only tombstoned deletions -> host
+  TierMaker-style catalog replacement (split + co-op, stale pushes cannot
+  resurrect old refs) -> legacy pending invite activation -> direct friend
+  invites + inbox action -> account purge cleans hosted sessions and the
+  member's split board entry.
 
 Usage:  python stuff/check_tierforge_sessions.py
 """
@@ -316,9 +318,15 @@ check("invalid sizes fall back to the defaults",
 guest_split = guest.req("POST", f"/apps/tierforge/sessions/{stoken}/join",
                         name="guest joins split session")
 gversion = guest_split.get("version")
-check("guest split entry exists",
-      str(GUEST_ID) in (guest_split.get("board", {}).get("split") or {}),
-      str(guest_split.get("board", {}).get("split")))
+guest_entry = (guest_split.get("board", {}).get("split") or {}) \
+    .get(str(GUEST_ID), {})
+check("guest split entry exists", bool(guest_entry), str(guest_entry))
+check("guest split entry copies the host tier structure",
+      [t.get("label") for t in guest_entry.get("tiers") or []] == ["S"]
+      and [t.get("color") for t in guest_entry.get("tiers") or []]
+      == ["#e63946"]
+      and all(not t.get("images") for t in guest_entry.get("tiers") or []),
+      str(guest_entry))
 
 guest.req("POST", f"/apps/tierforge/sessions/{stoken}/board", json={
     "base_version": gversion,
@@ -425,12 +433,136 @@ check("stale co-op push cannot resurrect the image",
 host.req("POST", f"/apps/tierforge/sessions/{dtoken}/end",
          name="host ends delete-test session")
 
+print("== host replaces the shared catalog (TierMaker import) ==")
+img2 = host.upload()
+ref2 = {"id": img2["id"], "owner": HOST_ID, "name": img2["name"]}
+replace = host.req("POST", "/apps/tierforge/sessions", json={
+    "mode": "split", "title": "Smoke replace",
+    "catalog": [ref], "tiers": tiers, "pool": [],
+}, expect=201, name="host creates replace-test split session")
+rtoken = replace.get("token", "")
+guest_replace = guest.req("POST", f"/apps/tierforge/sessions/{rtoken}/join",
+                          name="guest joins replace-test session")
+guest_pushed = guest.req("POST", f"/apps/tierforge/sessions/{rtoken}/board", json={
+    "base_version": guest_replace.get("version"),
+    "catalog": [ref, ref2],
+    "my_tiers": [{"id": "s1", "label": "S", "color": "#e63946",
+                  "images": [ref]}],
+    "my_pool_order": [],
+}, name="guest places the old image before the replacement")
+rversion = guest_pushed.get("version")
+guest.req("POST", f"/apps/tierforge/sessions/{rtoken}/board", json={
+    "base_version": rversion,
+    "catalog": [ref2], "replace_catalog": True,
+    "my_tiers": [{"id": "r", "label": "R", "color": "#457b9d",
+                  "images": [ref2]}],
+    "my_pool_order": [],
+}, expect=403, name="guest cannot replace the shared catalog")
+replaced = host.req("POST", f"/apps/tierforge/sessions/{rtoken}/board", json={
+    "base_version": rversion,
+    "catalog": [ref2], "replace_catalog": True,
+    "my_tiers": [{"id": "r", "label": "R", "color": "#457b9d",
+                  "images": [ref2]}],
+    "my_pool_order": [],
+}, name="host replaces the shared catalog")
+rboard = replaced.get("board") or {}
+check("replacement catalog contains only the new image",
+      [(c.get("id"), c.get("owner"))
+       for c in rboard.get("catalog") or []] == [(img2["id"], HOST_ID)],
+      str(rboard.get("catalog")))
+check("old catalog image is tombstoned",
+      any(c.get("id") == img["id"] for c in rboard.get("removed") or []),
+      str(rboard.get("removed")))
+replaced_guest = (rboard.get("split") or {}).get(str(GUEST_ID), {})
+check("guest tier structure survives replacement",
+      [t.get("label") for t in replaced_guest.get("tiers") or []] == ["S"],
+      str(replaced_guest))
+check("guest placements are cleared by replacement",
+      all(not t.get("images") for t in replaced_guest.get("tiers") or [])
+      and (replaced_guest.get("pool_order") or []) == [],
+      str(replaced_guest))
+stale_replace = guest.req(
+    "POST", f"/apps/tierforge/sessions/{rtoken}/board", json={
+        "base_version": replaced.get("version"),
+        "catalog": [ref, ref2],
+        "my_tiers": [{"id": "s1", "label": "S", "color": "#e63946",
+                      "images": [ref]}],
+        "my_pool_order": [],
+    }, name="stale guest push after replacement")
+check("stale push cannot resurrect the replaced image",
+      all(c.get("id") != img["id"]
+          for c in (stale_replace.get("board") or {}).get("catalog") or []),
+      str((stale_replace.get("board") or {}).get("catalog")))
+restored = host.req("POST", f"/apps/tierforge/sessions/{rtoken}/board", json={
+    "base_version": stale_replace.get("version"),
+    "catalog": [ref, ref2], "replace_catalog": True,
+    "my_tiers": [{"id": "r", "label": "R", "color": "#457b9d",
+                  "images": [ref, ref2]}],
+    "my_pool_order": [],
+}, name="host re-imports and restores the removed image")
+restored_ids = [c.get("id") for c in
+                (restored.get("board") or {}).get("catalog") or []]
+check("replacement can bring back a previously removed image",
+      restored_ids == [img["id"], img2["id"]], str(restored_ids))
+host.req("POST", f"/apps/tierforge/sessions/{rtoken}/end",
+         name="host ends replace-test session")
+
+coop_replace = host.req("POST", "/apps/tierforge/sessions", json={
+    "mode": "coop", "title": "Smoke replace co-op",
+    "catalog": [ref], "tiers": [
+        {"id": "t", "label": "T", "color": "#2a9d8f", "images": [ref]},
+    ], "pool": [],
+}, expect=201, name="host creates replace-test co-op session")
+ctoken = coop_replace.get("token", "")
+coop_join = guest.req("POST", f"/apps/tierforge/sessions/{ctoken}/join",
+                      name="guest joins replace-test co-op session")
+coop_replaced = host.req("POST", f"/apps/tierforge/sessions/{ctoken}/board", json={
+    "base_version": coop_join.get("version"),
+    "catalog": [ref2], "replace_catalog": True,
+    "tiers": [{"id": "r", "label": "R", "color": "#457b9d",
+               "images": [ref2]}],
+    "pool": [],
+}, name="host replaces the co-op catalog")
+cboard = coop_replaced.get("board") or {}
+check("co-op replacement keeps only the new catalog",
+      [c.get("id") for c in cboard.get("catalog") or []] == [img2["id"]],
+      str(cboard.get("catalog")))
+check("co-op replacement tombstones the old catalog",
+      any(c.get("id") == img["id"] for c in cboard.get("removed") or []),
+      str(cboard.get("removed")))
+coop_stale = guest.req(
+    "POST", f"/apps/tierforge/sessions/{ctoken}/board", json={
+        "base_version": coop_replaced.get("version"),
+        "catalog": [ref], "tiers": [
+            {"id": "t", "label": "T", "color": "#2a9d8f", "images": [ref]},
+        ], "pool": [],
+    }, name="guest pushes a stale co-op board after replacement")
+check("stale co-op push cannot resurrect the replaced image",
+      all(c.get("id") != img["id"]
+          for c in (coop_stale.get("board") or {}).get("catalog") or []),
+      str((coop_stale.get("board") or {}).get("catalog")))
+host.req("POST", f"/apps/tierforge/sessions/{ctoken}/end",
+         name="host ends replace-test co-op session")
+
 print("== friend invites (direct join) ==")
 inv = host.req("POST", "/apps/tierforge/sessions", json={
     "mode": "coop", "title": "Smoke invites", "catalog": [], "tiers": [],
     "pool": [],
 }, expect=201, name="host creates invite-test session")
 itoken = inv.get("token", "")
+with app.app_context():
+    invite_row = TierForgeSession.query.filter_by(token=itoken).first()
+    db.session.add(TierForgeSessionMember(
+        session_id=invite_row.id, user_id=THIRD_ID,
+        role="member", status="pending"))
+    db.session.commit()
+pending_join = third.req(
+    "POST", f"/apps/tierforge/sessions/{itoken}/join",
+    name="legacy pending member joins via invite link")
+check("legacy pending row becomes active",
+      any(m.get("userId") == THIRD_ID
+          for m in pending_join.get("members") or []),
+      str(pending_join.get("members")))
 friend.req("POST", f"/apps/tierforge/sessions/{itoken}/invite",
            json={"user_id": FRIEND_ID},
            expect=403, name="non-host cannot invite")
@@ -444,8 +576,8 @@ check("invited friend is active immediately",
       any(m.get("userId") == FRIEND_ID
           for m in invited.get("members") or []),
       str(invited.get("members")))
-check("no pending approval row for a friend invite",
-      not (invited.get("pending") or []), str(invited.get("pending")))
+check("session payload no longer exposes approval state",
+      "pending" not in invited, str(invited.keys()))
 with app.app_context():
     note = Notification.query.filter_by(
         user_id=FRIEND_ID, type="tierforge_join_request").first()
@@ -456,7 +588,7 @@ friend.req("GET", f"/apps/tierforge/sessions/{itoken}",
            name="invited friend can read the board immediately")
 host.req("POST",
          f"/apps/tierforge/sessions/{itoken}/members/{FRIEND_ID}/deny",
-         expect=400, name="active member cannot be denied")
+         expect=405, name="removed approval endpoint is gone")
 invited2 = host.req("POST", f"/apps/tierforge/sessions/{itoken}/invite",
                     json={"user_id": FRIEND2_ID},
                     name="host invites a second friend")
@@ -503,6 +635,13 @@ friend3.req("POST", f"/apps/tierforge/sessions/{itoken}/join",
 
 host.req("POST", f"/apps/tierforge/sessions/{itoken}/end",
          name="host ends invite-test session")
+ended_inbox = friend3.req("GET", "/notifications/api/list",
+                          name="invited friend re-reads the inbox")
+ended_row = next((n for n in ended_inbox.get("notifications") or []
+                  if n.get("type") == "tierforge_join_request"), None)
+check("invite to an ended session loses its join action",
+      ended_row is not None and ended_row.get("action") is None,
+      str(ended_row))
 
 print("== auto-end idle sessions ==")
 idle = host.req("POST", "/apps/tierforge/sessions", json={

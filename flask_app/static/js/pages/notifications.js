@@ -74,17 +74,19 @@ function actionButtons(n) {
         ];
     }
     if (a.kind === "event") {
-        return [{ label: "View event", primary: true, run: () => actionRunners.event(a) }];
+        return [{ label: "View event", primary: true, navigate: true,
+                  run: () => actionRunners.event(a) }];
     }
     if (a.kind === "task") {
-        return [{ label: "View task", primary: true, run: () => actionRunners.task(a) }];
+        return [{ label: "View task", primary: true, navigate: true,
+                  run: () => actionRunners.task(a) }];
     }
     if (a.kind === "social") {
-        return [{ label: "Open Socials", primary: false,
+        return [{ label: "Open Socials", primary: false, navigate: true,
                   run: () => { window.location.href = API.socials; } }];
     }
     if (a.kind === "tierforge") {
-        return [{ label: "Join session", primary: true,
+        return [{ label: "Join session", primary: true, navigate: true,
                   run: () => actionRunners.tierforge(a) }];
     }
     return [];
@@ -130,6 +132,13 @@ function render() {
             btn.addEventListener("click", async () => {
                 btn.disabled = true;
                 try {
+                    if (b.navigate) {
+                        // A navigation would cancel the request that marks
+                        // the row read, so settle it before leaving.
+                        await markOne(n.id);
+                        await b.run();
+                        return;
+                    }
                     await b.run();
                     await markOne(n.id);   // acting on it settles it
                     await load();

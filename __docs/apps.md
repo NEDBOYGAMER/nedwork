@@ -21,7 +21,8 @@ phones (< 1000 px) cannot start or join a session.
   image/ZIP uploads, "Re-uploading 7 of 100 images" for a saved file, and
   "Importing 7 of 100 images" for a TierMaker link (the server runs that
   import in a background job and the client polls
-  `GET /apps/tierforge/import/<job>` for `done/total`).
+  `GET /apps/tierforge/import/<job>` for `done/total`). TierMaker filenames
+  and downloaded bytes are deduplicated before/while importing.
 - The list name is a borderless line: once it has text the input hides and
   the name is shown as plain text; clicking it turns it back into an input.
 - Double-clicking a ranked image sends it back to the unranked pool;
@@ -38,9 +39,14 @@ phones (< 1000 px) cannot start or join a session.
 - **Split-screen** — one shared image catalog, one equal-width column per
   member (host included, max 3 members): your own editable board on the
   left, everyone else's read-only boards to the right in join order. Both
-  members rank their own board (and manage their own tiers). Only the host
-  uploads/curates the catalog and deletes images. A guest's pool ✕
-  un-ranks the image back to their own pool.
+  members rank their own board (and manage their own tiers); a joining
+  guest's tiers are seeded from the host's labels/colors with no images
+  placed. Only the host uploads/curates the catalog and deletes images. A
+  guest's pool ✕ un-ranks the image back to their own pool.
+- **TierMaker import replaces the shared board** in a session: it is
+  host-only, tombstones the previous catalog, and keeps guests' tier
+  labels/colors while clearing their placements. Normal board pushes stay
+  add-only.
 - **Sessions have no "ended" screen**: when the host ends a session (closes
   the app tab, reloads, presses the X, or it auto-ends), every guest keeps
   the final shared board/tier list by snapshotting it into their local
@@ -83,6 +89,11 @@ phones (< 1000 px) cannot start or join a session.
   title), which keeps the compact board inside a 1680×900-class viewport.
   The header, banner and background stay fluid HUD; only the tierlist is the
   shared fixed board.
+- Split-screen columns are sized in **fixed pixels** from a separate
+  width-only level table (minimum viewport widths 1532 / 1232 / 992 / 848).
+  Each column is `(level min width − horizontal padding − gaps) / members`,
+  so two- and three-member columns stay geometrically identical to their
+  peers even when the height-driven content scale differs.
 - Image sizes are shared live inside a session: the settings modal's two
   size selects write `board["settings"]` through
   `POST /apps/tierforge/sessions/<token>/settings` and every member adopts
@@ -97,7 +108,9 @@ phones (< 1000 px) cannot start or join a session.
   the same board at the same fraction - levels differ per screen, the
   uniform scale makes the point identical. Cursors carry the member's name
   and a per-user color, and keep tracking slightly outside the board edges
-  (clamped to -0.25…1.25) instead of freezing at the border.
+  (clamped to -0.25…1.25) instead of freezing at the border. While dragging,
+  the cursor message carries the image `{owner, id}` and peers render a
+  thumbnail ghost beside the cursor.
 - While the host drags, guests follow the host's scroll fraction; idle
   scrolling never yanks the guest. The relay also forwards discrete
   `board` events (`move` / `add` / `remove` / `settings`) so placements
@@ -128,11 +141,12 @@ phones (< 1000 px) cannot start or join a session.
 - **Live cursors and board hints over WebSocket**:
   `flask_app/apps/livecursor/ws_server.py` is a shared relay (also used by
   LiveCursor). Rooms are capability-token keyed; the relay forwards
-  `{name, color, x, y, dragging?, scroll?}` cursor messages plus sanitised
-  TierForge `board` events to the other room members and broadcasts a leave
-  on disconnect. It runs as a separate process next to waitress (dev: port
-  5001) and needs nginx to proxy `/apps/tierforge/ws` (and
-  `/apps/livecursor/ws`) with Upgrade headers in the Docker deployment.
+  `{name, color, x, y, dragging?, ref?, scroll?}` cursor messages plus
+  sanitised TierForge `board` events to the other room members and
+  broadcasts a leave on disconnect. The Docker image starts the relay on
+  port 5001 beside waitress; nginx still has to proxy
+  `/apps/tierforge/ws` and `/apps/livecursor/ws` to it with Upgrade headers
+  (see `__docs/structure.md` §6).
 - **Idle sessions auto-end after 6 hours** without a join/board/remove
   write. The check is lazy: every session route calls `_maybe_end_idle` via
   `_get_session_by_token` (presence pings deliberately do not count — they

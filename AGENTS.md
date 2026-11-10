@@ -4,7 +4,7 @@ Orientation for coding agents working in this repo. Read this before touching
 anything. **Always read `TODO.md` too, at the start of every task** — open
 work items and accepted tradeoffs live there; check whether your task (or a
 cheap related fix) is already listed before you plan, and keep it current
-when things change. Verified 2026-11-09; if reality has moved, update this
+when things change. Verified 2026-11-10; if reality has moved, update this
 file in the same session (same rule as `__docs/structure.md`).
 
 ---
@@ -163,7 +163,7 @@ Never put user data or generated files under `static/` — it is public and
 served as-is (historical bug: suggestions JSON used to live there; runtime
 stores now live in `instance/data/`).
 
-## 7. Current state & pitfalls (2026-11-09)
+## 7. Current state & pitfalls (2026-11-10)
 
 - **Uncommitted work in the tree**: the 2026-11 TODO round (timer, events,
   socials, settings, notifications, account deletion) is modified but not
@@ -179,23 +179,25 @@ stores now live in `instance/data/`).
   inside the repo tree). Known wart; don't "fix" without discussion.
 - **TierForge multiplayer** (`flask_app/apps/tierforge/`): link sessions
   poll every second with a 350 ms debounced push (authoritative), while
-  discrete board hints and cursors also stream over the shared WebSocket
-  relay; the host drives, board pushes are add-only and deletions are sticky
-  `board["removed"]` tombstones (host-only in both modes); co-op guests may
-  only re-rank inside the host's tier structure; split is one equal-width
-  column per member (own board left, peers right in join order) with a
-  3-member cap, co-op caps at 10; image sizes are shared live via
-  `POST /sessions/<token>/settings`; sessions without activity auto-end
-  after 6 h; friend invites join immediately (no approval), grant
-  `tierforge` access, and produce an inbox/TierForge-popup Join action; the
-  host closing/reloading the app ends the session and guests keep the final
-  board in their local autosave (starting/joining first flushes the pending
-  personal autosave, since session mode parks it); in-session boards use 4 auto-fit size
-  levels (height-aware, incl. compact) so live cursors (board fractions
-  streamed over the shared WebSocket relay in
-  `flask_app/apps/livecursor/ws_server.py`, co-op and split) map across
-  screen sizes; the relay keeps rooms in memory only. Full model + API in
-  `__docs/apps.md`.
+  discrete board hints, cursors, and drag ghosts also stream over the shared
+  WebSocket relay; the host drives, board pushes are add-only (except the
+  host's TierMaker import, which replaces the shared catalog and tombstones
+  the old refs), and deletions are sticky `board["removed"]` tombstones
+  (host-only in both modes); co-op guests may only re-rank inside the host's
+  tier structure; split guests get tiers seeded from the host and use fixed
+  pixel column widths, with a 3-member cap (co-op caps at 10); image sizes
+  are shared live via `POST /sessions/<token>/settings`; sessions without
+  activity auto-end after 6 h; friend invites join immediately (no approval;
+  legacy pending rows activate on link open), grant `tierforge` access, and
+  produce an inbox/TierForge-popup Join action; the host closing/reloading
+  the app ends the session and guests keep the final board in their local
+  autosave (starting/joining first flushes the pending personal autosave,
+  since session mode parks it); in-session boards use 4 auto-fit size levels
+  (height-aware, incl. compact) so live cursors (board fractions streamed
+  over the shared relay in `flask_app/apps/livecursor/ws_server.py`, co-op
+  and split) map across screen sizes; the Docker image starts that relay
+  beside waitress, and nginx still needs Upgrade proxying. The relay keeps
+  rooms in memory only. Full model + API in `__docs/apps.md`.
 - **All cookies are unconditionally `Secure`** (session, csrf, admin —
   issued *and* cleared; no scheme sniffing left, so `X-Forwarded-Proto`
   / `PROXY_FIX_X_FOR` no longer matter for cookies). Consequences:

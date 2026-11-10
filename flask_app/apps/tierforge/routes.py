@@ -1,3 +1,4 @@
+import hashlib
 import io
 import os
 import re
@@ -551,15 +552,7 @@ def _session_dict(session):
                        m.joined_at or datetime.min, m.id),
     )
     members = []
-    pending = []
     for row in rows:
-        if row.status == "pending":
-            pending.append({
-                "userId": row.user_id,
-                "username": (row.user.username if row.user
-                             else f"user {row.user_id}"),
-            })
-            continue
         if row.status != "active":
             continue
         members.append({
@@ -575,9 +568,51 @@ def _session_dict(session):
         "version": session.version,
         "hostId": session.host_id,
         "members": members,
-        "pending": pending,
         "board": session.board or {},
     }
+
+
+def _split_seed_entry(session):
+    """New split members start from the host's tier structure, with no
+    images placed. That gives them valid drop targets immediately while
+    still letting them rank independently."""
+    board = session.board or {}
+    host_entry = (board.get("split") or {}).get(str(session.host_id)) or {}
+    tiers = []
+    for tier in host_entry.get("tiers") or []:
+        if not isinstance(tier, dict):
+            continue
+        tiers.append({
+            "id": tier.get("id") or secrets.token_hex(8),
+            "label": tier.get("label") or "?",
+            "color": tier.get("color") or "#6c757d",
+            "images": [],
+        })
+    return {"tiers": tiers, "pool_order": []}
+
+
+def _ensure_split_entry(session, user_id):
+    """Create a missing split entry, or fill one whose tiers were never
+    seeded (legacy empty entries)."""
+    board = dict(session.board or {})
+    split = dict(board.get("split") or {})
+    entry = dict(split.get(str(user_id)) or {})
+    if not entry.get("tiers"):
+        entry = _split_seed_entry(session)
+    elif not isinstance(entry.get("pool_order"), list):
+        entry["pool_order"] = []
+    split[str(user_id)] = entry
+    board["split"] = split
+    return board
+
+
+def _activate_session_member(session, member):
+    member.status = "active"
+    if session.mode == "split":
+        _bump_session(session, _ensure_split_entry(session, member.user_id))
+    else:
+        session.version = (session.version or 0) + 1
+        session.updated_at = db.func.now()
 
 
 def _bump_session(session, board):
@@ -813,36 +848,25 @@ def join_session(user, token):
     if member is None:
         if _session_member_count(session) >= _session_member_cap(session):
             return jsonify({"error": "this session is full"}), 409
-        db.session.add(TierForgeSessionMember(
+        member = TierForgeSessionMember(
             session_id=session.id, user_id=user.id,
-            role="member", status="active"))
-        if session.mode == "split":
-            board = dict(session.board or {})
-            split = dict(board.get("split") or {})
-            split.setdefault(str(user.id), {"tiers": [], "pool_order": []})
-            board["split"] = split
-            _bump_session(session, board)
-        else:
-            session.version = (session.version or 0) + 1
-            session.updated_at = db.func.now()
+            role="member", status="active")
+        db.session.add(member)
+        _activate_session_member(session, member)
         db.session.commit()
     elif member.status == "pending":
-        return jsonify({"error": "Your invite is waiting for host approval"}), 403
+        # Legacy pending rows were part of the removed approval flow. A
+        # direct invite link now activates them like any other join.
+        if _session_member_count(session) >= _session_member_cap(session):
+            return jsonify({"error": "this session is full"}), 409
+        _activate_session_member(session, member)
+        db.session.commit()
     elif member.status != "active":
         # Leaving frees the seat; re-opening the same invite link may take it
         # back, subject to the same cap as a fresh join.
         if _session_member_count(session) >= _session_member_cap(session):
             return jsonify({"error": "this session is full"}), 409
-        member.status = "active"
-        if session.mode == "split":
-            board = dict(session.board or {})
-            split = dict(board.get("split") or {})
-            split.setdefault(str(user.id), {"tiers": [], "pool_order": []})
-            board["split"] = split
-            _bump_session(session, board)
-        else:
-            session.version = (session.version or 0) + 1
-            session.updated_at = db.func.now()
+        _activate_session_member(session, member)
         db.session.commit()
 
     return jsonify(_session_dict(session))
@@ -877,96 +901,20 @@ def invite_session_member(user, token):
     # Friend invites join directly: the host explicitly picked this friend,
     # so there is no second approval step. The notification carries a
     # one-click join action instead.
-    db.session.add(TierForgeSessionMember(
+    member = TierForgeSessionMember(
         session_id=session.id, user_id=friend.id,
-        role="member", status="active"))
+        role="member", status="active")
+    db.session.add(member)
     # Being invited grants access to the TierForge app itself.
     if not friend.has_permission("tierforge"):
         friend.grant_permission("tierforge")
-    if session.mode == "split":
-        board = dict(session.board or {})
-        split = dict(board.get("split") or {})
-        split.setdefault(str(friend.id), {"tiers": [], "pool_order": []})
-        board["split"] = split
-        _bump_session(session, board)
-    else:
-        session.version = (session.version or 0) + 1
-        session.updated_at = db.func.now()
+    _activate_session_member(session, member)
     db.session.commit()
     notify_user(friend, "tierforge_join_request", payload={
         "actor": user.username,
         "session_title": session.title,
         "session_token": session.token,
     })
-    return jsonify(_session_dict(session))
-
-
-@tierforge_bp.route(
-    "/sessions/<token>/members/<int:member_user_id>/approve",
-    methods=["POST"])
-@permission_required("tierforge", API)
-def approve_session_member(user, token, member_user_id):
-    """Host turns a pending invite into an active membership."""
-    session, error = _require_open_host_session(user, token)
-    if error is not None:
-        return error
-
-    member = TierForgeSessionMember.query.filter_by(
-        session_id=session.id, user_id=member_user_id).first()
-    if member is None:
-        return jsonify({"error": "invite not found"}), 404
-    if member.status == "active":
-        return jsonify({"error": "already a member"}), 409
-    if _session_member_count(session) >= _session_member_cap(session):
-        return jsonify({"error": "this session is full"}), 409
-
-    member.status = "active"
-    if session.mode == "split":
-        board = dict(session.board or {})
-        split = dict(board.get("split") or {})
-        split.setdefault(str(member_user_id), {"tiers": [], "pool_order": []})
-        board["split"] = split
-        _bump_session(session, board)
-    else:
-        session.version = (session.version or 0) + 1
-        session.updated_at = db.func.now()
-    db.session.commit()
-    if member.user is not None:
-        notify_user(member.user, "tierforge_invite_approved", payload={
-            "actor": user.username,
-            "session_title": session.title,
-            "session_token": session.token,
-        })
-    return jsonify(_session_dict(session))
-
-
-@tierforge_bp.route(
-    "/sessions/<token>/members/<int:member_user_id>/deny",
-    methods=["POST"])
-@permission_required("tierforge", API)
-def deny_session_member(user, token, member_user_id):
-    """Host declines a pending invite."""
-    session, error = _require_open_host_session(user, token)
-    if error is not None:
-        return error
-
-    member = TierForgeSessionMember.query.filter_by(
-        session_id=session.id, user_id=member_user_id).first()
-    if member is None:
-        return jsonify({"error": "invite not found"}), 404
-    if member.status == "active":
-        return jsonify({"error": "cannot deny an active member"}), 400
-
-    invited_user = member.user
-    db.session.delete(member)
-    session.version = (session.version or 0) + 1
-    session.updated_at = db.func.now()
-    db.session.commit()
-    if invited_user is not None:
-        notify_user(invited_user, "tierforge_invite_denied", payload={
-            "actor": user.username,
-            "session_title": session.title,
-        })
     return jsonify(_session_dict(session))
 
 
@@ -996,11 +944,31 @@ def push_session_board(user, token):
     incoming_catalog = _clean_catalog(payload.get("catalog")) or []
     existing_catalog = _clean_catalog(board.get("catalog")) or []
     tombstones = _catalog_keys(_clean_catalog(board.get("removed")) or [])
+    replace_catalog = payload.get("replace_catalog") is True
+    if replace_catalog and user.id != session.host_id:
+        return jsonify({"error": "only the host can replace the shared board"}), 403
 
-    # Pushes only ever ADD to the shared catalogue: both modes union the
-    # existing set with what the pusher sent, then drop tombstoned images.
-    # Deletions go through the remove endpoint, so a member with a stale
-    # board can neither lose nor resurrect another member's images.
+    if replace_catalog:
+        incoming_keys = _catalog_keys(incoming_catalog)
+        # The incoming catalog is authoritative, so a ref that is coming
+        # back in this replacement must lose its old tombstone. Everything
+        # else previously removed stays removed, and old catalog refs that
+        # are not in the replacement get tombstoned against stale pushes.
+        removed = _merge_catalog(
+            [ref for ref in _clean_catalog(board.get("removed")) or []
+             if (ref["owner"], ref["id"]) not in incoming_keys]
+            + [ref for ref in existing_catalog
+               if (ref["owner"], ref["id"]) not in incoming_keys],
+            None, None)
+        board["removed"] = removed[:MAX_SESSION_IMAGES]
+        tombstones = _catalog_keys(board["removed"])
+
+    # Normal pushes only ever ADD to the shared catalogue: both modes union
+    # the existing set with what the pusher sent, then drop tombstoned
+    # images. Deletions go through the remove endpoint, so a member with a
+    # stale board can neither lose nor resurrect another member's images.
+    # The host's TierMaker import is the one exception: it replaces the
+    # shared catalogue atomically for everyone.
     if session.mode == "coop":
         incoming_tiers = _clean_tiers(payload.get("tiers")) or []
         incoming_pool = _clean_ref_list(payload.get("pool")) or []
@@ -1021,8 +989,10 @@ def push_session_board(user, token):
                 for tier in existing_tiers
             ]
             pool = incoming_pool
-        catalog = _merge_catalog(existing_catalog + incoming_catalog,
-                                 tiers, pool)
+        catalog = _merge_catalog(
+            incoming_catalog if replace_catalog
+            else existing_catalog + incoming_catalog,
+            tiers, pool)
         catalog = _without(catalog, tombstones)
         catalog_keys = _catalog_keys(catalog)
         for tier in tiers:
@@ -1046,14 +1016,30 @@ def push_session_board(user, token):
     else:
         tiers = _clean_tiers(payload.get("my_tiers")) or []
         pool_order = _clean_ref_list(payload.get("my_pool_order")) or []
-        catalog = _merge_catalog(existing_catalog + incoming_catalog, tiers,
-                                 pool_order)
+        catalog = _merge_catalog(
+            incoming_catalog if replace_catalog
+            else existing_catalog + incoming_catalog,
+            tiers, pool_order)
         catalog = _without(catalog, tombstones)
         catalog_keys = _catalog_keys(catalog)
         for tier in tiers:
             tier["images"] = _only_in_catalog(tier["images"], catalog_keys)
         board["catalog"] = catalog
         split = dict(board.get("split") or {})
+        if replace_catalog:
+            # Keep every other member's tier labels/colors, but clear their
+            # placements: the board they were ranking no longer exists.
+            for uid, entry in list(split.items()):
+                if uid == str(user.id) or not isinstance(entry, dict):
+                    continue
+                split[uid] = {
+                    "tiers": [
+                        {**tier, "images": []}
+                        for tier in entry.get("tiers") or []
+                        if isinstance(tier, dict)
+                    ],
+                    "pool_order": [],
+                }
         split[str(user.id)] = {
             "tiers": tiers,
             "pool_order": _only_in_catalog(pool_order, catalog_keys),
@@ -1328,6 +1314,7 @@ def _run_import_job(app, job_id, user_id, filenames, base_path, slug):
             headers = {"User-Agent": _IMPORT_UA}
             _user_dir(user)
             results, errors = [], []
+            seen_hashes = set()
             for filename in filenames:
                 try:
                     if (filename.startswith("http://")
@@ -1341,6 +1328,10 @@ def _run_import_job(app, job_id, user_id, filenames, base_path, slug):
                     raw = r.content
                     if not raw:
                         raise ValueError("empty file")
+                    digest = hashlib.sha256(raw).hexdigest()
+                    if digest in seen_hashes:
+                        continue
+                    seen_hashes.add(digest)
 
                     full_bytes = _normalize_to_jpeg(
                         raw, FULL_MAX_DIM, FULL_QUALITY)
@@ -1430,15 +1421,24 @@ def import_tiermaker(user):
     except (requests.RequestException, ValueError):
         return jsonify({"error": "could not load the list data"}), 502
 
-    filenames = []
+    filenames, seen_names = [], set()
     if isinstance(data, list):
         for entry in data[1:]:
             if isinstance(entry, str):
-                filenames.append(entry)
+                name = entry
             elif isinstance(entry, dict):
-                src = entry.get("src")
-                if src:
-                    filenames.append(src)
+                name = entry.get("src")
+            else:
+                continue
+            if not isinstance(name, str):
+                continue
+            name = name.strip()
+            if not name:
+                continue
+            if name in seen_names:
+                continue
+            seen_names.add(name)
+            filenames.append(name)
     if not filenames:
         return jsonify({"error": "no images found in that list"}), 400
     filenames = filenames[:MAX_IMPORT_ITEMS]

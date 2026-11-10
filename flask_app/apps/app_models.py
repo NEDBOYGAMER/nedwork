@@ -60,9 +60,9 @@ class TierForgeSession(db.Model):
 class TierForgeSessionMember(db.Model):
     """Membership in a live TierForge session.
 
-    A row with status "pending" is reserved for the future friend-invite
-    flow (host approval) — the same pending-row-as-request pattern used by
-    SocialGroupMember. Invite-link joins are "active" immediately."""
+    Invites join as "active" immediately (no approval). "pending" rows only
+    remain from the removed approval flow; opening an invite link activates
+    them like any other join."""
     __tablename__ = "tierforge_session_members"
     __table_args__ = (
         db.UniqueConstraint("session_id", "user_id",

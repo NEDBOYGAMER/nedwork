@@ -9,6 +9,8 @@ Actions are derived from LIVE state at read time, never stored on the row:
 a friend request that was already accepted elsewhere comes back with no
 button instead of a dead one.
 """
+from datetime import datetime, timedelta
+
 from flask import Blueprint, jsonify, render_template, request
 
 from ..models import *   # Notification, Friendship, SocialGroupMember, User
@@ -26,6 +28,19 @@ EVENT_TYPES = {"event", "event_published", "event_reminder", "event_announcement
 TASK_TYPES = {"task", "task_deadline"}
 SOCIAL_TYPES = {"friend_accepted", "group_joined", "group_denied",
                 "group_added", "group_removed"}
+
+# Mirrors SESSION_IDLE_TTL in the TierForge routes. An open-looking row past
+# this age will lazily end on the next TierForge request, so the inbox must
+# not offer a Join action for it.
+TIERFORGE_JOIN_TTL = timedelta(hours=6)
+
+
+def _tierforge_session_open(token):
+    session = TierForgeSession.query.filter_by(token=token).first()
+    if session is None or session.status != "open":
+        return False
+    last = session.updated_at or session.created_at
+    return last is not None and datetime.utcnow() - last < TIERFORGE_JOIN_TTL
 
 
 def _actor_id(name):
@@ -73,7 +88,7 @@ def _action_for(user, n):
 
     if t in ("tierforge_join_request", "tierforge_invite_approved"):
         token = p.get("session_token")
-        if token:
+        if token and _tierforge_session_open(token):
             return {"kind": "tierforge", "session_token": token}
         return None
 

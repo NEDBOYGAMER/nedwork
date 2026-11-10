@@ -763,6 +763,7 @@ body.session-ended .session-badge {
 
 /* Actions that don't apply while a session is live / has ended */
 body.in-session #multiplayerBtn { display: none; }
+body.session-guest #importMenu { display: none; }
 body.session-guest #clearCompletelyBtn,
 body.session-ended #clearCompletelyBtn { display: none; }
 body.session-guest .split-dropdown .dropdown-toggle,
@@ -802,6 +803,20 @@ body.session-ended .img-remove { display: none; }
   white-space: nowrap;
   pointer-events: none;
 }
+.remote-cursor-ghost {
+  position: absolute;
+  top: 12px;
+  left: 8px;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border: 2px solid currentColor;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+.remote-cursor-ghost[hidden] { display: none; }
 
 /* -- Session creation modal -- */
 .session-modal {
@@ -948,14 +963,24 @@ body.in-session .pool-header {
 }
 
 /* -- Split screen: one equal-width column per member -- */
+body.session-split main {
+  width: var(--split-main-w, calc(1200px * var(--session-scale)));
+}
 body.session-split .session-layout {
   flex-direction: row;
   align-items: stretch;
   gap: calc(var(--space-5) * var(--session-scale));
 }
-body.session-split .board-area,
+body.session-split .board-area {
+  flex: 0 0 var(--split-col-w, 0px);
+  min-width: 0;
+}
 body.session-split .partner-board:not([hidden]) {
-  flex: 1 1 0;
+  flex: 0 0 var(--split-peer-w, var(--split-col-w, 0px));
+  min-width: 0;
+}
+body.session-split .partner-board-inner {
+  flex: 0 0 var(--split-col-w, 0px);
   min-width: 0;
 }
 

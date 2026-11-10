@@ -87,11 +87,16 @@ TierMaker **template** import shipped 2026-11-07 (`POST /apps/tierforge/import`)
 A *completed* user list with placements (share-code page type) is a possible
 future extension.
 
-- [ ] **Production WebSocket relay is not wired up**: `Dockerfile` runs
-      only waitress; `flask_app/apps/livecursor/ws_server.py` needs its own
-      service and nginx needs Upgrade-header proxying for
-      `/apps/livecursor/ws` and `/apps/tierforge/ws`. Until then live
-      cursors/instant board hints fall back to the 1 s poll in Docker.
+- [ ] **Production WebSocket proxy is still operator work**: the Docker
+      image now starts `flask_app/apps/livecursor/ws_server.py` on 5001
+      beside waitress, but nginx still needs Upgrade-header proxying for
+      `/apps/livecursor/ws` and `/apps/tierforge/ws` (recipe in
+      `__docs/structure.md` §6). Until that vhost change is live, Docker
+      clients fall back to the 1 s poll.
+- [ ] **WS relay is not supervised in Docker**: it runs as a background
+      child of the waitress command, so a relay crash leaves the web app up
+      but live cursors/hints degraded until the container restarts. Poll
+      fallback keeps sessions usable.
 
 (none — no other open items)
 

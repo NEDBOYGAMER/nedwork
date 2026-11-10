@@ -143,6 +143,9 @@ async def _handler(websocket):
                     pass
             if message.get("dragging") is True:
                 payload["dragging"] = True
+                ref = _clean_ref(message.get("ref"))
+                if ref is not None:
+                    payload["ref"] = ref
             try:
                 scroll = float(message.get("scroll"))
             except (TypeError, ValueError):
