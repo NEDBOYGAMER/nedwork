@@ -1,7 +1,7 @@
-"""Shared WebSocket relay for live cursors (LiveCursor + TierForge).
+"""Shared WebSocket relay for live cursors (TierForge).
 
 Run standalone:
-    python -m flask_app.apps.livecursor.ws_server
+    python -m flask_app.apps.tierforge.websocket
 
 Rooms live in memory only; every message is relayed to the other members
 of the room. No persistence, no database. TierForge sends two message
@@ -174,6 +174,6 @@ def run_server(host="0.0.0.0", port=5001):
 
 if __name__ == "__main__":
     run_server(
-        os.environ.get("LIVE_CURSOR_WS_HOST", "0.0.0.0"),
-        int(os.environ.get("LIVE_CURSOR_WS_PORT", "5001")),
+        os.environ.get("TIERFORGE_WS_HOST", "0.0.0.0"),
+        int(os.environ.get("TIERFORGE_WS_PORT", "5001")),
     )
