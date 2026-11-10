@@ -187,17 +187,21 @@ stores now live in `instance/data/`).
   host's TierMaker import, which replaces the shared catalog and tombstones
   the old refs), and deletions are sticky `board["removed"]` tombstones
   (host-only in both modes); co-op guests may only re-rank inside the host's
-  tier structure; split guests get tiers seeded from the host and use fixed
-  pixel column widths, with a 3-member cap (co-op caps at 10); image sizes
+  tier structure; split guests get tiers seeded from the host and use one
+  canonical 3-column canvas (`u=430`, 24 px gaps) scaled to each viewer's
+  screen, with every column (own included, global join order) an equal grid
+  track at the same scale (title/header unscaled; co-op stays fixed 1200), a
+  3-member cap (co-op caps at 10); image sizes
   are shared live via `POST /sessions/<token>/settings`; sessions without
   activity auto-end after 6 h; friend invites join immediately (no approval;
   legacy pending rows activate on link open), grant `tierforge` access, and
   produce an inbox/TierForge-popup Join action; the host closing/reloading
   the app ends the session and guests keep the final board in their local
   autosave (starting/joining first flushes the pending personal autosave,
-  since session mode parks it); in-session boards are always 1:1 (no auto-fit
-  levels; oversized boards scroll), and live cursors (board-relative
-  fractions streamed over the WebSocket relay in
+  since session mode parks it); in-session layouts preserve proportions (no
+  size buckets; split scales the canonical canvas, own/co-op oversized boards
+  scroll), and live cursors (board-relative fractions streamed over the
+  WebSocket relay in
   `flask_app/apps/tierforge/websocket.py`, co-op and split) track across the
   whole window; the session banner is an actions-only bar (copy/person/✕,
   host vs guest); the Docker image starts that relay beside waitress, and

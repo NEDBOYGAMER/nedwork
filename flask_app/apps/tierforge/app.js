@@ -1994,39 +1994,53 @@ function isCoopSession() {
   return !!(sessionState && sessionState.mode === 'coop');
 }
 
-// The board is always laid out 1:1 (--session-scale stays at its default of
-// 1) — no size buckets to step through. Split-screen columns are the only
-// thing that still needs measuring: one equal-width column per member,
-// fitted to the viewport.
+// The board is always laid out 1:1 in single-player/co-op. Split mode lays
+// every column — the own board included — out in one canonical 3-column
+// canvas and scales every board-internal dimension by --session-scale
+// (available width / canvas width). All columns therefore share one scale on
+// a screen; only the viewport changes it, and cursor fractions stay exact
+// because everyone renders the same canonical geometry.
 const SESSION_GAP_PX = 24;
 const SESSION_IMAGE_SIZES = new Set([72, 120, 180, 260]);
+const SPLIT_UNIT_PX = 430;   // canonical column width (u), ~1:1 at 1400px
+const SPLIT_MARGIN_X = 32;   // screen-space side margin (matches --space-6)
+const SPLIT_CANVAS_PX = SPLIT_UNIT_PX * 3 + SESSION_GAP_PX * 2;
 
-function updateSplitWidth() {
-  if (!sessionState || sessionState.mode !== 'split') return;
+function clearSplitLayout() {
+  const style = document.documentElement.style;
+  style.removeProperty('--session-scale');
+  style.removeProperty('--split-cols');
+  style.removeProperty('--split-main-w');
+  style.removeProperty('--split-col-w');
+  style.removeProperty('--split-peer-w');
+}
+
+function updateSplitLayout() {
+  if (!sessionState || sessionState.mode !== 'split') {
+    clearSplitLayout();
+    return;
+  }
+  const members = Math.min(3, Math.max(1,
+    (sessionState.members || []).length));
   const main = document.querySelector('main');
-  if (!main) return;
-  const members = Math.max(1, (sessionState.members || []).length);
-  const style = getComputedStyle(main);
-  const padding = (parseFloat(style.paddingLeft) || 0)
-    + (parseFloat(style.paddingRight) || 0);
-  const gap = SESSION_GAP_PX;
   const viewportWidth = document.documentElement.clientWidth;
-  const mainWidth = members > 1
-    ? Math.max(360, viewportWidth - 8)
-    : 1200;
-  const columnWidth = Math.max(180, Math.floor(
-    (mainWidth - padding - (members - 1) * gap) / members));
-  const peerCount = Math.max(1, members - 1);
-  const peerWidth = peerCount * columnWidth + (peerCount - 1) * gap;
-  const root = document.documentElement.style;
-  root.setProperty('--split-main-w', `${mainWidth}px`);
-  root.setProperty('--split-col-w', `${columnWidth}px`);
-  root.setProperty('--split-peer-w', `${peerWidth}px`);
+  const available = Math.max(360,
+    main ? main.clientWidth : viewportWidth - SPLIT_MARGIN_X * 2);
+  const scale = available / SPLIT_CANVAS_PX;
+  const style = document.documentElement.style;
+  style.setProperty('--session-scale', String(scale));
+  style.setProperty('--split-cols', String(members));
 }
 
 function updateSessionScale() {
-  updateSplitWidth();
+  updateSplitLayout();
   renderWsCursors();
+}
+
+// Drop peer columns; the grid re-flows to the remaining member columns.
+function clearPeerColumns(body) {
+  if (!body) return;
+  body.querySelectorAll('.partner-board-inner').forEach(el => el.remove());
 }
 
 // Multiplayer is desktop-only; phones get the app but not sessions.
@@ -2136,105 +2150,124 @@ function updateSessionBanner() {
     xBtn.classList.add('btn-secondary');
   }
 
-  // Split-screen shows the partner board in an equal-width column; co-op
-  // already shows the same board, so there is nothing extra to show.
+  // Split-screen shows all member columns (own board included) in the peer
+  // panel; co-op already shows the same board, so there is nothing extra.
   document.getElementById('peerView').hidden = sessionState.mode !== 'split';
   if (sessionState.mode === 'split') updateSessionScale();
 }
 
-// Read-only full-size render of every other member's split-screen board.
+// Move the live own board back into the normal layout (outside the peer
+// panel) when the session is not split anymore. No-op when it is already
+// there; never called while split, because re-parenting the editor would
+// cancel an in-flight HTML5 drag.
+function restoreOwnBoard() {
+  const own = document.getElementById('boardArea');
+  const layout = document.querySelector('.session-layout');
+  const peer = document.getElementById('peerView');
+  if (!own || !layout) return;
+  if (own.parentElement !== layout) layout.insertBefore(own, peer);
+}
+
+// Full-size render of the split-screen columns. Every member (the own
+// board included) appears in ONE global join order on every screen, so a
+// given member's column has the same origin everywhere and cursor
+// fractions line up.
 function updatePeerView() {
   const panel = document.getElementById('peerView');
   const body = document.getElementById('partnerBoardBody');
-  const title = document.getElementById('partnerBoardTitle');
+  const own = document.getElementById('boardArea');
   if (!sessionState || sessionState.mode !== 'split') {
+    restoreOwnBoard();
+    clearPeerColumns(body);
     panel.hidden = true;
-    body.innerHTML = '';
     return;
   }
   panel.hidden = false;
-  body.innerHTML = '';
+
+  // Only the peer columns are disposable. The own board is the live editor:
+  // move it into the column flow once, then never re-parent it, so a poll
+  // that lands mid-drag cannot cancel the drag.
+  clearPeerColumns(body);
+  if (own && own.parentElement !== body) body.appendChild(own);
 
   const board = sessionState.board || {};
   const split = board.split || {};
   const catalog = board.catalog || [];
-  const peers = (sessionState.members || []).filter(m => m.userId !== ME);
-  // Own board and every peer get an equal-width column: the panel grows
-  // by one part per peer, and each peer inner takes one of those parts.
-  panel.style.flexGrow = String(Math.max(1, peers.length));
-  title.textContent = peers.length === 1
-    ? `${peers[0].username}'s board`
-    : 'Partner boards';
+  let ownPlaced = false;
 
-  if (peers.length === 0) {
-    panel.hidden = true;
-    body.innerHTML = '';
-    return;
-  }
-
-  peers.forEach(member => {
-    const entry = split[String(member.userId)]
-      || { tiers: [], pool_order: [] };
-    const inner = document.createElement('div');
-    inner.className = 'partner-board-inner';
-
-    const name = document.createElement('div');
-    name.className = 'partner-board-name';
-    const nameText = document.createElement('span');
-    nameText.className = 'partner-board-name-text';
-    nameText.textContent = member.username;
-    name.appendChild(nameText);
-    if (member.role === 'host') {
-      const tag = document.createElement('span');
-      tag.className = 'partner-host-tag';
-      tag.textContent = 'Host';
-      name.appendChild(tag);
+  (sessionState.members || []).forEach(member => {
+    if (member.userId === ME) {
+      ownPlaced = true;
+      return;
     }
-    inner.appendChild(name);
-
-    const tierBoard = document.createElement('div');
-    tierBoard.className = 'tier-board';
-    (entry.tiers || []).forEach(tier => {
-      tierBoard.appendChild(makePartnerTierRow(tier));
-    });
-
-    // Unranked pool = shared catalog minus this member's ranked refs.
-    const ranked = new Set();
-    (entry.tiers || []).forEach(tier =>
-      (tier.images || []).forEach(ref => ranked.add(refKey(ref))));
-    const poolRefs = catalog.filter(ref => !ranked.has(refKey(ref)));
-
-    const poolSection = document.createElement('div');
-    poolSection.className = 'image-pool-section';
-    const poolHeader = document.createElement('div');
-    poolHeader.className = 'pool-header';
-    const poolTitle = document.createElement('span');
-    poolTitle.className = 'pool-title';
-    poolTitle.textContent = 'Unranked images';
-    const poolCount = document.createElement('span');
-    poolCount.className = 'pool-count';
-    poolCount.textContent =
-      `${poolRefs.length} image${poolRefs.length !== 1 ? 's' : ''}`;
-    poolHeader.append(poolTitle, poolCount);
-    const poolEl = document.createElement('div');
-    poolEl.className = 'image-pool';
-    poolRefs.forEach(ref => poolEl.appendChild(makePartnerCard(ref)));
-    poolSection.append(poolHeader, poolEl);
-
-    // Same structure/gap as the member's own .board-area, so cursor
-    // fractions from that member map 1:1 onto this rendering.
-    const surface = document.createElement('div');
-    surface.className = 'partner-surface';
-    surface.dataset.uid = String(member.userId);
-    surface.appendChild(tierBoard);
-    surface.appendChild(poolSection);
-    inner.appendChild(surface);
-
-    body.appendChild(inner);
+    const inner = makePartnerColumn(member, split, catalog);
+    if (ownPlaced || !own) body.appendChild(inner);
+    else body.insertBefore(inner, own);
   });
 }
 
-function makePartnerTierRow(tier) {
+function makePartnerColumn(member, split, catalog) {
+  const isHost = member.role === 'host';
+  const entry = split[String(member.userId)]
+    || { tiers: [], pool_order: [] };
+  const inner = document.createElement('div');
+  inner.className = 'partner-board-inner';
+
+  const name = document.createElement('div');
+  name.className = 'partner-board-name';
+  const nameText = document.createElement('span');
+  nameText.className = 'partner-board-name-text';
+  nameText.textContent = member.username;
+  name.appendChild(nameText);
+  if (isHost) {
+    const tag = document.createElement('span');
+    tag.className = 'partner-host-tag';
+    tag.textContent = 'Host';
+    name.appendChild(tag);
+  }
+  inner.appendChild(name);
+
+  const tierBoard = document.createElement('div');
+  tierBoard.className = 'tier-board';
+  (entry.tiers || []).forEach(tier => {
+    tierBoard.appendChild(makePartnerTierRow(tier, isHost));
+  });
+
+  // Unranked pool = shared catalog minus this member's ranked refs.
+  const ranked = new Set();
+  (entry.tiers || []).forEach(tier =>
+    (tier.images || []).forEach(ref => ranked.add(refKey(ref))));
+  const poolRefs = catalog.filter(ref => !ranked.has(refKey(ref)));
+
+  const poolSection = document.createElement('div');
+  poolSection.className = 'image-pool-section';
+  const poolHeader = document.createElement('div');
+  poolHeader.className = 'pool-header';
+  const poolTitle = document.createElement('span');
+  poolTitle.className = 'pool-title';
+  poolTitle.textContent = 'Unranked images';
+  const poolCount = document.createElement('span');
+  poolCount.className = 'pool-count';
+  poolCount.textContent =
+    `${poolRefs.length} image${poolRefs.length !== 1 ? 's' : ''}`;
+  poolHeader.append(poolTitle, poolCount);
+  const poolEl = document.createElement('div');
+  poolEl.className = 'image-pool';
+  poolRefs.forEach(ref => poolEl.appendChild(makePartnerCard(ref)));
+  poolSection.append(poolHeader, poolEl);
+
+  // Same structure/gap as the member's own .own-surface, so cursor
+  // fractions from that member map 1:1 onto this rendering.
+  const surface = document.createElement('div');
+  surface.className = 'partner-surface';
+  surface.dataset.uid = String(member.userId);
+  surface.appendChild(tierBoard);
+  surface.appendChild(poolSection);
+  inner.appendChild(surface);
+  return inner;
+}
+
+function makePartnerTierRow(tier, withControls) {
   const row = document.createElement('div');
   row.className = 'tier-row';
 
@@ -2245,6 +2278,11 @@ function makePartnerTierRow(tier) {
   label.className = 'tier-label';
   label.textContent = tier.label;
   label.style.color = tier.color || '';
+  // Mirror the owner's long-name shrink so the label wraps to the same
+  // number of lines (and the row keeps the same height).
+  const labelLen = (tier.label || '').length;
+  if (labelLen > 14) label.dataset.len = 'very-long';
+  else if (labelLen > 6) label.dataset.len = 'long';
   labelWrap.appendChild(label);
 
   const images = document.createElement('div');
@@ -2253,6 +2291,32 @@ function makePartnerTierRow(tier) {
     images.appendChild(makePartnerCard(ref)));
 
   row.append(labelWrap, images);
+
+  // The host's own rows carry an in-flow ▲▼ column and an "edit" hint.
+  // Mirror both invisibly so the host's board wraps identically in every
+  // column (the inline display beats the guest-only CSS that hides them).
+  if (withControls) {
+    const hint = document.createElement('div');
+    hint.className = 'edit-hint partner-tier-controls-spacer';
+    hint.setAttribute('aria-hidden', 'true');
+    hint.textContent = 'edit';
+    labelWrap.appendChild(hint);
+
+    const spacer = document.createElement('div');
+    spacer.className = 'tier-controls partner-tier-controls-spacer';
+    spacer.setAttribute('aria-hidden', 'true');
+    spacer.style.display = 'flex';
+    const makeSpacerBtn = (glyph) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tier-ctrl-btn';
+      btn.tabIndex = -1;
+      btn.textContent = glyph;
+      return btn;
+    };
+    spacer.append(makeSpacerBtn('▲'), makeSpacerBtn('▼'));
+    row.appendChild(spacer);
+  }
   return row;
 }
 
@@ -2526,6 +2590,12 @@ function connectSessionWs() {
   const socket = new WebSocket(sessionWsUrl());
   sessionWs = socket;
   socket.addEventListener('message', handleSessionWsMessage);
+  socket.addEventListener('open', () => {
+    // Split peers need their column width immediately; co-op keeps its
+    // existing keepalive-only cadence.
+    if (sessionWs !== socket) return;
+    if (sessionState && sessionState.mode === 'split') sendWsCursor();
+  });
   socket.addEventListener('close', () => {
     if (sessionWs !== socket) return;
     sessionWs = null;
@@ -2563,13 +2633,15 @@ function stopWsKeepalive() {
   }
 }
 
-// Send the pointer relative to our own board (the shared co-op board, or
-// our left board in split). The receiver maps that fraction onto the same
-// board as it renders it.
+// Send the pointer relative to our own board surface. Co-op measures the
+// whole board area (unchanged); split measures #ownSurface, which mirrors
+// the peer .partner-surface rendering (it excludes the "Own" name row), so
+// both sides share exactly one origin.
 function sendWsCursor() {
   if (!sessionWs || sessionWs.readyState !== WebSocket.OPEN) return;
   if (!sessionToken) return;
-  const surface = document.getElementById('boardArea');
+  const split = !!(sessionState && sessionState.mode === 'split');
+  const surface = document.getElementById(split ? 'ownSurface' : 'boardArea');
   if (!surface) return;
   const rect = surface.getBoundingClientRect();
   const w = surface.clientWidth || 1;
@@ -2586,18 +2658,19 @@ function sendWsCursor() {
   const y = Math.max(minY, Math.min(maxY,
     (presencePointer.y - rect.top - surface.clientTop) / h));
   const dragged = dragItem ? getImage(dragItem.imgId) : null;
+  const payload = {
+    type: 'cursor',
+    uid: ME,
+    name: sessionName(),
+    color: wsColor,
+    x,
+    y,
+    dragging: !!dragItem,
+    ref: dragged ? imageToRef(dragged) : null,
+    scroll: scrollFraction(),
+  };
   try {
-    sessionWs.send(JSON.stringify({
-      type: 'cursor',
-      uid: ME,
-      name: sessionName(),
-      color: wsColor,
-      x,
-      y,
-      dragging: !!dragItem,
-      ref: dragged ? imageToRef(dragged) : null,
-      scroll: scrollFraction(),
-    }));
+    sessionWs.send(JSON.stringify(payload));
   } catch (_) {
     // ignore — cursors are best-effort
   }
@@ -2937,7 +3010,6 @@ function enterSessionState(state) {
   }
   clearTimeout(sessionSettingsTimer);
   sessionSettingsTimer = null;
-  updateSessionScale();
   const host = !!(ME && state.hostId === ME);
   document.body.classList.add('in-session');
   document.body.classList.toggle('session-coop', state.mode === 'coop');
@@ -2945,6 +3017,7 @@ function enterSessionState(state) {
   document.body.classList.toggle('session-host', host);
   document.body.classList.toggle('session-guest', !host);
   document.body.classList.remove('session-ended');
+  updateSessionScale();
   // The banner owns the session title; don't let edits to the personal
   // title box silently vanish when the personal board is restored on exit.
   const titleEl = document.getElementById('tierTitle');
@@ -3001,7 +3074,10 @@ function exitSession() {
   document.body.classList.remove(
     'in-session', 'session-coop', 'session-split', 'session-ended',
     'session-host', 'session-guest');
+  clearSplitLayout();
   history.replaceState(null, '', location.pathname);
+  restoreOwnBoard();
+  clearPeerColumns(document.getElementById('partnerBoardBody'));
   document.getElementById('sessionBanner').hidden = true;
   document.getElementById('peerView').hidden = true;
 
@@ -3080,12 +3156,12 @@ function endSessionKeepalive() {
 async function copyInviteLink() {
   if (!sessionToken) return;
   const url = `${location.origin}${location.pathname}?s=${sessionToken}`;
+  const btn = document.getElementById('copyInviteBtn');
+  const original = btn.innerHTML;
   try {
     await navigator.clipboard.writeText(url);
-    const btn = document.getElementById('copyInviteBtn');
-    const original = btn.textContent;
-    btn.textContent = 'Copied!';
-    setTimeout(() => { btn.textContent = original; }, 1500);
+    btn.innerHTML = 'Copied!';
+    setTimeout(() => { btn.innerHTML = original; }, 1500);
   } catch (_) {
     await promptDialog('Copy this invite link:', {
       title: 'Invite link', okText: 'Done', default: url,
@@ -3401,6 +3477,23 @@ document.getElementById('closeAppBtn').addEventListener('click', () => {
 window.addEventListener('pagehide', endSessionKeepalive);
 
 window.addEventListener('resize', updateSessionScale);
+
+// The split canvas is measured from <main>; recalculate when its width
+// changes (e.g. a vertical scrollbar appears) without reacting to height.
+if (typeof ResizeObserver === 'function') {
+  const mainEl = document.querySelector('main');
+  if (mainEl) {
+    let lastMainWidth = 0;
+    new ResizeObserver(() => {
+      if (!sessionState || sessionState.mode !== 'split') return;
+      const width = mainEl.clientWidth;
+      if (width && width !== lastMainWidth) {
+        lastMainWidth = width;
+        updateSessionScale();
+      }
+    }).observe(mainEl);
+  }
+}
 
 // Stream the pointer continuously while in a session so peers always see a
 // live cursor. Peers never receive a dragged-image ghost; the local drag

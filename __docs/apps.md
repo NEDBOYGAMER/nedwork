@@ -37,12 +37,13 @@ phones (< 1000 px) cannot start or join a session.
   board push is server-side restricted to re-ranking inside the host's
   existing tier structure.
 - **Split-screen** — one shared image catalog, one equal-width column per
-  member (host included, max 3 members): your own editable board on the
-  left, everyone else's read-only boards to the right in join order. Both
-  members rank their own board (and manage their own tiers); a joining
-  guest's tiers are seeded from the host's labels/colors with no images
-  placed. Only the host uploads/curates the catalog and deletes images. A
-  guest's pool ✕ un-ranks the image back to their own pool.
+  member (host included, max 3 members) in one **global join order**: the
+  same left-to-right column order on every screen, with the own editable
+  board sitting at its own join position instead of being pinned to the
+  left. Both members rank their own board (and manage their own tiers); a
+  joining guest's tiers are seeded from the host's labels/colors with no
+  images placed. Only the host uploads/curates the catalog and deletes
+  images. A guest's pool ✕ un-ranks the image back to their own pool.
 - **TierMaker import replaces the shared board** in a session: it is
   host-only, tombstones the previous catalog, and keeps guests' tier
   labels/colors while clearing their placements. Normal board pushes stay
@@ -76,17 +77,22 @@ phones (< 1000 px) cannot start or join a session.
 
 ### Board layout and live cursors
 
-- The board is always laid out **1:1**: `--session-scale` stays at its
-  default of 1 and there are no size buckets. Every dimension that affects
-  wrapping (image sizes, label width, gaps, paddings) is identical on every
-  member's screen, which is exactly what lets live cursors map between
-  members. There is no auto-shrink — a board larger than the window just
-  scrolls. The tier title stays in its normal spot above the board, same as
-  single-player mode.
-- Split-screen columns are sized in **fixed pixels** fitted to the viewport:
-  each column is `(viewport width − horizontal padding − gaps) / members`.
-  Two- and three-member columns at the same viewport width are geometrically
-  identical to their peers, so cursor fractions still line up.
+- Single-player and co-op boards are laid out **1:1**. Co-op keeps the
+  original fixed 1200 px session layout (1136 px board), so every member
+  renders the shared board identically and cursor fractions
+  map directly. A board larger than the window just scrolls. The tier title
+  stays above the board in its normal spot, same as single-player mode.
+- Split-screen uses **one canonical 3-column canvas scaled to the viewer**:
+  a 430 px unit (`u`), 24 px gaps, a 1338 px canvas, and a 32 px screen-space
+  side margin. `--session-scale = available width / 1338`; the board body is
+  a grid of `members` equal tracks, so 3 members get `u`-wide columns, 2 get
+  ~1.53u, and a lone host gets the full canvas. The scale is shared by the
+  whole split layout and drives every board-internal dimension (row heights,
+  tier/image sizes, fonts, gaps, paddings); member count changes only the
+  columns, so element sizes match across columns on one screen and change
+  only with the viewport. The own editable board is a normal grid item at
+  its global join position; there are no per-owner widths or transforms.
+  The title, header and session banner stay unscaled.
 - The session banner is an actions-only bar (copy invite link / invite
   friends for the host, plus a single ✕ that ends the session for the host
   or leaves it for a guest) — the session title and mode are no longer shown
@@ -102,8 +108,10 @@ phones (< 1000 px) cannot start or join a session.
   the shared relay at `/apps/tierforge/ws?room=<sessionToken>&client=<id>`
   (the session token is the capability, like the invite link). Each client
   sends its pointer as a fraction of its own board, and peers render it on
-  the same board at the same fraction — the uniform 1:1 scale makes the point
-  identical. Cursors carry the member's name and a per-user color, and track
+  the same board at the same fraction. Fractions are scale-invariant, so
+  co-op's fixed layout and split's canonical-canvas columns both land the
+  receiver's cursor exactly on the sender's point. Cursors carry the
+  member's name and a per-user color, and track
   across the whole window: the pointer is a fraction of the sender's board
   clamped only by the window edges, so it glides off the board and keeps
   moving until it leaves the page instead of freezing at the border. While
@@ -114,9 +122,13 @@ phones (< 1000 px) cannot start or join a session.
   `board` events (`move` / `add` / `remove` / `settings`) so placements
   repaint instantly; the 350 ms push and 1 s poll remain authoritative.
 - Co-op renders all cursors on the shared board. Split renders each member's
-  cursor on their own board as shown in the peer column (same fraction,
-  translated onto that column's origin). Presence is in-memory in the relay,
-  never persisted, and disappears on disconnect/leave/end.
+  cursor on their own column: fractions are measured against the board
+  surface (excluding the "Own" name row), and every own/peer surface is the
+  same equal grid track on the same scaled canvas, so the fraction maps
+  exactly. The host's ▲▼ controls column is mirrored as an
+  invisible spacer in their read-only rendering so their rows wrap
+  identically for peers. Presence is in-memory in the relay, never
+  persisted, and disappears on disconnect/leave/end.
 
 ### Sync, deletion, lifetime
 
@@ -139,8 +151,9 @@ phones (< 1000 px) cannot start or join a session.
 - **Live cursors and board hints over WebSocket**:
   `flask_app/apps/tierforge/websocket.py` is the relay. Rooms are
   capability-token keyed; the relay forwards `{name, color, x, y, dragging?,
-  ref?, scroll?}` cursor messages plus sanitised TierForge `board` events to
-  the other room members and broadcasts a leave on disconnect. The Docker
+  ref?, scroll?}` cursor messages plus
+  sanitised TierForge `board` events to the other room members and broadcasts
+  a leave on disconnect. The Docker
   image starts the relay on port 5001 beside waitress; nginx still has to
   proxy `/apps/tierforge/ws` to it with Upgrade headers (see
   `__docs/structure.md` §6).

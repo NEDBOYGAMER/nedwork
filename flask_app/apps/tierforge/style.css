@@ -821,9 +821,10 @@ body.session-ended .img-remove { display: none; }
 /* ==========================================================================
    Multiplayer session layout
    --------------------------------------------------------------------------
-   The board is always laid out 1:1 (--session-scale stays at its default of
-   1) — no size buckets. The uniform scale is what lets live cursors map
-   exactly between members' screens.
+   Single-player/co-op boards are laid out 1:1 (--session-scale = 1). Split
+   mode lays the board out on a canonical 3-column canvas and scales it by
+   --session-scale; the shared scale is what lets live cursors map exactly
+   between members' screens.
    ========================================================================== */
 
 :root {
@@ -845,6 +846,16 @@ body.session-ended .img-remove { display: none; }
   position: relative;
 }
 
+/* The measured/painted part of the own board. Mirrors .partner-surface so
+   cursor fractions from one member map onto the same rendering everywhere. */
+.own-surface {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+  position: relative;
+}
+
 body.in-session main {
   width: calc(1200px * var(--session-scale));
   max-width: none;
@@ -857,6 +868,9 @@ body.in-session main {
    single-player mode. */
 body.in-session .session-layout,
 body.in-session .board-area {
+  gap: calc(var(--space-5) * var(--session-scale));
+}
+body.in-session .own-surface {
   gap: calc(var(--space-5) * var(--session-scale));
 }
 
@@ -918,47 +932,73 @@ body.in-session .pool-header {
   padding: calc(var(--space-3) * var(--session-scale))
            calc(var(--space-4) * var(--session-scale));
 }
+body.in-session .pool-title,
+body.in-session .pool-count {
+  font-size: calc(12px * var(--session-scale));
+}
+body.in-session .pool-empty {
+  font-size: calc(14px * var(--session-scale));
+  padding: calc(var(--space-5) * var(--session-scale));
+}
+body.in-session .edit-hint {
+  font-size: calc(12px * var(--session-scale));
+}
+body.in-session .tier-key-badge {
+  font-size: calc(12px * var(--session-scale));
+  padding: calc(1px * var(--session-scale)) calc(5px * var(--session-scale));
+  border-radius: calc(3px * var(--session-scale));
+}
+body.in-session .img-card .img-name {
+  font-size: calc(11px * var(--session-scale));
+  padding: calc(2px * var(--session-scale)) calc(4px * var(--session-scale));
+}
+body.in-session .img-card .img-remove {
+  top: calc(2px * var(--session-scale));
+  right: calc(2px * var(--session-scale));
+  width: calc(16px * var(--session-scale));
+  height: calc(16px * var(--session-scale));
+  font-size: calc(10px * var(--session-scale));
+}
+body.in-session .drop-indicator {
+  width: calc(3px * var(--session-scale));
+  border-radius: calc(2px * var(--session-scale));
+}
+body.in-session .partner-empty {
+  font-size: calc(14px * var(--session-scale));
+  padding: calc(var(--space-3) * var(--session-scale));
+}
 
-/* -- Split screen: one equal-width column per member -- */
+/* -- Split screen: one canvas, equal columns, one shared scale --
+   The canvas is always 3 equal columns wide; the member count only decides
+   how many of those slots are used. Main is centered with a screen-space
+   side margin, and every board-internal dimension scales by --session-scale,
+   so all columns match on this screen. */
 body.session-split main {
-  width: var(--split-main-w, calc(1200px * var(--session-scale)));
+  width: calc(100% - var(--space-6) * 2);
+  max-width: none;
+  margin-inline: auto;
+  padding-inline: 0;
 }
 body.session-split .session-layout {
-  flex-direction: row;
-  align-items: stretch;
+  flex-direction: column;
+}
+body.session-split #peerView { width: 100%; }
+body.session-split .partner-board-body {
+  display: grid;
+  grid-template-columns: repeat(var(--split-cols, 2), minmax(0, 1fr));
+  align-items: start;
   gap: calc(var(--space-5) * var(--session-scale));
+  padding: 0;
 }
-body.session-split .board-area {
-  flex: 0 0 var(--split-col-w, 0px);
-  min-width: 0;
-}
-body.session-split .partner-board:not([hidden]) {
-  flex: 0 0 var(--split-peer-w, var(--split-col-w, 0px));
-  min-width: 0;
-}
+body.session-split .board-area,
 body.session-split .partner-board-inner {
-  flex: 0 0 var(--split-col-w, 0px);
+  flex: none;
+  width: auto;
   min-width: 0;
 }
 
-.partner-board {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
-  overflow: visible;
-}
+.partner-board { overflow: visible; }
 .partner-board[hidden] { display: none; }
-.partner-board-header {
-  padding: calc(var(--space-3) * var(--session-scale))
-           calc(var(--space-4) * var(--session-scale));
-  border-bottom: 1px solid var(--line);
-}
-.partner-board-title {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: calc(14px * var(--session-scale));
-}
 .partner-board-body {
   display: flex;
   flex-direction: row;
@@ -968,12 +1008,13 @@ body.session-split .partner-board-inner {
 }
 .partner-board-inner {
   display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-5) * var(--session-scale));
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
-  flex-direction: column;
-  gap: calc(var(--space-3) * var(--session-scale));
 }
-/* Same shape/gap as .board-area, so cursor fractions map 1:1 between the
+/* Same shape/gap as .own-surface, so cursor fractions map 1:1 between the
    sender's own board and this read-only rendering of it. */
 .partner-surface {
   display: flex;
@@ -989,6 +1030,13 @@ body.session-split .partner-board-inner {
   font-size: calc(13px * var(--session-scale));
   font-weight: 600;
   color: var(--text);
+  min-width: 0;
+  white-space: nowrap;
+}
+.partner-board-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .partner-board-name::before {
   content: "";
@@ -999,6 +1047,11 @@ body.session-split .partner-board-inner {
   box-shadow: 0 0 0 2px var(--accent-soft);
   flex-shrink: 0;
 }
+body.in-session .partner-board-name::before {
+  width: calc(8px * var(--session-scale));
+  height: calc(8px * var(--session-scale));
+  box-shadow: 0 0 0 calc(2px * var(--session-scale)) var(--accent-soft);
+}
 .partner-host-tag {
   font-size: calc(10px * var(--session-scale));
   font-weight: 700;
@@ -1007,12 +1060,22 @@ body.session-split .partner-board-inner {
   color: var(--accent-ink);
   background: var(--accent);
   border-radius: 999px;
-  padding: 1px calc(6px * var(--session-scale));
+  padding: calc(1px * var(--session-scale))
+           calc(6px * var(--session-scale));
 }
+/* "Own" label above the local board in split mode, mirroring the peer
+   names; hidden outside a split session. */
+.own-board-name { display: none; }
+body.session-split .own-board-name { display: inline-flex; }
 .partner-board .img-card { cursor: default; }
 .partner-board .img-card:hover {
   border-color: transparent;
   transform: none;
+}
+/* Invisible ▲▼ column that reserves the host's controls width in the
+   read-only rendering of the host's board (same wrapping, same row heights). */
+.partner-tier-controls-spacer {
+  visibility: hidden;
 }
 .partner-empty {
   color: var(--text-muted);

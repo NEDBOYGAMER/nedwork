@@ -23,11 +23,11 @@ migrate = Migrate(app, db)
 
 
 # Local `python app.py` only: dev accounts that always hold every
-# permission. r1 is the requested test account; r and r2 are the existing
-# local test accounts (r1 may not exist yet — it is skipped until created).
+# permission. rico is the primary local account; r1/r/r2 are the older
+# local test accounts (any that don't exist yet are skipped until created).
 # This block never runs under waitress/Docker (`waitress-serve --call
 # app:create_app` imports this module without __name__ == "__main__").
-LOCAL_FULL_ACCESS_USERS = ("r1", "r2", "r")
+LOCAL_FULL_ACCESS_USERS = ("rico", "r1", "r2", "r")
 
 
 def _grant_local_full_access():

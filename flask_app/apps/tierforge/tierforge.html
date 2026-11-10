@@ -126,27 +126,27 @@
 
     <div class="session-layout">
       <div class="board-area" id="boardArea">
-        <div class="tier-board" id="tierBoard">
-          <!-- Tiers rendered by JS -->
-        </div>
-
-        <div class="image-pool-section">
-          <div class="pool-header">
-            <span class="pool-title">Unranked images</span>
-            <span class="pool-count" id="poolCount">0 images</span>
+        <div class="partner-board-name own-board-name">Own</div>
+        <div class="own-surface" id="ownSurface">
+          <div class="tier-board" id="tierBoard">
+            <!-- Tiers rendered by JS -->
           </div>
-          <div class="image-pool" id="imagePool">
-            <div class="pool-empty" id="poolEmpty">
-              Upload images to start ranking them
+
+          <div class="image-pool-section">
+            <div class="pool-header">
+              <span class="pool-title">Unranked images</span>
+              <span class="pool-count" id="poolCount">0 images</span>
+            </div>
+            <div class="image-pool" id="imagePool">
+              <div class="pool-empty" id="poolEmpty">
+                Upload images to start ranking them
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <section class="partner-board" id="peerView" hidden>
-        <div class="partner-board-header">
-          <span class="partner-board-title" id="partnerBoardTitle">Partner board</span>
-        </div>
         <div class="partner-board-body" id="partnerBoardBody"></div>
       </section>
     </div>
