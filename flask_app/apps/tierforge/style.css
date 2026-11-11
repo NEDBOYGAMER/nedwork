@@ -9,6 +9,7 @@
   --base-tier-img-size: 120px;
   --pool-img-size: var(--base-pool-img-size, 120px);
   --tier-img-size: var(--base-tier-img-size, 120px);
+  --tier-min-h: 100px;
 }
 
 /* Ambient background: dot grid comes from ui-elements.css (body::before),
@@ -693,7 +694,7 @@ body.blank-mode .image-pool-section {
 }
 
 .tier-images .drop-indicator {
-  height: var(--tier-img-size);
+  height: calc(var(--tier-img-size) / 2);
 }
 /* ==========================================================================
    Multiplayer sessions
@@ -739,6 +740,7 @@ body.session-ended .img-remove { display: none; }
 /* -- Live drag cursors from other session members -- */
 .remote-cursor {
   position: absolute;
+  z-index: 9999;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -829,6 +831,9 @@ body.session-ended .img-remove { display: none; }
 
 :root {
   --session-scale: 1;
+  /* Vertical twin of --session-scale. Split mode squeezes it to 75% so the
+     cross-member columns stay compact without touching the width scale. */
+  --session-scale-y: var(--session-scale);
 }
 
 .session-layout {
@@ -868,10 +873,10 @@ body.in-session main {
    single-player mode. */
 body.in-session .session-layout,
 body.in-session .board-area {
-  gap: calc(var(--space-5) * var(--session-scale));
+  gap: calc(var(--space-5) * var(--session-scale-y));
 }
 body.in-session .own-surface {
-  gap: calc(var(--space-5) * var(--session-scale));
+  gap: calc(var(--space-5) * var(--session-scale-y));
 }
 
 /* Image sizes are shared live inside a session and scaled by the board
@@ -882,17 +887,17 @@ body.in-session {
 }
 
 body.in-session .tier-board {
-  gap: calc(var(--space-2) * var(--session-scale));
+  gap: calc(var(--space-2) * var(--session-scale-y));
 }
 body.in-session .tier-row {
-  min-height: calc(100px * var(--session-scale));
+  min-height: calc(var(--tier-min-h) * var(--session-scale-y));
 }
 body.in-session .tier-label-wrap {
   width: calc(72px * var(--session-scale));
   min-width: calc(72px * var(--session-scale));
   max-width: calc(160px * var(--session-scale));
-  gap: calc(var(--space-2) * var(--session-scale));
-  padding: calc(var(--space-3) * var(--session-scale))
+  gap: calc(var(--space-2) * var(--session-scale-y));
+  padding: calc(var(--space-3) * var(--session-scale-y))
            calc(var(--space-2) * var(--session-scale));
 }
 body.in-session .tier-label {
@@ -905,18 +910,20 @@ body.in-session .tier-label[data-len="very-long"] {
   font-size: calc(12px * var(--session-scale));
 }
 body.in-session .tier-images {
-  gap: calc(var(--space-2) * var(--session-scale));
-  padding: calc(var(--space-3) * var(--session-scale));
-  min-height: calc(100px * var(--session-scale));
+  gap: calc(var(--space-2) * var(--session-scale-y))
+       calc(var(--space-2) * var(--session-scale));
+  padding: calc(var(--space-3) * var(--session-scale-y))
+           calc(var(--space-3) * var(--session-scale));
+  min-height: calc(var(--tier-min-h) * var(--session-scale-y));
 }
 body.in-session .tier-controls {
-  gap: calc(4px * var(--session-scale));
-  padding: calc(var(--space-2) * var(--session-scale))
+  gap: calc(4px * var(--session-scale-y));
+  padding: calc(var(--space-2) * var(--session-scale-y))
            calc(4px * var(--session-scale));
 }
 body.in-session .tier-ctrl-btn {
   font-size: calc(12px * var(--session-scale));
-  padding: calc(4px * var(--session-scale))
+  padding: calc(4px * var(--session-scale-y))
            calc(6px * var(--session-scale));
 }
 body.in-session .img-card {
@@ -924,12 +931,14 @@ body.in-session .img-card {
   border-width: calc(2px * var(--session-scale));
 }
 body.in-session .image-pool {
-  gap: calc(var(--space-2) * var(--session-scale));
-  padding: calc(var(--space-4) * var(--session-scale));
-  min-height: calc(100px * var(--session-scale));
+  gap: calc(var(--space-2) * var(--session-scale-y))
+       calc(var(--space-2) * var(--session-scale));
+  padding: calc(var(--space-4) * var(--session-scale-y))
+           calc(var(--space-4) * var(--session-scale));
+  min-height: calc(100px * var(--session-scale-y));
 }
 body.in-session .pool-header {
-  padding: calc(var(--space-3) * var(--session-scale))
+  padding: calc(var(--space-3) * var(--session-scale-y))
            calc(var(--space-4) * var(--session-scale));
 }
 body.in-session .pool-title,
@@ -938,7 +947,8 @@ body.in-session .pool-count {
 }
 body.in-session .pool-empty {
   font-size: calc(14px * var(--session-scale));
-  padding: calc(var(--space-5) * var(--session-scale));
+  padding: calc(var(--space-5) * var(--session-scale-y))
+           calc(var(--space-5) * var(--session-scale));
 }
 body.in-session .edit-hint {
   font-size: calc(12px * var(--session-scale));
@@ -972,7 +982,14 @@ body.in-session .partner-empty {
    The canvas is always 3 equal columns wide; the member count only decides
    how many of those slots are used. Main is centered with a screen-space
    side margin, and every board-internal dimension scales by --session-scale,
-   so all columns match on this screen. */
+   so all columns match on this screen. Heights use --session-scale-y, which
+   split mode squeezes to 75% independent of the width scale. */
+body.session-split {
+  --session-scale-y: calc(var(--session-scale) * 0.75);
+  --tier-min-h: 75px;
+  --tier-img-size: calc(var(--base-tier-img-size) * var(--session-scale) * 0.75);
+  --pool-img-size: calc(var(--base-pool-img-size) * var(--session-scale) * 0.75);
+}
 body.session-split main {
   width: calc(100% - var(--space-6) * 2);
   max-width: none;
@@ -1009,7 +1026,7 @@ body.session-split .partner-board-inner {
 .partner-board-inner {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-5) * var(--session-scale));
+  gap: calc(var(--space-5) * var(--session-scale-y));
   position: relative;
   flex: 1 1 0;
   min-width: 0;
@@ -1019,7 +1036,7 @@ body.session-split .partner-board-inner {
 .partner-surface {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-5) * var(--session-scale));
+  gap: calc(var(--space-5) * var(--session-scale-y));
   min-width: 0;
   position: relative;
 }

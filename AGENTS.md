@@ -190,7 +190,8 @@ stores now live in `instance/data/`).
   tier structure; split guests get tiers seeded from the host and use one
   canonical 3-column canvas (`u=430`, 24 px gaps) scaled to each viewer's
   screen, with every column (own included, global join order) an equal grid
-  track at the same scale (title/header unscaled; co-op stays fixed 1200), a
+  track at the same scale (title/header unscaled; co-op stays fixed 1200;
+  split heights use a 0.75× vertical factor, `--session-scale-y`), a
   3-member cap (co-op caps at 10); image sizes
   are shared live via `POST /sessions/<token>/settings`; sessions without
   activity auto-end after 6 h; friend invites join immediately (no approval;

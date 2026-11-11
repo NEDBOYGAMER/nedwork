@@ -87,12 +87,16 @@ phones (< 1000 px) cannot start or join a session.
   side margin. `--session-scale = available width / 1338`; the board body is
   a grid of `members` equal tracks, so 3 members get `u`-wide columns, 2 get
   ~1.53u, and a lone host gets the full canvas. The scale is shared by the
-  whole split layout and drives every board-internal dimension (row heights,
-  tier/image sizes, fonts, gaps, paddings); member count changes only the
-  columns, so element sizes match across columns on one screen and change
-  only with the viewport. The own editable board is a normal grid item at
-  its global join position; there are no per-owner widths or transforms.
-  The title, header and session banner stay unscaled.
+  whole split layout and drives every board-internal dimension. Widths and
+  fonts use `--session-scale`; heights use `--session-scale-y`, which split
+  mode sets to **75% of `--session-scale`** (row/image sizes, vertical
+  paddings and gaps), and the tier min-height base drops from 100 px to
+  75 px, so the columns are compact without changing the width scale. Member
+  count changes only the columns, so element sizes match
+  across columns on one screen and change only with the viewport. The own
+  editable board is a normal grid item at its global join position; there
+  are no per-owner widths or transforms. The title, header and session
+  banner stay unscaled.
 - The session banner is an actions-only bar (copy invite link / invite
   friends for the host, plus a single ✕ that ends the session for the host
   or leaves it for a guest) — the session title and mode are no longer shown
