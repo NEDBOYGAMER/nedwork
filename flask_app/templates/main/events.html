@@ -177,8 +177,8 @@
             ride: "{{ url_for('events.delete_ride', ride_id=0) }}",
             chatMsg: "{{ url_for('events.delete_message', message_id=0) }}",
             upcoming: "{{ url_for('events.upcoming') }}",
-            notifications: "{{ url_for('events.list_notifications') }}",
-            notificationsRead: "{{ url_for('events.read_notifications') }}",
+            notifications: "{{ url_for('inbox.api_list') }}",
+            notificationsRead: "{{ url_for('inbox.api_read') }}",
             baseUrl: "{{ url_for('events.events_page') }}",
         };
         {% if event_id is defined and event_id %}

@@ -3,8 +3,9 @@
 Two channels, both best-effort and never allowed to break the request
 that triggered them:
 
-- In-app: a Notification row per user (the dashboard's NotificationsWidget
-  fetches /events/api/notifications).
+- In-app: a Notification row per user (the universal inbox API lives at
+  /notifications/api/list; the WebSocket relay pushes new rows and the
+  unread count from the same table, so every writer below is realtime).
 - Email: optional fan-out via Resend, reusing the fire-and-forget plumbing
   from flask_app.notify (silent no-op without RESEND_API_KEY).
 
@@ -162,9 +163,10 @@ def event_upcoming_for_user(user):
 
 def scan_reminders(user):
     """24h-before reminders without a scheduler: piggyback on the
-    notifications fetch (the dashboard widget polls it every minute).
-    One reminder per (user, event) — an existing event_reminder row is
-    the dedupe marker. Never raises; best-effort like everything here."""
+    notifications fetch (the client hub's 5-minute tick, plus its
+    reconnect fallback). One reminder per (user, event) — an existing
+    event_reminder row is the dedupe marker. Never raises; best-effort
+    like everything here."""
     try:
         window_start = datetime.now()
         window_end = datetime.now() + timedelta(hours=26)

@@ -152,15 +152,20 @@ phones (< 1000 px) cannot start or join a session.
   repaint from cache instead of waiting on a fresh download. Starting or
   joining from an already loaded board flushes the pending personal
   autosave first, so the session's "parked board" never loses recent edits.
-- **Live cursors and board hints over WebSocket**:
-  `flask_app/apps/tierforge/websocket.py` is the relay. Rooms are
+- **Live cursors and board hints over WebSocket**: the shared relay in
+  `flask_app/ws/` (the old `flask_app/apps/tierforge/websocket.py` module is
+  a compatibility entry point) serves the TierForge room path
+  `/apps/tierforge/ws` **without auth** and the authenticated site-level
+  `/ws/notifications` channel beside it. Rooms are
   capability-token keyed; the relay forwards `{name, color, x, y, dragging?,
   ref?, scroll?}` cursor messages plus
   sanitised TierForge `board` events to the other room members and broadcasts
   a leave on disconnect. The Docker
   image starts the relay on port 5001 beside waitress; nginx still has to
-  proxy `/apps/tierforge/ws` to it with Upgrade headers (see
-  `__docs/structure.md` §6).
+  proxy both paths to it with Upgrade headers (see
+  `__docs/structure.md` §6). The notification path reads the mounted
+  SQLite DB (new rows + unread counts, `query_only`), so the relay service
+  needs `./data:/app/instance`; a missing DB degrades notifications only.
 - **Idle sessions auto-end after 6 hours** without a join/board/remove
   write. The check is lazy: every session route calls `_maybe_end_idle` via
   `_get_session_by_token` (presence pings deliberately do not count — they

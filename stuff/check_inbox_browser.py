@@ -80,7 +80,18 @@ with sync_playwright() as p:
     browser = p.chromium.launch()
     page = browser.new_page(viewport={"width": 1280, "height": 900})
     errors = []
-    page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+
+    def on_console(message):
+        # This smoke runs waitress without the relay; the hub's expected
+        # socket 404 is not a JS failure.
+        if (message.type == "error"
+                and "/ws/notifications" in message.text
+                and "WebSocket" in message.text):
+            return
+        if message.type == "error":
+            errors.append(message.text)
+
+    page.on("console", on_console)
     page.on("pageerror", lambda e: errors.append(str(e)))
 
     page.goto(f"{BASE}/auth/login")

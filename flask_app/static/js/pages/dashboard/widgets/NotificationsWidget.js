@@ -1,14 +1,11 @@
 import { Widget } from '../Widget.js'
 import { NOTIFICATION_TYPES, notificationText, relativeTime } from '../../../components/notifications.js'
+import { getHub } from '../../../components/notificationHub.js'
 
 // In-app notifications. The Notification model and its writers live in
-// flask_app/notifications.py; this widget reads the Events API surface,
-// the /notifications page reads /notifications/api/list (same rows, plus
-// per-row actions). Demo data is only a silent fallback when the API is
-// unreachable (e.g. offline).
-const API_URL = '/events/api/notifications'
-const READ_URL = '/events/api/notifications/read'
-const POLL_MS = 60_000
+// flask_app/notifications.py; the shared notification hub owns the socket
+// and the REST list (/notifications/api/list). Demo data is only a silent
+// fallback when the API has never responded (e.g. offline).
 
 function minutesAgo(minutes) {
     const d = new Date()
@@ -28,8 +25,10 @@ export class NotificationsWidget extends Widget {
 
         this.showCategories = config.settings?.show_categories !== false   // default on
         this.items = []
+        this.unread = 0
         this.live = false          // true once the real API has responded
-        this.pollTimer = null
+        this.hub = null
+        this.unsubscribe = null
 
         this.headEl = null
         this.markAllBtn = null
@@ -59,24 +58,22 @@ export class NotificationsWidget extends Widget {
         this.listEl.className = "notifications-list"
         this.content.appendChild(this.listEl)
 
-        this.fetchNotifications()
-        this.pollTimer = setInterval(() => this.fetchNotifications(), POLL_MS)
-
-        this.render()
+        this.hub = getHub()
+        this.hub.start()
+        this.unsubscribe = this.hub.subscribe(state => this.applyState(state))
     }
 
     dispose() {
-        clearInterval(this.pollTimer)
+        if (this.unsubscribe) {
+            this.unsubscribe()
+            this.unsubscribe = null
+        }
     }
 
-    async fetchNotifications() {
-        try {
-            const res = await fetch(API_URL, { credentials: "same-origin" })
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            const data = await res.json()
-            const rows = data.notifications || []
+    applyState(state) {
+        if (state.loaded) {
             this.live = true
-            this.items = rows.map(n => ({
+            this.items = (state.items || []).map(n => ({
                 id: n.id,
                 type: n.type,
                 category: NOTIFICATION_TYPES[n.type]?.slug || "event",
@@ -87,16 +84,15 @@ export class NotificationsWidget extends Widget {
                     ? `/apps/tierforge?s=${n.payload.session_token}`
                     : null,
             }))
-            this.unread = data.unread || 0
-        } catch (err) {
-            // silent fallback to demo data — the plan says the widget must
-            // never look broken when the events site is unreachable
-            if (!this.live) {
-                this.items = DEMO_NOTIFICATIONS.map(n => ({
-                    ...n,
-                    category: NOTIFICATION_TYPES[n.type]?.slug || "event",
-                }))
-            }
+            this.unread = state.unread || 0
+        } else if (!this.live) {
+            // silent fallback to demo data — the widget must never look
+            // broken when the notifications API is unreachable
+            this.items = DEMO_NOTIFICATIONS.map(n => ({
+                ...n,
+                category: NOTIFICATION_TYPES[n.type]?.slug || "event",
+            }))
+            this.unread = this.items.filter(n => !n.read).length
         }
         this.render()
     }
@@ -181,34 +177,14 @@ export class NotificationsWidget extends Widget {
         const item = this.items.find(n => n.id === id)
         if (item) item.read = true
         this.render()
-        try {
-            const res = await fetch(READ_URL, {
-                method: "POST",
-                credentials: "same-origin",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ids: [id] }),
-            })
-            if (res.ok) {
-                const data = await res.json()
-                this.unread = data.unread
-            }
-        } catch (err) { /* offline — local state already updated */ }
+        this.unread = await this.hub.markRead([id])
+        this.render()
     }
 
     async markAllRead() {
         this.items.forEach(n => { n.read = true })
         this.render()
-        try {
-            const res = await fetch(READ_URL, {
-                method: "POST",
-                credentials: "same-origin",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ all: true }),
-            })
-            if (res.ok) {
-                const data = await res.json()
-                this.unread = data.unread
-            }
-        } catch (err) { /* offline — local state already updated */ }
+        this.unread = await this.hub.markRead(null, true)
+        this.render()
     }
 }

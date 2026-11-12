@@ -21,8 +21,8 @@ globalThis.EVENTS_API = {
   event: "/events/0/", module: "/events/api/modules/0",
   item: "/events/api/items/0", ride: "/events/api/rides/0",
   chatMsg: "/events/api/chat/0", upcoming: "/events/api/upcoming",
-  notifications: "/events/api/notifications",
-  notificationsRead: "/events/api/notifications/read",
+  notifications: "/notifications/api/list",
+  notificationsRead: "/notifications/api/read",
   baseUrl: "/events/",
 };
 globalThis.EVENT_ID = 1;

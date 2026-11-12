@@ -37,6 +37,7 @@
         {% endif %}
     </div>
 
+    <script>window.NEDWORK_AUTHED = {{ 'true' if nav_logged_in else 'false' }};</script>
     <script type="module" src="{{ url_for('static', filename='js/components/sidenav.js') }}"></script>
 
 </aside>

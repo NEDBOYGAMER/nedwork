@@ -98,19 +98,39 @@ export function settingsTitle(root, ctx) {
     if (imageModule) {
         settingsImage(coverBody, { ...ctx, module: imageModule });
     } else {
-        const addBtn = el("button", "btn btn-secondary btn-sm", "Add cover image");
+        // the button opens the native picker straight away; the module is
+        // only created once a file is chosen, so cancelling changes nothing
+        const fileInput = el("input", "visually-hidden");
+        fileInput.type = "file";
+        fileInput.accept = "image/png,image/jpeg,image/gif,image/webp";
+
+        const addBtn = el("button", "btn btn-secondary btn-sm",
+            "Add cover image");
         addBtn.type = "button";
         addBtn.appendChild(icon("upload"));
-        addBtn.onclick = async () => {
+        addBtn.onclick = () => fileInput.click();
+
+        fileInput.onchange = async () => {
+            const file = fileInput.files?.[0];
+            if (!file) return;
+            addBtn.disabled = true;
+            addBtn.textContent = "Uploading...";
             try {
-                await api(modulesUrl(event.id), {
+                const created = await api(modulesUrl(event.id), {
                     method: "POST",
                     body: JSON.stringify({ type: "image" }),
                 });
+                const body = new FormData();
+                body.append("file", file);
+                await api(imageUploadUrl(created.module.id),
+                    { method: "POST", body });
+            } catch (e) {
+                toast(e.message, "error");
+            } finally {
                 await refresh();
-            } catch (e) { toast(e.message, "error"); }
+            }
         };
-        coverBody.appendChild(addBtn);
+        coverBody.append(fileInput, addBtn);
         coverBody.appendChild(el("p", "hint",
             "Shown as the event's header picture."));
     }
@@ -130,7 +150,7 @@ export function settingsDescription(root, ctx) {
     root.appendChild(field("Description", textarea));
 }
 
-/* ---- image (upload from PC is primary; URL secondary) ------------------ */
+/* ---- image (upload from PC) --------------------------------------------- */
 
 export function settingsImage(root, ctx) {
     const { module, draft, refresh } = ctx;
@@ -187,7 +207,6 @@ export function settingsImage(root, ctx) {
                     root.insertBefore(preview, root.firstChild);
                 }
                 preview.src = url;
-                draft.imageUrl = url;
             }
             draft.imageStatus = "Uploaded";
             status.textContent = draft.imageStatus;
@@ -201,11 +220,6 @@ export function settingsImage(root, ctx) {
     root.appendChild(field("Upload image", uploadRow,
         "PNG, JPEG, GIF or WebP."));
     root.appendChild(status);
-
-    // URL as secondary
-    const urlInput = textInput(config.url, "or paste an image URL",
-        (v) => { draft.imageUrl = v.trim() || ""; });
-    root.appendChild(field("Image URL (secondary)", urlInput));
 }
 
 /* ---- location ---------------------------------------------------------- */

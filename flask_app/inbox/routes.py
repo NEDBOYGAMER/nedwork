@@ -104,11 +104,13 @@ def inbox_page(user):
 
 # ------------------------------------------------------------------- api
 #   GET  /notifications/api/list   -> latest 50 + unread + per-row action
-#   GET  /notifications/api/unread -> unread count (the sidenav dot polls it)
+#   GET  /notifications/api/unread -> unread count (legacy; the hub uses list)
 #   POST /notifications/api/read   -> mark ids or all read
 #
-# Both reads piggyback the reminder scans: there is no scheduler, so the
-# poll IS the tick (same pattern as /events/api/notifications).
+# Both reads piggyback the reminder scans: there is no server scheduler.
+# The notification hub's 5-minute tick and its reconnect fallback keep the
+# scans running while a tab is open (scans can run up to 5 minutes later
+# than the old 60 s poll; reminders are 24 h ahead, so this is acceptable).
 
 @inbox_bp.route('/api/list')
 @permission_required("core", API)

@@ -3259,9 +3259,9 @@ async function inviteFriend(userId) {
 
 // ── In-app invite popup ────────────────────────────────────────────
 // Friend invites now join directly, so the notification carries the whole
-// action. Poll the shared inbox API (same one the bell uses) and offer a
-// one-click Join button; dismissed invites stay dismissed for the tab.
-const INVITE_POLL_MS = 12000;
+// action. The shared notification hub pushes mailbox rows over the socket
+// (the REST refresh keeps each row's live action); offer a one-click Join
+// button; dismissed invites stay dismissed for the tab.
 const inviteDismissed = new Set();
 try {
   (JSON.parse(sessionStorage.getItem('tfInviteDismissed') || '[]') || [])
@@ -3298,29 +3298,32 @@ function showInvitePopup(n) {
   popup.hidden = false;
 }
 
-async function pollInvites() {
-  if (!ME || document.hidden) return;
-  try {
-    const res = await fetch('/notifications/api/list');
-    if (!res.ok) return;
-    const data = await res.json();
-    const activeToken = sessionToken || initialJoinToken;
-    const rows = (data.notifications || []).filter(n => {
-      if (n.read || !n.payload || !n.payload.session_token) return false;
-      if (n.payload.session_token === activeToken) return false;
-      if (n.type !== 'tierforge_join_request'
-          && n.type !== 'tierforge_invite_approved') return false;
-      if (!n.action || n.action.kind !== 'tierforge') return false;
-      return !inviteDismissed.has(n.id);
-    });
-    if (rows.length === 0) hideInvitePopup();
-    else showInvitePopup(rows[0]);
-  } catch (_) {
-    // offline — the next poll retries
-  }
+let inviteLastState = null;
+
+function handleInviteState(state) {
+  if (!ME) return;
+  inviteLastState = state;
+  if (document.hidden) return;
+  const activeToken = sessionToken || initialJoinToken;
+  const rows = (state.items || []).filter(n => {
+    if (n.read || !n.payload || !n.payload.session_token) return false;
+    if (n.payload.session_token === activeToken) return false;
+    if (n.type !== 'tierforge_join_request'
+        && n.type !== 'tierforge_invite_approved') return false;
+    if (!n.action || n.action.kind !== 'tierforge') return false;
+    return !inviteDismissed.has(n.id);
+  });
+  if (rows.length === 0) hideInvitePopup();
+  else showInvitePopup(rows[0]);
 }
 
+let inviteHub = null;
+
 async function markInviteRead(id) {
+  if (inviteHub) {
+    await inviteHub.markRead([id]);
+    return;
+  }
   try {
     await fetch('/notifications/api/read', {
       method: 'POST',
@@ -3330,12 +3333,22 @@ async function markInviteRead(id) {
   } catch (_) { /* best effort */ }
 }
 
-let invitePollStarted = false;
-function startInvitePolling() {
-  if (invitePollStarted) return;
-  invitePollStarted = true;
-  setTimeout(pollInvites, 1500);
-  setInterval(pollInvites, INVITE_POLL_MS);
+let inviteFeedStarted = false;
+function startInviteFeed() {
+  if (inviteFeedStarted) return;
+  inviteFeedStarted = true;
+  import('/static/js/components/notificationHub.js')
+    .then(({ getHub }) => {
+      inviteHub = getHub();
+      inviteHub.start();
+      inviteHub.subscribe(handleInviteState);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && inviteLastState) {
+          handleInviteState(inviteLastState);
+        }
+      });
+    })
+    .catch(() => { /* no realtime feed; the invite popup stays absent */ });
 }
 
 document.getElementById('invitePopupJoin').addEventListener('click', async () => {
@@ -3528,7 +3541,7 @@ document.body.appendChild(ghost);
   const token = initialJoinToken;
   if (token && /^[0-9a-f]{32}$/.test(token) && ME) {
     if (await enterSessionFromLink(token)) {
-      startInvitePolling();
+      startInviteFeed();
       setupPoolDropZone();
       return;
     }
@@ -3543,7 +3556,7 @@ document.body.appendChild(ghost);
   }
   setupPoolDropZone();
   render();
-  startInvitePolling();
+  startInviteFeed();
 })();
 
 // Also catch the moment the page is about to unload, as a last-chance save.

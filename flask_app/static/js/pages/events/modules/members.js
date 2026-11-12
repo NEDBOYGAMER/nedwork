@@ -44,9 +44,6 @@ export function renderMembers(root, ctx) {
             group.appendChild(btn);
         }
         row.appendChild(group);
-        if (mine.rsvp_stale) {
-            row.appendChild(el("span", "badge badge-warning", "Date changed — re-confirm"));
-        }
         root.appendChild(row);
     }
 
@@ -61,9 +58,6 @@ export function renderMembers(root, ctx) {
         }
         li.appendChild(info);
         li.appendChild(rsvpBadge(member.rsvp));
-        if (member.rsvp_stale && member.rsvp !== "pending") {
-            li.appendChild(el("span", "badge badge-warning", "stale"));
-        }
         if (member.needs_ride) {
             li.appendChild(el("span", "badge badge-info", "needs ride"));
         }

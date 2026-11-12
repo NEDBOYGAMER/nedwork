@@ -5,10 +5,11 @@
    row never shows a dead button. */
 
 import { NOTIFICATION_TYPES, relativeTime } from "../components/notifications.js";
+import { getHub } from "../components/notificationHub.js";
 import { el, icon, toast } from "./events/ui.js";
 
 const API = window.INBOX_API || {};
-const POLL_MS = 60_000;
+const hub = getHub();
 
 let items = [];
 let filter = "all";
@@ -183,41 +184,26 @@ function render() {
 /* ── data ──────────────────────────────────────────────────────────── */
 
 async function load() {
-    try {
-        const data = await api(API.list);
-        items = data.notifications || [];
-        // Opening the inbox counts as "seen": remember the count the dot
-        // should be compared against (it reappears when more arrive).
-        syncDot(data.unread || 0);
-    } catch (err) {
-        items = [];
-        toast(err.message, "error");
+    const ok = await hub.refresh();
+    if (!ok && !hub.state().loaded) {
+        toast("Could not load notifications", "error");
     }
-    render();
 }
 
 async function markOne(id) {
     const n = items.find((x) => x.id === id);
     if (n) n.read = true;
     render();
-    try {
-        const { unread } = await api(API.read, {
-            method: "POST", body: JSON.stringify({ ids: [id] }) });
-        syncDot(unread);
-    } catch { /* the local state already reflects it */ }
+    syncDot(await hub.markRead([id]));
 }
 
 async function markAll() {
     items.forEach((n) => { n.read = true; });
     render();
-    try {
-        const { unread } = await api(API.read, {
-            method: "POST", body: JSON.stringify({ all: true }) });
-        syncDot(unread);
-    } catch { /* local state already reflects it */ }
+    syncDot(await hub.markRead(null, true));
 }
 
-/* the sidenav dot polls every minute; opening/reading here updates it */
+/* opening/reading here updates the hub-backed sidenav dot */
 function syncDot(unread) {
     localStorage.setItem("notifSeenCount", String(unread));
     const dot = document.getElementById("notifications-dot");
@@ -239,5 +225,12 @@ document.getElementById("inbox-nav")?.addEventListener("click", (e) => {
 
 markAllBtn.addEventListener("click", markAll);
 
+hub.start();
+hub.subscribe((state) => {
+    items = state.items || [];
+    // Opening the inbox counts as "seen": remember the count the dot
+    // should be compared against (it reappears when more arrive).
+    syncDot(state.unread);
+    render();
+});
 load();
-setInterval(() => { if (!document.hidden) load(); }, POLL_MS);

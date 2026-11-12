@@ -96,7 +96,6 @@ function draw(wrap, eventId, draft) {
         else if (type === "location") delete draft.location;
         else if (type === "doodle") delete draft.doodle;
         else if (type === "image") {
-            delete draft.imageUrl;
             delete draft.imageFileName;
             delete draft.imageStatus;
         }
@@ -469,14 +468,6 @@ function buildModulePayload(module, draft) {
                 payload.config = { text: draft.description };
             }
             break;
-        case "image": {
-            const cfg = {};
-            if (draft.imageUrl !== undefined) {
-                cfg.url = draft.imageUrl;   // pasted URL ("" clears it)
-            }
-            if (Object.keys(cfg).length) payload.config = cfg;
-            break;
-        }
         case "location":
             if (draft.location) {
                 payload.config = {

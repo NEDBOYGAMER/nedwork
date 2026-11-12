@@ -16,20 +16,10 @@ state, next steps, and file paths. See Temporary for the etiquette.
 - [site wide settings(only for user to read)]
 
 ## Home (Dashboard)
-
 -
 
 ## Events
-
-(none — no open items. Shipped 2026-11-08: responsibility actions
-(bring add/claim, offer ride, take seat, doodle vote, chat) require RSVP
-**Going**; `maybe` may still request a ride, `cant`/`pending` are
-read-only. Non-Going members see a read-only banner listing outstanding
-claims/seats/rides, and downgrading warns before keeping them. Existing
-garbled location addresses: re-search / drag the pin in Edit to re-fill.
-Also shipped 2026-11-08: the "Your to-dos for this event" rollup
-(`myDuties`) is gone, and a pin without an address now shows a muted
-fallback line instead of the address silently vanishing.)
+-
 
 ## Socials
 -
@@ -50,7 +40,7 @@ fallback line instead of the address silently vanishing.)
 -
 
 ### TierForge
-
+- cursor of friends under own tierlist
 
 ### Colors
 -

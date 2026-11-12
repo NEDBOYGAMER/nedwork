@@ -4,7 +4,7 @@ Orientation for coding agents working in this repo. Read this before touching
 anything. **Always read `TODO.md` too, at the start of every task** — open
 work items and accepted tradeoffs live there; check whether your task (or a
 cheap related fix) is already listed before you plan, and keep it current
-when things change. Verified 2026-11-10; if reality has moved, update this
+when things change. Verified 2026-11-12; if reality has moved, update this
 file in the same session (same rule as `__docs/structure.md`).
 
 ---
@@ -166,7 +166,7 @@ Never put user data or generated files under `static/` — it is public and
 served as-is (historical bug: suggestions JSON used to live there; runtime
 stores now live in `instance/data/`).
 
-## 7. Current state & pitfalls (2026-11-10)
+## 7. Current state & pitfalls (2026-11-12)
 
 - **Uncommitted work in the tree**: the 2026-11 TODO round (timer, events,
   socials, settings, notifications, account deletion) is modified but not
@@ -202,12 +202,16 @@ stores now live in `instance/data/`).
   since session mode parks it); in-session layouts preserve proportions (no
   size buckets; split scales the canonical canvas, own/co-op oversized boards
   scroll), and live cursors (board-relative fractions streamed over the
-  WebSocket relay in
-  `flask_app/apps/tierforge/websocket.py`, co-op and split) track across the
-  whole window; the session banner is an actions-only bar (copy/person/✕,
+  shared WebSocket relay in `flask_app/ws/`, co-op and split) track across
+  the whole window; the session banner is an actions-only bar (copy/person/✕,
   host vs guest); the Docker image starts that relay beside waitress, and
-  nginx still needs Upgrade proxying. The relay keeps rooms in memory only.
-  Full model + API in `__docs/apps.md`.
+  nginx still needs Upgrade proxying for **both** relay paths. The same
+  process also serves the authenticated `/ws/notifications` channel
+  (notification hub + 5-minute scan tick; reads the mounted SQLite DB with
+  `query_only`, degrades notifications only when the DB is missing).
+  TierForge rooms stay in memory and unauthenticated; the old
+  `flask_app/apps/tierforge/websocket.py` is just the compatibility entry
+  point. Full model + API in `__docs/apps.md`.
 - **All cookies are unconditionally `Secure`** (session, csrf, admin —
   issued *and* cleared; no scheme sniffing left, so `X-Forwarded-Proto`
   / `PROXY_FIX_X_FOR` no longer matter for cookies). Consequences:

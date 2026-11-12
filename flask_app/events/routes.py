@@ -1694,17 +1694,23 @@ def delete_message(user, message_id):
 
 # ---------------------------------------------------------------------------
 # api - notifications + dashboard
-#   GET  /events/api/notifications     -> latest 50 + unread count
-#   POST /events/api/notifications/read -> mark ids or all read
+#   GET  /events/api/notifications     -> deprecated alias of
+#                                         /notifications/api/list
+#   POST /events/api/notifications/read -> deprecated alias of
+#                                         /notifications/api/read
 #   GET  /events/api/upcoming          -> next published dated events
+#
+# The universal inbox lives under /notifications. These two aliases stay
+# for one deploy cycle so cached dashboard JS and old links do not 404;
+# remove them after that.
 # ---------------------------------------------------------------------------
 
 
 @events_bp.route('/api/notifications', methods=['GET'])
 @permission_required("core", API)
 def list_notifications(user):
-    # the 24h-reminder scan rides on this poll (the dashboard widget hits
-    # it every minute) — no scheduler exists by design
+    # Deprecated alias: current clients use /notifications/api/list. The
+    # reminder scan still rides here for anything that hits the old URL.
     scan_reminders(user)
     rows, unread = notifications_for_user(user)
     return jsonify({

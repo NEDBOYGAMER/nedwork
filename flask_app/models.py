@@ -970,7 +970,7 @@ class ChatMessage(db.Model):
 
 
 class Notification(db.Model):
-    """Site-wide, user-targeted in-app notification (Events MVP consumer).
+    """Site-wide, user-targeted in-app notification (any app).
     payload JSON: {event_id, title, actor, ...} — read flag per user."""
     __tablename__ = "notifications"
 

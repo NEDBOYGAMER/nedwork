@@ -8,6 +8,8 @@
     changes needed in base.html or the individual pages.
 */
 
+import { getHub } from "./notificationHub.js";
+
 document.addEventListener('DOMContentLoaded', () => {
 
     const aside = document.getElementById('side-nav');
@@ -62,30 +64,21 @@ document.addEventListener('DOMContentLoaded', () => {
        third-party link can no longer end the session (GET answers 405). */
 
     /* ── Unread dot ────────────────────────────────────────────────── */
-    /* One poll for the whole site: the endpoint also runs the reminder
-       scans, so this is the scheduler. Pauses while the tab is hidden. */
+    /* The shared notification hub owns the socket, the fallback poll and
+       the 5-minute scan tick. The dot means "you have not seen these
+       yet", not just "unread rows exist": the inbox page records the
+       count it showed, and the dot comes back only when the count grows
+       past that (i.e. something new arrived). */
     const dot = document.getElementById("notifications-dot");
     if (dot) {
-        const refreshDot = async () => {
-            if (document.hidden) return;
-            try {
-                const res = await fetch("/notifications/api/unread",
-                                        { credentials: "same-origin" });
-                if (!res.ok) return;
-                const { unread } = await res.json();
-                // The dot means "you have not seen these yet", not just
-                // "unread rows exist": the inbox page records the count it
-                // showed, and the dot comes back only when the count grows
-                // past that (i.e. something new arrived).
-                const seen = Number(
-                    localStorage.getItem("notifSeenCount") || 0);
-                dot.hidden = unread <= seen;
-                dot.setAttribute("aria-label", `${unread} unread`);
-            } catch { /* offline — keep the last known state */ }
-        };
-        refreshDot();
-        setInterval(refreshDot, 60_000);
-        document.addEventListener("visibilitychange", refreshDot);
+        const hub = getHub();
+        hub.start();
+        hub.subscribe(({ unread }) => {
+            const seen = Number(
+                localStorage.getItem("notifSeenCount") || 0);
+            dot.hidden = unread <= seen;
+            dot.setAttribute("aria-label", `${unread} unread`);
+        });
     }
 
     /* ── Mobile drawer ─────────────────────────────────────────────── */

@@ -359,14 +359,14 @@ third.req("GET", f"/events/api/events/{event_id}/data", expect=404,
           name="archived event 404s for member")
 
 print("== notifications ==")
-n = member.req("GET", "/events/api/notifications",
+n = member.req("GET", "/notifications/api/list",
                name="member fetches notifications")
 check("notifications exist", n.get("notifications"), str(n)[:200])
 if n.get("notifications"):
     first = n["notifications"][0]["id"]
-    member.req("POST", "/events/api/notifications/read",
+    member.req("POST", "/notifications/api/read",
                json={"ids": [first]}, name="mark one read")
-    n2 = member.req("GET", "/events/api/notifications")
+    n2 = member.req("GET", "/notifications/api/list")
     check("unread decremented", n2["unread"] == n["unread"] - 1,
           f"{n['unread']} -> {n2.get('unread')}")
 
