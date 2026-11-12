@@ -2,17 +2,21 @@
 
 Auth happens before the upgrade in ``server.process_request``; this module
 only handles already-authenticated sockets. A single sweeper reads new
-notification rows and unread counts from SQLite once per tick, pushes them
-to the affected users, and revalidates sessions on a slower cadence.
+notification and realtime-event rows plus unread counts from SQLite once
+per tick, pushes them to the affected users, and revalidates sessions on a
+slower cadence.
 
 Wire protocol (server -> client only in v1):
     {"type": "ready", "unread": N}
     {"type": "notification", "notification": {...}}
+    {"type": "event", "event": {...}}
     {"type": "unread", "unread": N}
 
 The REST inbox stays authoritative: a notification row pushed here omits
 the per-viewer ``action`` annotation, so clients refresh the list once on
-receipt. A close code of 4401 means the session row disappeared/expired.
+receipt. Realtime events are invalidation hints; clients refetch the
+affected REST resource. A close code of 4401 means the session row
+disappeared/expired.
 """
 import asyncio
 import json
@@ -114,6 +118,18 @@ async def _push_rows(rows, unread):
     await _push_unread(unread)
 
 
+async def _push_events(rows):
+    by_user = _rows_for_connections(rows)
+    for conn in list(CONNECTIONS.values()):
+        for row in by_user.get(conn.user_id, ()):
+            payload = {key: value for key, value in row.items()
+                       if key != "user_id"}
+            if not await _send(conn.websocket,
+                               {"type": "event", "event": payload}):
+                CONNECTIONS.pop(conn.websocket, None)
+                break
+
+
 async def _push_unread(unread):
     for conn in list(CONNECTIONS.values()):
         count = int(unread.get(conn.user_id, 0))
@@ -137,6 +153,7 @@ async def _broadcast_ready(conns, unread):
 async def sweeper():
     """One DB read per tick, never on the event loop thread."""
     watermark = None
+    event_watermark = None
     degraded = False
     while True:
         try:
@@ -150,7 +167,7 @@ async def sweeper():
                 user_ids = sorted({conn.user_id for conn in conns})
                 try:
                     result = await asyncio.to_thread(
-                        db.sweep, due, user_ids, watermark)
+                        db.sweep, due, user_ids, watermark, event_watermark)
                 except Exception as exc:
                     if not degraded:
                         logger.error(
@@ -164,6 +181,11 @@ async def sweeper():
                     first = watermark is None
                     watermark = int(result["watermark"]) if first else max(
                         int(watermark), int(result["watermark"]))
+                    event_watermark = (
+                        int(result["event_watermark"])
+                        if event_watermark is None
+                        else max(int(event_watermark),
+                                 int(result["event_watermark"])))
                     if first:
                         # Watermark just initialised: clients catch up over
                         # REST instead of receiving history row by row.
@@ -171,6 +193,7 @@ async def sweeper():
                     else:
                         await _push_rows(result["notifications"],
                                          result["unread"])
+                        await _push_events(result["events"])
 
                     invalid = set(result["invalid"])
                     for conn in conns:

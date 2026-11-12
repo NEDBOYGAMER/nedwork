@@ -164,8 +164,10 @@ phones (< 1000 px) cannot start or join a session.
   image starts the relay on port 5001 beside waitress; nginx still has to
   proxy both paths to it with Upgrade headers (see
   `__docs/structure.md` §6). The notification path reads the mounted
-  SQLite DB (new rows + unread counts, `query_only`), so the relay service
-  needs `./data:/app/instance`; a missing DB degrades notifications only.
+  SQLite DB (new notification rows, realtime-event rows, unread counts,
+  `query_only`), so the relay service needs `./data:/app/instance`; a
+  missing DB degrades notifications only. Realtime event frames are
+  documented in `__docs/realtime.md`.
 - **Idle sessions auto-end after 6 hours** without a join/board/remove
   write. The check is lazy: every session route calls `_maybe_end_idle` via
   `_get_session_by_token` (presence pings deliberately do not count — they

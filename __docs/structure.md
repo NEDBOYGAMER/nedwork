@@ -1,5 +1,5 @@
 # nedwork — MASTER STRUCTURE & OPERATIONS (public edition)
-version 2.4-public · derived from the private v2.4 (2026-11-12)
+version 2.5-public · derived from the private v2.5 (2026-11-12)
 A single-VM self-hosted stack: reverse proxy, ~13 Docker stacks, push-backup to a laptop, and a hand-rolled WebSocket relay.
 
 > **This is a sanitized copy.** Every identifier that maps the real network has been replaced with a placeholder. The operational copy — with real addresses, accounts and paths — stays private and is never committed.
@@ -209,13 +209,14 @@ location = /apps/tierforge/ws {
     proxy_send_timeout 3600s;
 }
 
-# Notifications — authenticated (cookie + Origin), same upstream
+# Notifications + realtime UI events — authenticated (cookie + Origin), same upstream
 location = /ws/notifications {  ...identical except the path...  }
 ```
 
 - The runtime `resolver` keeps `nginx -t` independent of the relay's lifecycle — a stopped relay can't break proxy reloads.
 - Port 5001 is **never published** and has **no `VIRTUAL_HOST`** — the relay is an upstream, not a site.
 - Verified through the public proxy: `101 Switching Protocols` + correct `Sec-WebSocket-Accept` (TierForge) and `401` for an anonymous upgrade (notifications).
+- `/ws/notifications` now carries both notification frames and targeted realtime-event frames from the `realtime_events` outbox. No extra nginx location is needed; see `__docs/realtime.md`.
 
 ---
 
@@ -503,3 +504,4 @@ make it a **second service in the same compose file**, same image, explicit `com
 | 2026-10-26 | full live re-audit → **v2.2**. master doc missing on both machines (re-shipped); librechat unbacked; reboot pending; fluxer volumes confirmed; upload limit 20g; media tree verified; disk 44 % |
 | 2026-11-10 | **WebSocket relay deployed (TierForge).** Relay moved to `apps/tierforge/websocket.py`; LiveCursor dropped; new `websocket` service (expose 5001, no VIRTUAL_HOST); `location = /apps/tierforge/ws`; verified `101` + correct `Sec-WebSocket-Accept`. Relay stateless → no backup/DNS/cert change. v2.3 re-shipped |
 | 2026-11-12 | **Notification channel deployed.** Shared relay package `flask_app/ws/`; `apps/tierforge/websocket.py` reduced to a wrapper; `app.py` dev boot starts it; `notificationHub.js` replaces three pollers (60 s/12 s) with one socket + 5-min scan tick + REST catch-up; `/events/api/notifications*` deprecated. Auth on `/ws/notifications` only: cookie + Origin, pre-accept, 60 s session revalidation → `4401`; TierForge path unchanged. `./data:/app/instance` (rw) added to the relay service; **Dockerfile CMD reduced to waitress only** — the app container had been running a second, unsupervised relay with 5001 open on `nginx-proxy` (found + fixed same session); compose `entrypoint:` → `command:`. nginx: exact `location = /ws/notifications`. **Backup: `nedwork-app.sqlite3` dump added**, verified integrity ok + 14 rows + matching sha; manual run SUCCESS 19:16:08→19:16:37. Corrections folded in: dump path has no `staging/`, rallly dump exists, 6 slots not 7. This file **v2.4**; public edition derived from it. |
+| 2026-11-12 | **Realtime UI outbox added.** New `realtime_events` table + `flask_app/realtime.py`; Socials and Events mutations publish targeted invalidation events; `/ws/notifications` now carries `event` frames beside notifications; `notificationHub.js` exposes topic/sync subscriptions and `liveEvents.js` drives debounced page refreshes. Events detail uses full snapshots for structural changes and targeted section refresh for chat/votes/items/rides. Requires `flask db upgrade`; no new nginx path or relay service. This file **v2.5**. |

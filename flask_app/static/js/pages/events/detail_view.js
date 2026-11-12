@@ -26,19 +26,27 @@ import {
 } from "./ui.js";
 import { MODULE_META, MODULES } from "./modules/index.js";
 import { startPolling } from "./poller.js";
-import { joinUrl, leaveUrl, rsvpUrl, api } from "./api.js";
+import { joinUrl, leaveUrl, rsvpUrl, api, dataUrl } from "./api.js";
+import { onLive, TOPICS } from "../../components/liveEvents.js";
 
 let state = null;          // last server snapshot
 let poller = null;
+let liveUnsub = null;
+let liveContext = null;
+let liveTimer = null;
+let liveInFlight = false;
+let liveFull = false;
+const liveScopes = new Set();
 
 export function renderDetailView(container, eventId, opts = {}) {
     container.innerHTML = "";
     state = null;
+    stopPolling();
 
     const wrap = el("div", "event-detail event-detail-view");
     container.appendChild(wrap);
+    liveContext = { eventId, wrap };
 
-    poller?.stop();
     poller = startPolling(() => eventId, (snap, why) => {
         applySnapshot(wrap, snap, why);
     }, (e) => {
@@ -47,6 +55,16 @@ export function renderDetailView(container, eventId, opts = {}) {
             poller?.stop();
             window.location.href = window.EVENTS_API.baseUrl;
         }
+    });
+
+    liveUnsub = onLive(TOPICS.events, (detail) => {
+        if (detail.type === "sync") {
+            queueLiveRefresh(null);
+            return;
+        }
+        const payload = detail.payload || {};
+        if (payload.event_id !== eventId) return;
+        queueLiveRefresh(payload);
     });
 
     // if the URL carries an invite token, join first
@@ -69,10 +87,144 @@ export function renderDetailView(container, eventId, opts = {}) {
 export function stopPolling() {
     poller?.stop();
     poller = null;
+    liveUnsub?.();
+    liveUnsub = null;
+    liveContext = null;
+    clearTimeout(liveTimer);
+    liveTimer = null;
+    liveInFlight = false;
+    liveFull = false;
+    liveScopes.clear();
 }
 
 export async function refreshDetail() {
     poller?.refresh();
+}
+
+function queueLiveRefresh(payload) {
+    if (!liveContext) return;
+    if (!payload || ["event", "members", "invite", "rsvp", "needs_ride"]
+        .includes(payload.scope)) {
+        liveFull = true;
+    } else {
+        liveScopes.add(payload.scope);
+    }
+    if (liveTimer || liveInFlight) return;
+    liveTimer = setTimeout(runLiveRefresh, 150);
+}
+
+async function runLiveRefresh() {
+    liveTimer = null;
+    if (liveInFlight || !liveContext) return;
+    liveInFlight = true;
+    const full = liveFull;
+    const scopes = new Set(liveScopes);
+    liveFull = false;
+    liveScopes.clear();
+    const { eventId, wrap } = liveContext;
+    try {
+        const snap = await api(dataUrl(eventId));
+        if (!liveContext || liveContext.eventId !== eventId) return;
+        applyLiveSnapshot(wrap, snap, full ? null : scopes);
+    } catch (e) {
+        if (String(e.message).includes("not found")) {
+            stopPolling();
+            window.location.href = window.EVENTS_API.baseUrl;
+        }
+    } finally {
+        liveInFlight = false;
+        if (liveContext && (liveFull || liveScopes.size)) {
+            liveTimer = setTimeout(runLiveRefresh, 150);
+        }
+    }
+}
+
+function applyLiveSnapshot(wrap, snap, scopes) {
+    const prev = state;
+    state = snap;
+    if (scopes === null) {
+        draw(wrap, prev, "live");
+        return;
+    }
+    refreshSections(wrap, scopes);
+}
+
+const SCOPE_TYPES = {
+    chat: "chat",
+    votes: "doodle",
+    options: "doodle",
+    items: "bring",
+    claims: "bring",
+    rides: "rides",
+    passengers: "rides",
+};
+
+function refreshSections(wrap, scopes) {
+    const types = new Set();
+    for (const scope of scopes) {
+        const type = SCOPE_TYPES[scope];
+        if (type) types.add(type);
+    }
+    for (const type of types) replaceModuleSection(wrap, type);
+}
+
+function replaceModuleSection(wrap, type) {
+    const module = (state.modules || []).find(
+        (m) => m.type === type && (!m.hidden || state.event.is_host));
+    const old = type === "chat"
+        ? wrap.querySelector('.event-chat[data-module-type="chat"]')
+        : wrap.querySelector(`section.event-section[data-module-type="${type}"]`);
+    if (!module) {
+        old?.remove();
+        return;
+    }
+    const ctx = sectionContext(module);
+    if (type === "chat") {
+        replaceChat(wrap, old, module, ctx);
+        return;
+    }
+    const next = eventSection(module, ctx);
+    if (old && next) old.replaceWith(next);
+    else if (old) old.remove();
+    else if (next) {
+        const stack = wrap.querySelector(".event-sections");
+        if (stack) stack.appendChild(next);
+    }
+}
+
+function replaceChat(wrap, old, module, ctx) {
+    const oldInput = old?.querySelector(".chat-form input");
+    const value = oldInput?.value || "";
+    const focused = oldInput && document.activeElement === oldInput;
+    const oldLog = old?.querySelector("#chatLog");
+    const scrollTop = oldLog?.scrollTop || 0;
+    const atBottom = oldLog
+        ? oldLog.scrollHeight - oldLog.scrollTop - oldLog.clientHeight < 24
+        : true;
+    const next = chatSection(module, ctx);
+    if (old && next) old.replaceWith(next);
+    else if (old) old.remove();
+    else if (next) wrap.appendChild(next);
+    const newInput = next?.querySelector(".chat-form input");
+    if (newInput) {
+        if (value) newInput.value = value;
+        if (focused) newInput.focus();
+    }
+    const newLog = next?.querySelector("#chatLog");
+    if (newLog) {
+        newLog.scrollTop = atBottom ? newLog.scrollHeight : scrollTop;
+    }
+}
+
+function sectionContext(module) {
+    const event = state.event;
+    const amHost = event.is_host;
+    const myMemberId = event.my_member_id;
+    const me = (state.members || []).find((m) => m.id === myMemberId);
+    return {
+        module, event, state, isHost: amHost, me,
+        refresh: () => poller?.refresh(),
+    };
 }
 
 function applySnapshot(wrap, snap, why) {
@@ -109,11 +261,6 @@ function draw(wrap, prev, why) {
         wrap.appendChild(alerts);
     }
 
-    const sectionCtx = (module) => ({
-        module, event, state, isHost: amHost, me,
-        refresh: () => poller?.refresh(),
-    });
-
     // the description module is gone — the subtitle is the event's short
     // description and already renders in the hero under the title
     wrap.appendChild(renderHero(event, amHost));
@@ -142,8 +289,8 @@ function draw(wrap, prev, why) {
     // module is activated); with only one of them it stays a plain section
     const location = modules.find((m) => m.type === "location");
     const members = modules.find((m) => m.type === "members");
-    const locSec = location ? eventSection(location, sectionCtx(location)) : null;
-    const memSec = members ? eventSection(members, sectionCtx(members)) : null;
+    const locSec = location ? eventSection(location, sectionContext(location)) : null;
+    const memSec = members ? eventSection(members, sectionContext(members)) : null;
     if (locSec && memSec) {
         const infoRow = el("div", "event-info-row");
         infoRow.appendChild(locSec);
@@ -159,7 +306,7 @@ function draw(wrap, prev, why) {
     const stack = el("div", "event-sections");
     for (const module of modules) {
         if (module.type === "location" || module.type === "members") continue;
-        const sec = eventSection(module, sectionCtx(module));
+        const sec = eventSection(module, sectionContext(module));
         if (sec) stack.appendChild(sec);
     }
     main.appendChild(stack);
@@ -175,10 +322,7 @@ function draw(wrap, prev, why) {
     const chatModule = (state.modules || [])
         .find((m) => m.type === "chat" && (!m.hidden || amHost));
     if (chatModule) {
-        wrap.appendChild(chatSection(chatModule, {
-            module: chatModule, event, state, isHost: amHost, me,
-            refresh: () => poller?.refresh(),
-        }));
+        wrap.appendChild(chatSection(chatModule, sectionContext(chatModule)));
     }
 }
 
@@ -285,6 +429,8 @@ function eventSection(module, ctx) {
     const meta = MODULE_META[module.type] || { label: module.type };
     const label = SECTION_LABELS[module.type] || meta.label;
     const section = el("section", "event-section");
+    section.dataset.moduleType = module.type;
+    section.dataset.moduleId = String(module.id);
     if (module.hidden) section.classList.add("module-hidden");
 
     const head = el("header", "event-section-head");
@@ -334,6 +480,8 @@ function renderMemberActions(event, state, me, refresh) {
 
 function chatSection(module, ctx) {
     const section = el("section", "event-chat");
+    section.dataset.moduleType = "chat";
+    section.dataset.moduleId = String(module.id);
     const inner = el("div", "event-chat-inner");
 
     const head = el("header", "event-section-head event-chat-head");

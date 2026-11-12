@@ -3,6 +3,7 @@
 Throwaway SQLite DB, relay started in-process. Covers:
   - pre-accept auth: no cookie, missing Origin, foreign Origin, valid session
   - ready / notification / unread frames, UTC-tagged created_at
+  - realtime event frames are targeted to the matching user
   - deleted session closes the socket (shortened revalidation window)
   - missing DB degrades notifications but not TierForge rooms, then recovers
   - TierForge cursor relay still works without auth
@@ -62,19 +63,27 @@ def init_db():
             read INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL
         );
+        CREATE TABLE realtime_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            topic TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
         """
     )
     conn.execute("INSERT INTO users (id, username) VALUES (1, 'smoke')")
+    conn.execute("INSERT INTO users (id, username) VALUES (2, 'other')")
     conn.commit()
     conn.close()
 
 
-def add_session(session_id):
+def add_session(session_id, user_id=1):
     conn = sqlite3.connect(db_file)
     expires = (now_naive() + timedelta(hours=1)).isoformat(sep=" ")
     conn.execute(
-        "INSERT INTO sessions (session_id, user_id, expires) VALUES (?, 1, ?)",
-        (session_id, expires),
+        "INSERT INTO sessions (session_id, user_id, expires) VALUES (?, ?, ?)",
+        (session_id, user_id, expires),
     )
     conn.commit()
     conn.close()
@@ -87,6 +96,20 @@ def add_notification(title):
         "INSERT INTO notifications (user_id, type, payload, read, created_at) "
         "VALUES (1, 'event_published', ?, 0, ?)",
         (json.dumps({"title": title}), created),
+    )
+    conn.commit()
+    row_id = cur.lastrowid
+    conn.close()
+    return row_id
+
+
+def add_event(user_id, topic, payload):
+    conn = sqlite3.connect(db_file)
+    created = now_naive().isoformat(sep=" ")
+    cur = conn.execute(
+        "INSERT INTO realtime_events (user_id, topic, payload, created_at) "
+        "VALUES (?, ?, ?, ?)",
+        (user_id, topic, json.dumps(payload), created),
     )
     conn.commit()
     row_id = cur.lastrowid
@@ -174,7 +197,9 @@ def handshake_status(origin, cookie, path="/ws/notifications"):
 
 init_db()
 SESSION = "smoke-session-1"
+SESSION2 = "smoke-session-2"
 add_session(SESSION)
+add_session(SESSION2, user_id=2)
 
 PORT = free_port()
 from flask_app.ws.server import run_server  # noqa: E402
@@ -240,6 +265,31 @@ with connect(f"{BASE}/ws/notifications", origin=ORIGIN,
     check("unread count is pushed after read", unread is not None
           and unread.get("unread") == 0, str(unread))
 
+print("== realtime event flow ==")
+with connect(f"{BASE}/ws/notifications", origin=ORIGIN,
+             additional_headers={"Cookie": f"session_id={SESSION}"},
+             open_timeout=5, proxy=None) as websocket, \
+        connect(f"{BASE}/ws/notifications", origin=ORIGIN,
+                additional_headers={"Cookie": f"session_id={SESSION2}"},
+                open_timeout=5, proxy=None) as other:
+    drain(websocket, 0.8)
+    drain(other, 0.8)
+    add_event(1, "events",
+              {"event_id": 7, "scope": "chat", "list": False})
+    pushed = recv_until(websocket, "event")
+    check("new realtime event is pushed", pushed is not None, str(pushed))
+    if pushed:
+        event = pushed["event"]
+        check("event topic survives", event["topic"] == "events", str(event))
+        check("event payload survives",
+              event["payload"].get("scope") == "chat", str(event))
+        check("event created_at is UTC-tagged",
+              isinstance(event.get("created_at"), str)
+              and event["created_at"].endswith("+00:00"),
+              str(event.get("created_at")))
+    leaked = recv_until(other, "event", timeout=1)
+    check("event is targeted to its user", leaked is None, str(leaked))
+
 print("== session revocation ==")
 with connect(f"{BASE}/ws/notifications", origin=ORIGIN,
              additional_headers={"Cookie": f"session_id={SESSION}"},
@@ -304,6 +354,16 @@ with connect(f"{BASE}/apps/tierforge/ws?room=smoke&client=a",
     add_notification("After recovery")
     pushed = recv_until(websocket, "notification", timeout=5)
     check("pushes resume after DB recovery", pushed is not None, str(pushed))
+
+    print("== missing realtime_events table ==")
+    conn = sqlite3.connect(db_file)
+    conn.execute("DROP TABLE realtime_events")
+    conn.commit()
+    conn.close()
+    add_notification("Without outbox")
+    pushed = recv_until(websocket, "notification", timeout=5)
+    check("notifications survive a missing outbox table",
+          pushed is not None, str(pushed))
 
 print(f"\n{len(FAILS)} failed")
 if FAILS:

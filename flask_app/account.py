@@ -9,7 +9,7 @@ from datetime import datetime
 from .models import (
     db, User, UserGroup, Friendship, Event, EventMember,
     EventModule, DoodleVote, BringItem, BringClaim, EventRide,
-    RidePassenger, ChatMessage, Notification,
+    RidePassenger, ChatMessage, Notification, RealtimeEvent,
     SocialGroupMember, TierForgeSession, TierForgeSessionMember,
 )
 
@@ -75,6 +75,8 @@ def purge_user(user: User) -> None:
     ChatMessage.query.filter_by(user_id=user.id).delete(
         synchronize_session=False)
     Notification.query.filter_by(user_id=user.id).delete(
+        synchronize_session=False)
+    RealtimeEvent.query.filter_by(user_id=user.id).delete(
         synchronize_session=False)
     # keep shared bring items; the author just disappears
     BringItem.query.filter_by(added_by=user.id).update(

@@ -5,8 +5,12 @@
    rows. Each person's avatar gets a hue derived from their name so a list
    is scannable at a glance. */
 import { el, iconBtn, toast, openModal, closeModal, confirmDialog, initConfirm } from "./events/ui.js";
+import { onLive, TOPICS } from "../components/liveEvents.js";
 
 const BASE = window.SOCIALS_API || {};
+let friendsSeq = 0;
+let groupsSeq = 0;
+let detailSeq = 0;
 
 async function api(url, options = {}) {
     const res = await fetch(url, {
@@ -90,10 +94,12 @@ function initTabs() {
 
 /* ── friends ───────────────────────────────────────────────────────── */
 async function loadFriends() {
+    const seq = ++friendsSeq;
     const data = await api(BASE.friends).catch((e) => {
         toast(e.message, "error");
         return { friends: [], incoming: [], outgoing: [] };
     });
+    if (seq !== friendsSeq) return;
 
     const incoming = document.getElementById("incomingList");
     const outgoing = document.getElementById("outgoingList");
@@ -300,10 +306,12 @@ function initFriendAdd() {
 
 /* ── groups ────────────────────────────────────────────────────────── */
 async function loadGroups() {
+    const seq = ++groupsSeq;
     const data = await api(BASE.groups).catch((e) => {
         toast(e.message, "error");
         return { groups: [], requests: [] };
     });
+    if (seq !== groupsSeq) return;
 
     const reqList = document.getElementById("groupReqList");
     const groupsList = document.getElementById("groupsList");
@@ -398,6 +406,7 @@ let detailGroup = null;   // the group object openGroupDetail was called with
 
 async function openGroupDetail(g) {
     detailGroup = g;
+    const seq = ++detailSeq;
     const title = document.getElementById("groupDetailTitle");
     const body = document.getElementById("groupDetailBody");
     title.textContent = g.name;
@@ -408,9 +417,17 @@ async function openGroupDetail(g) {
     try {
         detail = await api(groupUrl(g.id));
     } catch (e) {
+        if (seq !== detailSeq) return;
+        if (String(e.message).includes("not found")) {
+            detailGroup = null;
+            closeModal("groupDetailBackdrop");
+            loadGroups();
+            return;
+        }
         body.appendChild(el("p", "module-empty", e.message));
         return;
     }
+    if (seq !== detailSeq) return;
     const { group, members } = detail;
     const me = members.find((m) => m.user_id === window.EVENT_USER_ID);
     const amAdmin = me && me.role === "admin";
@@ -786,3 +803,25 @@ if (document.getElementById("friendAddBtn")) {
     loadFriends();
     loadGroups();   // the hidden view still feeds the hero counters
 }
+
+const stopLive = onLive(TOPICS.socials, (detail) => {
+    if (detail.type === "sync") {
+        loadFriends();
+        loadGroups();
+        return;
+    }
+    const payload = detail.payload || {};
+    if (payload.scope === "friends") {
+        loadFriends();
+    } else if (payload.scope === "groups") {
+        loadGroups();
+    } else if (payload.scope === "group") {
+        loadGroups();
+        const backdrop = document.getElementById("groupDetailBackdrop");
+        if (detailGroup && detailGroup.id === payload.group_id
+                && backdrop?.classList.contains("open")) {
+            openGroupDetail(detailGroup);
+        }
+    }
+});
+window.addEventListener("pagehide", stopLive);

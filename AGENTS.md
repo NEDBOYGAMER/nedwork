@@ -102,6 +102,23 @@ deliberately separate from the site `session_id` cookie and site
 permissions. `User.is_admin()` always returns `False` (kept only for the
 `/auth/api/who` JS contract). Don't merge these systems.
 
+### Realtime UI updates
+- `realtime_events` is a short-lived outbox, **not** the notification
+  inbox. Live events are invalidation hints; REST stays authoritative.
+- Publish after the domain commit with `flask_app/realtime.py`
+  (`publish`, `publish_event_members`). Never publish before commit.
+- The existing authenticated `/ws/notifications` relay carries both
+  `notification` and `event` frames; no new WebSocket path is needed.
+- `notificationHub.js` owns the socket; `liveEvents.js` exposes
+  `onLive(topic, handler)` and `onLiveSync(handler)` with debouncing.
+- Socials uses topic `socials`; Events uses topic `events`. Event detail
+  does full snapshots for structural scopes and targeted section refresh
+  for chat/votes/items/rides. The editor stays on its poller to protect
+  unsaved drafts.
+- Notification settings never suppress live UI events. Add new user-owned
+  tables to `purge_user`; outbox rows are already cleaned there.
+- Full protocol and payloads: `__docs/realtime.md`.
+
 ## 5. The apps system
 
 Two layers, keep them straight:
@@ -159,6 +176,8 @@ Apps live in `flask_app/apps/<name>/` and are self-contained:
 | a dashboard widget | `static/js/pages/dashboard/widgets/<Name>Widget.js` + register in `widget_registry.js` (+ CSS in `css/pages/dashboard/`) |
 | an app page | `flask_app/apps/<name>/<name>.html` (colocated) |
 | shared UI JS/CSS | `static/js/components/` / `static/css/components/` |
+| realtime publisher | `flask_app/realtime.py` |
+| realtime client helper | `static/js/components/liveEvents.js` |
 | an image used by an app entry | `flask_app/static/img/` |
 | a DB model (core) | `flask_app/models.py`; (app-specific) `flask_app/apps/app_models.py` |
 
@@ -168,10 +187,11 @@ stores now live in `instance/data/`).
 
 ## 7. Current state & pitfalls (2026-11-12)
 
-- **Uncommitted work in the tree**: the 2026-11 TODO round (timer, events,
-  socials, settings, notifications, account deletion) is modified but not
-  committed (see `git status`). Don't assume a clean slate; don't revert
-  silently.
+- **Realtime outbox is live for Socials + Events**: `realtime_events` +
+  `flask_app/realtime.py` publish targeted invalidation events over the
+  existing `/ws/notifications` relay. Old databases need
+  `flask db upgrade`; the migration is idempotent because `app.py` runs
+  `db.create_all()` first. See `__docs/realtime.md`.
 - **Account deletion goes through `flask_app/account.py`** (`purge_user`) —
   shared by the self-service auth route and the admin delete endpoint.
   SQLite FKs are off, so every referencing table is cleaned explicitly; add
@@ -207,8 +227,9 @@ stores now live in `instance/data/`).
   host vs guest); the Docker image starts that relay beside waitress, and
   nginx still needs Upgrade proxying for **both** relay paths. The same
   process also serves the authenticated `/ws/notifications` channel
-  (notification hub + 5-minute scan tick; reads the mounted SQLite DB with
-  `query_only`, degrades notifications only when the DB is missing).
+  (notification hub + realtime event frames + 5-minute scan tick; reads the
+  mounted SQLite DB with `query_only`, degrades notifications only when the
+  DB is missing).
   TierForge rooms stay in memory and unauthenticated; the old
   `flask_app/apps/tierforge/websocket.py` is just the compatibility entry
   point. Full model + API in `__docs/apps.md`.
@@ -228,7 +249,9 @@ stores now live in `instance/data/`).
   Missing users are skipped with a boot warning; permission keys added
   later are granted on the next local boot.
 - **Zero tests** — there is no test suite. Verify changes by running the
-  app and exercising the affected routes.
+  app and exercising the affected routes; `stuff/check_notifications_ws.py`,
+  `stuff/check_realtime_outbox.py`, and `stuff/check_realtime_browser.py`
+  cover the relay/outbox path.
 - **`instance/app.db-wal`/`-shm`** exist because of SQLite WAL mode; they
   are runtime artifacts.
 - Full open-items list: `TODO.md` (accepted-tradeoffs section is currently
@@ -254,11 +277,12 @@ stores now live in `instance/data/`).
 | file | what |
 |---|---|
 | `__docs/overview.md` | original informal overview (rough, partly outdated — this file supersedes it) |
-| `__docs/structure.md` | master doc for the *server/infrastructure* (docker stacks, backup system, restore recipes) — v2.2 |
+| `__docs/structure.md` | master doc for the *server/infrastructure* (docker stacks, backup system, restore recipes) — v2.5 |
 | `__docs/style-instructions.md` | universal UI styling ruleset (mandatory) |
 | `__docs/git.md` | git workflow for pushing changes |
 | `__docs/server_cheat-sheet.md` | server command reference (ops context) |
 | `__docs/apps.md` | per-app deep dives (currently TierForge multiplayer) |
+| `__docs/realtime.md` | realtime outbox, relay frames, client API, page behavior |
 | `__docs/tips_and_tricks.md` | currently an empty placeholder |
 | `TODO.md` | open items + accepted tradeoffs |
 

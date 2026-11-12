@@ -24,6 +24,7 @@ from ..notifications import (
     notify_user, notify_event_members, notifications_for_user, mark_read,
     notification_to_dict, event_upcoming_for_user, scan_reminders,
 )
+from ..realtime import publish, publish_event_members, TOPIC_EVENTS
 
 
 events_bp = Blueprint('events', __name__, static_folder='../static')
@@ -461,6 +462,7 @@ def create_event(user):
                                    config=spec.get("config") or {}))
 
     db.session.commit()
+    publish_event_members(event, "event", list_changed=True)
     return jsonify({"event": _event_to_dict(event, user)}), 201
 
 
@@ -546,6 +548,7 @@ def update_event(user, event_id):
         return _deny("nothing to update", 400)
 
     db.session.commit()
+    publish_event_members(event, "event", list_changed=True)
     return jsonify({"event": _event_to_dict(event, user)})
 
 
@@ -574,8 +577,12 @@ def delete_event(user, event_id):
                             IMAGE_UPLOAD_DIR, filename))
                     except OSError:
                         pass
+    member_ids = [m.user_id for m in event.members]
     db.session.delete(event)
     db.session.commit()
+    publish(member_ids, TOPIC_EVENTS,
+            {"event_id": event_id, "scope": "event", "list": True,
+             "deleted": True})
     return jsonify({"ok": True})
 
 
@@ -608,6 +615,7 @@ def _set_status(user, event_id, status):
         return _deny("already published", 409)
     event.status = status
     db.session.commit()
+    publish_event_members(event, "event", list_changed=True)
 
     if status == "published":
         notify_event_members(
@@ -630,6 +638,8 @@ def rotate_invite(user, event_id):
         return _deny("forbidden", 403)
     event.invite_token = secrets.token_urlsafe(32)[:64]
     db.session.commit()
+    publish([user.id], TOPIC_EVENTS,
+            {"event_id": event.id, "scope": "invite", "list": False})
     return jsonify({"token": event.invite_token})
 
 
@@ -652,6 +662,7 @@ def join_event(user, event_id):
     db.session.add(EventMember(event_id=event.id, user_id=user.id,
                                role="member", rsvp="pending"))
     db.session.commit()
+    publish_event_members(event, "members", list_changed=True)
 
     notify_user(
         event.host, "member_added",
@@ -729,6 +740,7 @@ def add_members(user, event_id):
         added += 1
 
     db.session.commit()
+    publish_event_members(event, "members", list_changed=True)
     return jsonify({"added": added, "skipped": skipped})
 
 
@@ -758,6 +770,7 @@ def add_member_by_key(user, event_id):
     db.session.add(EventMember(event_id=event.id, user_id=target.id,
                                role="member"))
     db.session.commit()
+    publish_event_members(event, "members", list_changed=True)
     notify_user(
         target, "member_added",
         payload={"event_id": event.id, "title": event.title,
@@ -787,8 +800,11 @@ def remove_member(user, event_id, member_id):
         return _deny("cannot remove the host", 409)
 
     _release_member_state(member)
+    removed_user_id = member.user_id
     db.session.delete(member)
     db.session.commit()
+    publish_event_members(event, "members", list_changed=True,
+                          extra_user_ids=[removed_user_id])
     return jsonify({"ok": True})
 
 
@@ -805,6 +821,8 @@ def leave_event(user, event_id):
     _release_member_state(me)
     db.session.delete(me)
     db.session.commit()
+    publish_event_members(event, "members", list_changed=True,
+                          extra_user_ids=[user.id])
     return jsonify({"ok": True})
 
 
@@ -833,6 +851,7 @@ def transfer_host(user, event_id):
     target.role = "host"
     event.host_id = target.user_id
     db.session.commit()
+    publish_event_members(event, "members", list_changed=True)
     return jsonify({"ok": True})
 
 
@@ -856,6 +875,7 @@ def set_rsvp(user, event_id):
         # a "needs ride" badge behind on someone who can't attend
         me.needs_ride = False
     db.session.commit()
+    publish_event_members(event, "rsvp", list_changed=True)
     return jsonify({"ok": True, "rsvp": me.rsvp})
 
 
@@ -875,6 +895,7 @@ def set_needs_ride(user, event_id):
         return _deny("Set your RSVP to Going or Maybe to request a ride", 403)
     me.needs_ride = value
     db.session.commit()
+    publish_event_members(event, "needs_ride", list_changed=True)
     return jsonify({"ok": True, "needs_ride": me.needs_ride})
 
 
@@ -911,6 +932,8 @@ def add_module(user, event_id):
                 # being invisible in the stack — bring it back instead
                 existing.hidden = False
                 db.session.commit()
+                publish_event_members(event, "event",
+                                      module_id=existing.id)
                 return jsonify({"module": _module_to_dict(existing)})
             return _deny("module already exists", 409)
 
@@ -923,6 +946,7 @@ def add_module(user, event_id):
                          "show_counts": True, "mode": "date"}
     db.session.add(module)
     db.session.commit()
+    publish_event_members(event, "event", module_id=module.id)
     return jsonify({"module": _module_to_dict(module)}), 201
 
 
@@ -957,8 +981,10 @@ def module_detail(user, module_id):
                             IMAGE_UPLOAD_DIR, filename))
                     except OSError:
                         pass
+        event = module.event
         db.session.delete(module)
         db.session.commit()
+        publish_event_members(event, "event", module_id=module_id)
         return jsonify({"ok": True})
 
     payload = request.get_json(silent=True) or {}
@@ -1007,6 +1033,7 @@ def module_detail(user, module_id):
     if not changed:
         return _deny("nothing to update", 400)
     db.session.commit()
+    publish_event_members(module.event, "event", module_id=module.id)
     return jsonify({"module": _module_to_dict(module)})
 
 
@@ -1033,6 +1060,7 @@ def reorder_modules(user, event_id):
                 module.position = index
 
     db.session.commit()
+    publish_event_members(event, "event")
     return jsonify({"ok": True})
 
 
@@ -1081,6 +1109,7 @@ def module_content(user, module_id):
 
     module.config = config
     db.session.commit()
+    publish_event_members(module.event, "event", module_id=module.id)
     return jsonify({"module": _module_to_dict(module)})
 
 
@@ -1113,6 +1142,7 @@ def module_image_upload(user, module_id):
     config["url"] = f"/events/img/{filename}"
     module.config = config
     db.session.commit()
+    publish_event_members(module.event, "event", module_id=module.id)
     return jsonify({"module": _module_to_dict(module)})
 
 
@@ -1147,6 +1177,7 @@ def reset_votes(user, module_id):
     DoodleVote.query.filter_by(module_id=module.id).delete(
         synchronize_session=False)
     db.session.commit()
+    publish_event_members(module.event, "votes", module_id=module.id)
     return jsonify({"ok": True})
 
 
@@ -1224,6 +1255,7 @@ def set_options(user, module_id):
             db.session.add(DoodleOption(module_id=module.id, starts_at=start,
                                     ends_at=end, position=i))
     db.session.commit()
+    publish_event_members(module.event, "options", module_id=module.id)
     return jsonify({"module": _module_to_dict(module, deep=True)})
 
 
@@ -1243,6 +1275,7 @@ def delete_option(user, module_id, option_id):
         return _deny("not found", 404)
     db.session.delete(option)
     db.session.commit()
+    publish_event_members(module.event, "options", module_id=module.id)
     return jsonify({"ok": True})
 
 
@@ -1283,6 +1316,7 @@ def vote(user, module_id):
         db.session.add(DoodleVote(module_id=module.id, option_id=None,
                                   user_id=user.id, comment=comment))
     db.session.commit()
+    publish_event_members(module.event, "votes", module_id=module.id)
     return jsonify({"ok": True})
 
 
@@ -1309,6 +1343,8 @@ def finalize_doodle(user, module_id):
         m.rsvp_stale = True
 
     db.session.commit()
+    publish_event_members(event, "event", list_changed=True,
+                          module_id=module.id)
     notify_event_members(
         event, "date_finalized",
         subject=f"Date finalized: {event.title}",
@@ -1413,6 +1449,7 @@ def add_item(user, module_id):
                      target_qty=target_qty, added_by=user.id)
     db.session.add(item)
     db.session.commit()
+    publish_event_members(module.event, "items", module_id=module.id)
     return jsonify({"item": _item_to_dict(item)}), 201
 
 
@@ -1430,8 +1467,11 @@ def item_detail(user, item_id):
         return _deny("forbidden", 403)
 
     if request.method == 'DELETE':
+        event = item.module.event
+        module_id = item.module_id
         db.session.delete(item)
         db.session.commit()
+        publish_event_members(event, "items", module_id=module_id)
         return jsonify({"ok": True})
 
     payload = request.get_json(silent=True) or {}
@@ -1446,6 +1486,8 @@ def item_detail(user, item_id):
         except (TypeError, ValueError):
             return _deny("target_qty must be an integer", 400)
     db.session.commit()
+    publish_event_members(item.module.event, "items",
+                          module_id=item.module_id)
     return jsonify({"item": _item_to_dict(item)})
 
 
@@ -1473,6 +1515,7 @@ def claim_item(user, item_id):
         _remove_event_todo(me.user_id, _bring_todo_name(item, event))
         db.session.delete(existing)
         db.session.commit()
+        publish_event_members(event, "claims", module_id=item.module_id)
         return jsonify({"ok": True})
 
     payload = request.get_json(silent=True) or {}
@@ -1493,6 +1536,8 @@ def claim_item(user, item_id):
     else:
         existing.qty = qty
     db.session.commit()
+    publish_event_members(item.module.event, "claims",
+                          module_id=item.module_id)
     return jsonify({"item": _item_to_dict(item)})
 
 
@@ -1533,6 +1578,7 @@ def offer_ride(user, module_id):
     event = module.event
     _spawn_event_todo(me, event, _ride_todo_name(ride, event))
     db.session.commit()
+    publish_event_members(event, "rides", module_id=module.id)
     return jsonify({"ride": _ride_to_dict(ride)}), 201
 
 
@@ -1576,6 +1622,7 @@ def update_ride(user, ride_id):
     if not changed:
         return _deny("nothing to update", 400)
     db.session.commit()
+    publish_event_members(event, "rides", module_id=ride.module_id)
     return jsonify({"ride": _ride_to_dict(ride)})
 
 
@@ -1599,8 +1646,10 @@ def delete_ride(user, ride_id):
     for passenger in passengers:
         passenger.needs_ride = True
 
+    module_id = ride.module_id
     db.session.delete(ride)
     db.session.commit()
+    publish_event_members(event, "rides", module_id=module_id)
     for passenger in passengers:
         if passenger.user_id != user.id:
             notify_user(
@@ -1633,6 +1682,8 @@ def ride_passengers(user, ride_id):
             return _deny("not a passenger", 404)
         db.session.delete(existing)
         db.session.commit()
+        publish_event_members(ride.module.event, "passengers",
+                              module_id=ride.module_id)
         return jsonify({"ok": True})
 
     if existing is not None:
@@ -1644,6 +1695,8 @@ def ride_passengers(user, ride_id):
     db.session.add(RidePassenger(ride_id=ride.id, member_id=me.id))
     me.needs_ride = False   # once seated, the "I need a ride" signal is off
     db.session.commit()
+    publish_event_members(ride.module.event, "passengers",
+                          module_id=ride.module_id)
     return jsonify({"ride": _ride_to_dict(ride)})
 
 
@@ -1674,6 +1727,7 @@ def send_chat(user, module_id):
     message = ChatMessage(module_id=module.id, user_id=user.id, text=text)
     db.session.add(message)
     db.session.commit()
+    publish_event_members(module.event, "chat", module_id=module.id)
     return jsonify({"message": _message_to_dict(message)}), 201
 
 
@@ -1687,8 +1741,11 @@ def delete_message(user, message_id):
         return _deny("not found", 404)
     if _host(message.module.event, user) is None:
         return _deny("forbidden", 403)
+    event = message.module.event
+    module_id = message.module_id
     db.session.delete(message)
     db.session.commit()
+    publish_event_members(event, "chat", module_id=module_id)
     return jsonify({"ok": True})
 
 

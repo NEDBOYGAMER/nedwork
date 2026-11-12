@@ -988,6 +988,24 @@ class Notification(db.Model):
     user = db.relationship("User", foreign_keys=[user_id])
 
 
+class RealtimeEvent(db.Model):
+    __tablename__ = "realtime_events"
+    __table_args__ = (
+        db.Index("ix_realtime_events_user_id_id", "user_id", "id"),
+        db.Index("ix_realtime_events_created_at", "created_at"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"),
+                        nullable=False)
+    topic = db.Column(db.String(80), nullable=False)
+    payload = db.Column(db.JSON, nullable=False, default=dict)
+    created_at = db.Column(db.DateTime, nullable=False,
+                           default=db.func.now())
+
+    user = db.relationship("User", foreign_keys=[user_id])
+
+
 class SocialGroup(db.Model):
     """A social group (the Socials site) — NOT the permission-system Group
     above. Users organize friends into groups; joining happens by code or

@@ -8,6 +8,8 @@ import path from "node:path";
 
 // minimal browser globals BEFORE any import
 globalThis.window = globalThis;
+globalThis.addEventListener = () => {};
+globalThis.removeEventListener = () => {};
 globalThis.document = {
   createElement: () => ({ style: { setProperty() {} } }),
   getElementById: () => null,

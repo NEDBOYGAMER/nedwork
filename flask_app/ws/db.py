@@ -8,7 +8,7 @@ the event loop safe:
 * a locked database is a skipped tick, never a multi-second stall.
 
 The relay is not a second source of truth: it only ever SELECTs from the
-tables the Flask app owns (notifications, sessions, users).
+tables the Flask app owns (notifications, realtime_events, sessions, users).
 """
 import json
 import os
@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 
 _REQUIRED_SCHEMA = {
     "notifications": {"id", "user_id", "type", "payload", "read", "created_at"},
+    "realtime_events": {"id", "user_id", "topic", "payload", "created_at"},
     "sessions": {"session_id", "user_id", "expires"},
     "users": {"id"},
 }
@@ -114,12 +115,21 @@ def schema_status():
     return missing
 
 
-def sweep(auth_sessions, user_ids, after_id):
+def _table_exists(conn, name):
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+        (name,),
+    ).fetchone()
+    return row is not None
+
+
+def sweep(auth_sessions, user_ids, after_id, after_event_id=None):
     """One relay tick, in one short-lived connection.
 
     - revalidate the sessions that are due (the caller decides cadence);
     - return notifications newer than ``after_id`` (or initialise the
       watermark at MAX(id) when ``after_id`` is None);
+    - return realtime events newer than ``after_event_id``;
     - return the unread count for every connected user.
     """
     conn = _connect()
@@ -153,6 +163,26 @@ def sweep(auth_sessions, user_ids, after_id):
             watermark = max(
                 [int(after_id)] + [int(row["id"]) for row in rows])
 
+        event_rows = []
+        event_watermark = int(after_event_id or 0)
+        if _table_exists(conn, "realtime_events"):
+            if after_event_id is None:
+                row = conn.execute(
+                    "SELECT COALESCE(MAX(id), 0) AS max_id "
+                    "FROM realtime_events"
+                ).fetchone()
+                event_watermark = int(row["max_id"] or 0)
+            else:
+                event_rows = conn.execute(
+                    "SELECT id, user_id, topic, payload, created_at "
+                    "FROM realtime_events WHERE id > ? "
+                    "ORDER BY id ASC LIMIT 500",
+                    (after_event_id,),
+                ).fetchall()
+                event_watermark = max(
+                    [int(after_event_id)]
+                    + [int(row["id"]) for row in event_rows])
+
         unread = {}
         if user_ids:
             placeholders = ",".join("?" for _ in user_ids)
@@ -181,11 +211,28 @@ def sweep(auth_sessions, user_ids, after_id):
                 "created_at": _utc_iso(row["created_at"]),
             })
 
+        events = []
+        for row in event_rows:
+            try:
+                payload = json.loads(row["payload"]) \
+                    if isinstance(row["payload"], str) else (row["payload"] or {})
+            except (TypeError, ValueError):
+                payload = {}
+            events.append({
+                "id": int(row["id"]),
+                "user_id": int(row["user_id"]),
+                "topic": row["topic"],
+                "payload": payload if isinstance(payload, dict) else {},
+                "created_at": _utc_iso(row["created_at"]),
+            })
+
         return {
             "invalid": invalid,
             "notifications": notifications,
+            "events": events,
             "unread": unread,
             "watermark": watermark,
+            "event_watermark": event_watermark,
         }
     finally:
         conn.close()

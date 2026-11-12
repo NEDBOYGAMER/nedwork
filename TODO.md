@@ -19,7 +19,7 @@ state, next steps, and file paths. See Temporary for the etiquette.
 -
 
 ## Events
--
+- Editor live refresh is intentionally deferred; it needs dirty tracking so live events cannot wipe an unsaved draft.
 
 ## Socials
 -

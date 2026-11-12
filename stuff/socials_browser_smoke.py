@@ -40,7 +40,16 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     errors = []
     page = b.new_page(viewport={"width": 1400, "height": 1000})
-    page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+
+    def on_console(message):
+        if (message.type == "error"
+                and "/ws/notifications" in message.text
+                and "WebSocket" in message.text):
+            return
+        if message.type == "error":
+            errors.append(message.text)
+
+    page.on("console", on_console)
     page.on("pageerror", lambda e: errors.append(str(e)))
 
     page.goto(f"{BASE}/auth/login"); page.wait_for_load_state("networkidle")

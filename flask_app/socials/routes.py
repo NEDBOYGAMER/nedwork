@@ -47,6 +47,7 @@ from flask import Blueprint, jsonify, render_template, request, url_for
 from ..models import *   # User, Friendship, SocialGroup, db, ... (project pattern)
 from ..auth.decorators import permission_required, PAGE, API
 from ..notifications import notify_user
+from ..realtime import publish, TOPIC_SOCIALS
 
 
 socials_bp = Blueprint('socials', __name__, static_folder='../static')
@@ -84,6 +85,20 @@ def _notify_admins(group, actor, ntype, payload, email=None):
         if m.status == "active" and m.role in ("admin", "owner") \
                 and m.user_id != actor.id:
             notify_user(m.user, ntype, payload, email=email)
+
+
+def _publish_group(group, extra_user_ids=()):
+    ids = {m.user_id for m in group.members if m.status == "active"}
+    ids.update(extra_user_ids)
+    publish(ids, TOPIC_SOCIALS,
+            {"scope": "group", "group_id": group.id})
+
+
+def _publish_group_admins(group):
+    ids = {m.user_id for m in group.members
+           if m.status == "active" and m.role in ("admin", "owner")}
+    publish(ids, TOPIC_SOCIALS,
+            {"scope": "group", "group_id": group.id})
 
 
 # ---------------------------------------------------------------------------
@@ -176,6 +191,7 @@ def add_friend(user):
             existing.request_receiver_id == user.id:
         existing.status = "accepted"
         db.session.commit()
+        publish([user.id, target.id], TOPIC_SOCIALS, {"scope": "friends"})
         notify_user(target, "friend_accepted",
                     {"actor": user.username, "title": user.username})
         return jsonify({"ok": True, "status": "accepted",
@@ -193,6 +209,7 @@ def add_friend(user):
                               request_receiver_id=target.id,
                               status="pending"))
     db.session.commit()
+    publish([user.id, target.id], TOPIC_SOCIALS, {"scope": "friends"})
     notify_user(target, "friend_request",
                 {"actor": user.username, "title": user.username})
     return jsonify({"ok": True, "status": "pending"}), 201
@@ -208,6 +225,7 @@ def accept_friend(user, sender_id):
         return jsonify({"error": "No pending request from that user"}), 404
     f.status = "accepted"
     db.session.commit()
+    publish([user.id, sender_id], TOPIC_SOCIALS, {"scope": "friends"})
     sender = User.query.get(sender_id)
     if sender:
         notify_user(sender, "friend_accepted",
@@ -228,6 +246,7 @@ def remove_friend(user, other_id):
         return jsonify({"error": "No friendship with that user"}), 404
     db.session.delete(f)   # deny / cancel / delete are all the same row removal
     db.session.commit()
+    publish([user.id, other_id], TOPIC_SOCIALS, {"scope": "friends"})
     return jsonify({"ok": True})
 
 
@@ -299,6 +318,8 @@ def create_group(user):
     db.session.add(SocialGroupMember(group_id=group.id, user_id=user.id,
                                      role="owner", status="active"))
     db.session.commit()
+    publish([user.id], TOPIC_SOCIALS,
+            {"scope": "group", "group_id": group.id})
     return jsonify({"ok": True, "group": _group_dict(group, user)}), 201
 
 
@@ -338,8 +359,11 @@ def delete_group(user, group_id):
     me = group.member(user)
     if me is None or me.role != "owner":
         return jsonify({"error": "Only the owner can delete the group"}), 403
+    member_ids = [m.user_id for m in group.members]
     db.session.delete(group)
     db.session.commit()
+    publish(member_ids, TOPIC_SOCIALS,
+            {"scope": "group", "group_id": group_id})
     return jsonify({"ok": True})
 
 
@@ -370,6 +394,7 @@ def join_group(user, group_id=None):
     db.session.add(SocialGroupMember(group_id=group.id, user_id=user.id,
                                      role="member", status="pending"))
     db.session.commit()
+    _publish_group(group, extra_user_ids=[user.id])
     _notify_admins(group, user, "group_join_request",
                    {"actor": user.username, "group": group.name,
                     "group_id": group.id, "title": group.name})
@@ -394,13 +419,16 @@ def handle_join_request(user, group_id, member_id, action):
     if action == "accept":
         req.status = "active"
         db.session.commit()
+        _publish_group(group, extra_user_ids=[req.user_id])
         notify_user(req.user, "group_joined",
                     {"actor": user.username, "group": group.name,
                      "group_id": group.id, "title": group.name})
     else:
         requester = req.user
+        requester_id = req.user_id
         db.session.delete(req)
         db.session.commit()
+        _publish_group(group, extra_user_ids=[requester_id])
         if requester:
             notify_user(requester, "group_denied",
                         {"actor": user.username, "group": group.name,
@@ -426,6 +454,7 @@ def add_member(user, group_id):
         return jsonify({"error": "user_ids must be a non-empty list"}), 400
 
     added, skipped = 0, []
+    added_ids = []
     for uid in ids:
         if not isinstance(uid, int) or uid <= 0:
             skipped.append(uid)
@@ -444,7 +473,9 @@ def add_member(user, group_id):
                     {"actor": user.username, "group": group.name,
                      "group_id": group.id, "title": group.name})
         added += 1
+        added_ids.append(target.id)
     db.session.commit()
+    _publish_group(group, extra_user_ids=added_ids)
     return jsonify({"ok": True, "added": added, "skipped": skipped}), 201
 
 
@@ -473,6 +504,7 @@ def add_member_by_key(user, group_id):
     db.session.add(SocialGroupMember(group_id=group.id, user_id=target.id,
                                      role="member", status="active"))
     db.session.commit()
+    _publish_group(group, extra_user_ids=[target.id])
     notify_user(target, "group_added",
                 {"actor": user.username, "group": group.name,
                  "group_id": group.id, "title": group.name})
@@ -497,8 +529,10 @@ def remove_member(user, group_id, member_id):
                                  "ownership first"}), 400
     was_active = member.status == "active"
     removed_user = member.user
+    removed_user_id = member.user_id
     db.session.delete(member)
     db.session.commit()
+    _publish_group(group, extra_user_ids=[removed_user_id])
     if was_active and removed_user:
         notify_user(removed_user, "group_removed",
                     {"actor": user.username, "group": group.name,
@@ -527,6 +561,7 @@ def set_member_role(user, group_id, member_id):
         return jsonify({"error": "No such member"}), 404
     member.role = role
     db.session.commit()
+    _publish_group(group, extra_user_ids=[member.user_id])
     return jsonify({"ok": True})
 
 
@@ -543,6 +578,7 @@ def leave_group(user, group_id):
         return jsonify({"error": "Transfer ownership before leaving"}), 400
     db.session.delete(me)
     db.session.commit()
+    _publish_group(group, extra_user_ids=[user.id])
     return jsonify({"ok": True})
 
 
@@ -564,6 +600,7 @@ def transfer_group(user, group_id):
     me.role = "admin"
     target.role = "owner"
     db.session.commit()
+    _publish_group(group)
     return jsonify({"ok": True})
 
 
@@ -578,4 +615,5 @@ def regenerate_code(user, group_id):
         return jsonify({"error": "Admins only"}), 403
     group.join_code = _new_join_code()
     db.session.commit()
+    _publish_group_admins(group)
     return jsonify({"ok": True, "join_code": group.join_code})

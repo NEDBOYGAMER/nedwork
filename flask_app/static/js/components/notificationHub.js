@@ -9,7 +9,9 @@
 
    Consumers: sidenav dot, /notifications page, dashboard widget, and the
    TierForge invite popup. Import `getHub()` (ES module) or listen for the
-   `nedwork:notifications` window event (classic scripts). */
+   `nedwork:notifications` window event (classic scripts). The same socket
+   also carries targeted realtime `event` frames; `liveEvents.js` wraps the
+   topic/sync subscriptions for page refreshes. */
 
 const LIST_URL = "/notifications/api/list";
 const READ_URL = "/notifications/api/read";
@@ -25,6 +27,7 @@ function isAuthed() {
 }
 
 function socketUrl() {
+    if (window.NEDWORK_WS_URL) return window.NEDWORK_WS_URL;
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const isDevServer = location.hostname === "localhost"
         && location.port === "5000";
@@ -55,6 +58,8 @@ class NotificationHub {
         this.refreshQueued = false;
         this.lastRefresh = 0;
         this.listeners = new Set();
+        this.topicListeners = new Map();
+        this.syncListeners = new Set();
 
         this.onVisibility = () => {
             if (document.hidden) return;
@@ -113,6 +118,47 @@ class NotificationHub {
         this.listeners.add(callback);
         callback(this.state());
         return () => this.listeners.delete(callback);
+    }
+
+    subscribeTopic(topic, callback) {
+        if (!this.topicListeners.has(topic)) {
+            this.topicListeners.set(topic, new Set());
+        }
+        this.topicListeners.get(topic).add(callback);
+        this.start();
+        return () => {
+            const listeners = this.topicListeners.get(topic);
+            if (!listeners) return;
+            listeners.delete(callback);
+            if (!listeners.size) this.topicListeners.delete(topic);
+        };
+    }
+
+    subscribeSync(callback) {
+        this.syncListeners.add(callback);
+        this.start();
+        return () => this.syncListeners.delete(callback);
+    }
+
+    emitLive(event) {
+        const detail = { type: "event", ...event };
+        const listeners = this.topicListeners.get(detail.topic);
+        if (listeners) {
+            for (const callback of listeners) {
+                try { callback(detail); } catch (_) { /* isolated consumer */ }
+            }
+        }
+        window.dispatchEvent(
+            new CustomEvent("nedwork:live", { detail }));
+    }
+
+    emitSync() {
+        const detail = { type: "sync" };
+        for (const callback of this.syncListeners) {
+            try { callback(detail); } catch (_) { /* isolated consumer */ }
+        }
+        window.dispatchEvent(
+            new CustomEvent("nedwork:live", { detail }));
     }
 
     emit() {
@@ -184,7 +230,12 @@ class NotificationHub {
             this.unread = Number(message.unread) || 0;
             // Reconnect/recovery: backfill rows and per-row actions over REST.
             this.refreshSoon();
+            this.emitSync();
             this.emit();
+            return;
+        }
+        if (message.type === "event" && message.event) {
+            this.emitLive(message.event);
             return;
         }
         if (message.type === "notification" && message.notification) {

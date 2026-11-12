@@ -1,4 +1,5 @@
 import { Widget } from '../Widget.js'
+import { onLive, TOPICS } from '../../../components/liveEvents.js'
 
 // Real upcoming events come from the Events site API. Demo data is only a
 // silent fallback when the API is unreachable.
@@ -33,6 +34,7 @@ export class EventManagerWidget extends Widget {
         this.live = false
         this.limit = Math.max(1, parseInt(config.settings?.limit, 10) || 5)
         this.pollTimer = null
+        this.liveUnsub = null
 
         this.todayEl = null
         this.listEl = null
@@ -57,12 +59,19 @@ export class EventManagerWidget extends Widget {
 
         this.fetchEvents()
         this.pollTimer = setInterval(() => this.fetchEvents(), POLL_MS)
+        this.liveUnsub = onLive(TOPICS.events, (detail) => {
+            if (detail.type === "sync" || detail.payload?.list) {
+                this.fetchEvents()
+            }
+        })
 
         this.render()
     }
 
     dispose() {
         clearInterval(this.pollTimer)
+        this.liveUnsub?.()
+        this.liveUnsub = null
     }
 
     async fetchEvents() {

@@ -4,17 +4,29 @@
    "New event" opens the create modal. */
 import { el, icon, statusBadge, rsvpBadge, fmtDate, countdown, toast } from "./ui.js";
 import { eventsUrl, api } from "./api.js";
+import { onLive, TOPICS } from "../../components/liveEvents.js";
+
+let listUnsub = null;
+let listSeq = 0;
 
 export function renderListView(container, onOpen) {
+    listUnsub?.();
+    listUnsub = null;
     container.innerHTML = "";
     const list = el("div", "events-list");
     container.appendChild(list);
     const loading = el("p", "module-empty", "Loading events…");
-    list.appendChild(loading);
 
-    api(eventsUrl())
-        .then((data) => {
-            loading.remove();
+    const load = async (initial = false) => {
+        const seq = ++listSeq;
+        if (initial) {
+            list.innerHTML = "";
+            list.appendChild(loading);
+        }
+        try {
+            const data = await api(eventsUrl());
+            if (seq !== listSeq) return;
+            list.innerHTML = "";
             const events = data.events || [];
             if (!events.length) {
                 list.appendChild(emptyState());
@@ -23,11 +35,26 @@ export function renderListView(container, onOpen) {
             for (const group of groupEvents(events)) {
                 list.appendChild(section(group.key, group.label, group.events, onOpen));
             }
-        })
-        .catch((e) => {
-            loading.remove();
-            list.appendChild(el("p", "alert alert-danger", e.message));
-        });
+        } catch (e) {
+            if (seq !== listSeq) return;
+            if (initial) {
+                list.innerHTML = "";
+                list.appendChild(el("p", "alert alert-danger", e.message));
+            } else {
+                console.error("[events] list refresh failed:", e);
+            }
+        }
+    };
+
+    load(true);
+    listUnsub = onLive(TOPICS.events, (detail) => {
+        if (detail.type === "sync" || detail.payload?.list) load(false);
+    });
+}
+
+export function stopListLive() {
+    listUnsub?.();
+    listUnsub = null;
 }
 
 /* Section buckets — hosting first, then everything still in flux

@@ -1,7 +1,7 @@
 /* Events app entry — switches list / view / edit by URL (SPA-style, one
    template). window.EVENT_ID set by the template on /events/<id>/...;
    the edit path (…/edit/) renders the host editor instead of the view. */
-import { renderListView, initCreateModal } from "./list_view.js";
+import { renderListView, initCreateModal, stopListLive } from "./list_view.js";
 import { renderDetailView, stopPolling } from "./detail_view.js";
 import { renderEditor, stopEditor } from "./editor.js";
 import { initConfirm } from "./ui.js";
@@ -32,4 +32,5 @@ if (eventId && isEdit) {
 window.addEventListener("pagehide", () => {
     stopPolling();
     stopEditor();
+    stopListLive();
 });
