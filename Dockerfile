@@ -15,4 +15,4 @@ EXPOSE 8000
 # /ws/notifications) runs beside it on internal port 5001 (not EXPOSE'd, so
 # nginx-proxy still auto-detects 8000 as the HTTP port). Nginx proxies both
 # relay paths to 5001 with Upgrade headers.
-CMD ["sh", "-c", "python -m flask_app.apps.tierforge.websocket & exec waitress-serve --host=0.0.0.0 --port=8000 --call app:create_app"]
+CMD ["waitress-serve", "--host=0.0.0.0", "--port=8000", "--call", "app:create_app"]

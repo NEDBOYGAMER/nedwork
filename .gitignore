@@ -24,7 +24,6 @@ instance/
 
 # Server ops docs — contain passwords / IPs, stay local only
 __docs/server_cheat-sheet.md
-__docs/structure.md
 
 # IDEs and editors
 .vscode/
