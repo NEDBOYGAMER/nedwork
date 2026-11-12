@@ -40,3 +40,7 @@ Thumbs.db
 
 # opencode tool — local node_modules, keep only the config
 .opencode/node_modules/
+
+# never commit editor/script backups
+*.bak-*
+*.orig
