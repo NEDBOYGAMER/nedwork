@@ -5,7 +5,12 @@
 // Also owns the "add widget" modal (Apps / Standard / Other).
 // ---------------------------------------------------------------------------
 
-import { WIDGET_DEFAULTS, TIMER_VIEWS } from "./widget_default.js";
+import {
+    WIDGET_DEFAULTS,
+    TIMER_VIEWS,
+    SPEEDTEST_INTERVALS,
+    SPEEDTEST_DEFAULT_INTERVAL,
+} from "./widget_default.js";
 import { createWidget } from "./widget_registry.js";
 import { GridManager, DEFAULT_W, DEFAULT_H, uid } from "./grid.js";
 
@@ -163,7 +168,7 @@ const STANDARD_WIDGETS = [
 
 const UTILITY_WIDGETS = [
     { type: "link",       name: "Link",    icon: "🔗", desc: "Open any site — icon from its favicon" },
-    { type: "speedtest",  name: "Speedtest", icon: "📶", desc: "Measure ping & download speed" },
+    { type: "speedtest",  name: "Speedtest", icon: "📶", desc: "Live ping & speed checks while the dashboard is open" },
 ]
 
 function setup_modal() {
@@ -396,6 +401,16 @@ function normalizeWidget(widget) {
             widget.settings.view = TIMER_VIEWS.includes(widget.view)
                 ? widget.view
                 : TIMER_VIEWS[0]
+        }
+    }
+
+    // speedtest used to run once via settings.auto_run; it now loops on an
+    // interval while the dashboard is open. Existing widgets get the default
+    // interval so the settings modal always has a concrete value to show.
+    if (widget.type === "speedtest") {
+        widget.settings = widget.settings || {}
+        if (!SPEEDTEST_INTERVALS.includes(widget.settings.interval)) {
+            widget.settings.interval = SPEEDTEST_DEFAULT_INTERVAL
         }
     }
 

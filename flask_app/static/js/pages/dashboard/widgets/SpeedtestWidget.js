@@ -1,4 +1,5 @@
 import { Widget } from '../Widget.js'
+import { SPEEDTEST_DEFAULT_INTERVAL, SPEEDTEST_INTERVALS } from '../widget_default.js'
 
 const PING_URL = "https://speed.cloudflare.com/__down?bytes=0"
 const DOWNLOAD_URL = "https://speed.cloudflare.com/__down?bytes=25000000"
@@ -7,11 +8,14 @@ const UPLOAD_BYTES = 10_000_000
 const PING_SAMPLES = 4
 const MEASURE_TIMEOUT_MS = 20000
 const HISTORY_MAX = 8
+// wait a moment after the dashboard renders before saturating the line
+const START_DELAY_MS = 800
+const COUNTDOWN_TICK_MS = 1000
 // ring is full at this download speed
 const GAUGE_SCALE_MBPS = 500
 
 function fmtMbps(mbps) {
-    if (!isFinite(mbps)) return "--"
+    if (!Number.isFinite(mbps)) return "--"
     return mbps >= 100 ? mbps.toFixed(0) : mbps.toFixed(1)
 }
 
@@ -24,6 +28,16 @@ function fmtAgo(ts) {
     return `${Math.floor(hours / 24)}d ago`
 }
 
+function intervalMs(label) {
+    const minutes = parseInt(label, 10)
+    return Number.isFinite(minutes) && minutes > 0 ? minutes * 60_000 : 0
+}
+
+function fmtCountdown(ms) {
+    const total = Math.max(0, Math.ceil(ms / 1000))
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`
+}
+
 function withTimeout(promise, ms, label) {
     let timer
     const timeout = new Promise((_, reject) => {
@@ -33,7 +47,7 @@ function withTimeout(promise, ms, label) {
 }
 
 function speedTier(mbps) {
-    if (!isFinite(mbps)) return ""
+    if (!Number.isFinite(mbps)) return ""
     if (mbps >= 100) return "good"
     if (mbps >= 20) return "mid"
     return "poor"
@@ -43,8 +57,24 @@ export class SpeedtestWidget extends Widget {
     constructor(config, ctx) {
         super(config, ctx)
 
+        const settings = config.settings || {}
+        const label = SPEEDTEST_INTERVALS.includes(settings.interval)
+            ? settings.interval
+            : SPEEDTEST_DEFAULT_INTERVAL
+        this.intervalMs = intervalMs(label)
+
         this.demo = false
         this.running = false
+        this.hadError = false
+
+        // continuous-mode bookkeeping: recursive timeout (never overlapping
+        // runs) plus a 1 s countdown so the widget visibly stays live
+        this._disposed = false
+        this._nextTimer = null
+        this._countdownTimer = null
+        this._nextRunAt = 0
+        this._lastRunAt = 0
+        this._abortController = null
 
         this.gauge = null
         this.valueEl = null
@@ -86,9 +116,9 @@ export class SpeedtestWidget extends Widget {
         // one compact stat per result; the gauge only tracks download
         const stats = document.createElement("div")
         stats.className = "speedtest-stats"
-        this.statEls.download = this.buildStat("Download")
-        this.statEls.upload = this.buildStat("Upload")
-        this.statEls.ping = this.buildStat("Ping")
+        this.statEls.download = this.buildStat("Download", fmtMbps)
+        this.statEls.upload = this.buildStat("Upload", fmtMbps)
+        this.statEls.ping = this.buildStat("Ping", v => Number.isFinite(v) ? `${Math.round(v)} ms` : "--")
         stats.append(this.statEls.download.root, this.statEls.upload.root, this.statEls.ping.root)
         this.content.appendChild(stats)
 
@@ -102,30 +132,42 @@ export class SpeedtestWidget extends Widget {
 
         this.runBtn = document.createElement("button")
         this.runBtn.className = "btn btn-primary btn-sm"
-        this.runBtn.innerText = "Run test"
+        this.runBtn.innerText = this.intervalMs > 0 ? "Check now" : "Run test"
         this.runBtn.addEventListener("click", () => this.run())
         this.content.appendChild(this.runBtn)
 
         // show the last result persisted after the previous run instead of
         // starting blind from "--"
         const last = this.config.speedtest_last
-        if (last && isFinite(last.download)) {
+        if (last && Number.isFinite(last.download)) {
             this.applyResult(last.download, last.upload, last.ping)
-            this.statusEl.innerText = `Last test ${fmtAgo(last.ts)}`
-            this.runBtn.innerText = "Test again"
+            this.setStatus(`Last test ${fmtAgo(last.ts)}`)
         } else {
-            this.statusEl.innerText = "Ready — press Run test"
+            this.setStatus(this.intervalMs > 0
+                ? "Live — starting first check…"
+                : "Ready — press Run test")
         }
         this.renderHistory()
+        this.statusEl.classList.toggle("live", this.intervalMs > 0)
 
-        // settings.auto_run: start a test shortly after the dashboard opens
-        // (skipped when the tab opens hidden in the background)
-        if (config.settings?.auto_run === true && !document.hidden) {
-            setTimeout(() => this.run(), 800)
+        // continuous mode follows the dashboard lifetime: pause while the tab
+        // is hidden, resume when it comes back, stop on dispose()
+        this.onVisibility = () => this.handleVisibility()
+        document.addEventListener("visibilitychange", this.onVisibility)
+
+        if (this.intervalMs > 0) {
+            // a fresh persisted result shouldn't trigger an immediate repeat
+            // (e.g. right after saving settings and re-rendering the grid):
+            // count down the remainder of its interval instead
+            const lastTs = Number(last?.ts)
+            if (Number.isFinite(lastTs)) this._lastRunAt = lastTs
+            const remaining = Number.isFinite(lastTs) ? this.intervalMs - (Date.now() - lastTs) : START_DELAY_MS
+            const wait = Math.min(this.intervalMs, Math.max(START_DELAY_MS, remaining))
+            if (!document.hidden) this.scheduleNext(wait)
         }
     }
 
-    buildStat(label) {
+    buildStat(label, format) {
         const root = document.createElement("div")
         root.className = "speedtest-stat"
 
@@ -141,15 +183,15 @@ export class SpeedtestWidget extends Widget {
         return {
             root,
             valueEl: val,
-            set(v) { val.innerText = isFinite(v) ? fmtMbps(v) : (v === null || v === undefined ? "--" : `${Math.round(v)} ms`) }
+            set(v) { val.innerText = format(v) }
         }
     }
 
     setGauge(mbps) {
         this.gauge.style.setProperty("--progress",
-            String(isFinite(mbps) ? Math.min(1, Math.max(0, mbps) / GAUGE_SCALE_MBPS) : 0))
+            String(Number.isFinite(mbps) ? Math.min(1, Math.max(0, mbps) / GAUGE_SCALE_MBPS) : 0))
         this.gauge.dataset.tier = speedTier(mbps)
-        this.valueEl.innerText = isFinite(mbps) ? fmtMbps(mbps) : "--"
+        this.valueEl.innerText = Number.isFinite(mbps) ? fmtMbps(mbps) : "--"
     }
 
     setPhase(text) {
@@ -164,9 +206,9 @@ export class SpeedtestWidget extends Widget {
         history.forEach((entry) => {
             const bar = document.createElement("span")
             bar.className = "speedtest-history-bar"
-            const dl = isFinite(entry.download) ? entry.download : 0
+            const dl = Number.isFinite(entry.download) ? entry.download : 0
             bar.style.height = `${Math.max(8, Math.min(100, (dl / GAUGE_SCALE_MBPS) * 100))}%`
-            const up = isFinite(entry.upload) ? fmtMbps(entry.upload) : "--"
+            const up = Number.isFinite(entry.upload) ? fmtMbps(entry.upload) : "--"
             bar.title = `${fmtMbps(entry.download)}/${up} Mbps · ${fmtAgo(entry.ts)}`
             this.historyEl.appendChild(bar)
         })
@@ -184,18 +226,90 @@ export class SpeedtestWidget extends Widget {
         this.statusEl.classList.toggle("error", isError)
     }
 
+    /* ------------------------------------------------------------------ */
+    /* continuous mode                                                    */
+    /* ------------------------------------------------------------------ */
+
+    scheduleNext(delay = this.intervalMs) {
+        if (this._disposed || this.intervalMs <= 0) return
+
+        this.clearSchedule()
+        if (this.running || document.hidden) return
+
+        const wait = Math.max(0, delay)
+        this._nextRunAt = Date.now() + wait
+        this._nextTimer = setTimeout(() => {
+            this._nextTimer = null
+            this._nextRunAt = 0
+            this.run()
+        }, wait)
+
+        this.updateCountdown()
+        this._countdownTimer = setInterval(() => this.updateCountdown(), COUNTDOWN_TICK_MS)
+    }
+
+    clearSchedule() {
+        if (this._nextTimer) clearTimeout(this._nextTimer)
+        this._nextTimer = null
+        this._nextRunAt = 0
+        this.stopCountdown()
+    }
+
+    stopCountdown() {
+        if (this._countdownTimer) clearInterval(this._countdownTimer)
+        this._countdownTimer = null
+    }
+
+    updateCountdown() {
+        if (this._disposed || this.running || !this._nextRunAt) return
+        const label = this.hadError ? "Live check failed" : "Live"
+        this.setStatus(`${label} · next check in ${fmtCountdown(this._nextRunAt - Date.now())}`, this.hadError)
+    }
+
+    handleVisibility() {
+        if (this._disposed) return
+
+        if (document.hidden) {
+            // no point measuring a tab nobody is looking at
+            this.clearSchedule()
+            if (!this.running) this.setStatus("Live check paused — tab hidden")
+            return
+        }
+
+        if (this.intervalMs <= 0 || this.running) return
+
+        const elapsed = this._lastRunAt ? Date.now() - this._lastRunAt : Infinity
+        const wait = this.intervalMs - elapsed
+        if (wait <= 0) this.run()
+        else this.scheduleNext(wait)
+    }
+
+    dispose() {
+        this._disposed = true
+        this.clearSchedule()
+        this.stopCountdown()
+        this._abortController?.abort()
+        if (this.onVisibility) document.removeEventListener("visibilitychange", this.onVisibility)
+        this.onVisibility = null
+    }
+
     measurePing() {
         const samples = []
 
         const one = () => new Promise((resolve) => {
             const start = performance.now()
-            fetch(PING_URL, { cache: "no-store", mode: "cors" })
+            fetch(PING_URL, {
+                cache: "no-store",
+                mode: "cors",
+                signal: this._abortController?.signal,
+            })
                 .then(() => resolve(performance.now() - start))
                 .catch(() => resolve(null))
         })
 
         return (async () => {
             for (let i = 0; i < PING_SAMPLES; i++) {
+                if (this._disposed) break
                 const sample = await one()
                 if (sample !== null) samples.push(sample)
             }
@@ -209,7 +323,11 @@ export class SpeedtestWidget extends Widget {
     measureDownload(onProgress) {
         return new Promise((resolve, reject) => {
             const start = performance.now()
-            fetch(DOWNLOAD_URL, { cache: "no-store", mode: "cors" })
+            fetch(DOWNLOAD_URL, {
+                cache: "no-store",
+                mode: "cors",
+                signal: this._abortController?.signal,
+            })
                 .then(res => {
                     if (!res.ok) throw new Error(`HTTP ${res.status}`)
                     if (!res.body) return res.arrayBuffer().then(buffer => {
@@ -241,7 +359,8 @@ export class SpeedtestWidget extends Widget {
                 method: "POST",
                 mode: "cors",
                 cache: "no-store",
-                body: new ArrayBuffer(UPLOAD_BYTES)
+                body: new ArrayBuffer(UPLOAD_BYTES),
+                signal: this._abortController?.signal,
             })
                 .then(res => {
                     if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -263,18 +382,36 @@ export class SpeedtestWidget extends Widget {
         return new Promise(resolve => setTimeout(() => resolve({ ping, download, upload }), 900))
     }
 
+    finishRun() {
+        this.running = false
+        if (this._disposed) return
+        this.content.classList.remove("is-running")
+        this.runBtn.disabled = false
+        this.runBtn.innerText = this.intervalMs > 0 ? "Check now" : "Test again"
+    }
+
     async run() {
-        if (this.running) return
+        if (this.running || this._disposed) return
+
+        // a manual "Check now" restarts the cycle: drop the pending timeout
+        // and countdown before measuring
+        this.clearSchedule()
         this.running = true
+        this.demo = false
+        this._abortController = new AbortController()
         this.runBtn.disabled = true
         this.content.classList.add("is-running")
-        this.setGauge(NaN)
+        // continuous mode keeps the last result on screen while re-checking -
+        // only the live download progress should move the gauge, not a blank
+        // reset every interval
+        if (!this.config.speedtest_last) this.setGauge(NaN)
         this.setPhase("ping")
         this.setStatus("Measuring ping…")
 
         let results
         try {
             const ping = await withTimeout(this.measurePing(), MEASURE_TIMEOUT_MS, "ping")
+            if (this._disposed) return
 
             this.setPhase("down")
             this.setStatus("Measuring download…")
@@ -285,7 +422,9 @@ export class SpeedtestWidget extends Widget {
                         if (seconds > 0.1) this.setGauge((bytes * 8) / (seconds * 1e6))
                     }),
                     MEASURE_TIMEOUT_MS, "download")
+                if (this._disposed) return
             } catch (err) {
+                if (this._disposed) return
                 console.warn("SpeedtestWidget: download failed", err)
             }
 
@@ -294,16 +433,24 @@ export class SpeedtestWidget extends Widget {
             let upload = null
             try {
                 upload = await withTimeout(this.measureUpload(), MEASURE_TIMEOUT_MS, "upload")
+                if (this._disposed) return
             } catch (err) {
+                if (this._disposed) return
                 console.warn("SpeedtestWidget: upload failed", err)
             }
 
             if (download === null && upload === null) throw new Error("download and upload both failed")
             results = { ping, download, upload }
         } catch (err) {
+            if (this._disposed) return
             console.warn("SpeedtestWidget: network test unavailable, using demo mode", err)
             results = await this.simulate()
+            if (this._disposed) return
         }
+
+        const now = Date.now()
+        this._lastRunAt = now
+        this.hadError = this.demo
 
         this.setPhase("")
         this.applyResult(results.download, results.upload, results.ping)
@@ -311,8 +458,8 @@ export class SpeedtestWidget extends Widget {
         // persist for instant display on the next dashboard visit, keeping
         // the last HISTORY_MAX results for the sparkline
         const history = Array.isArray(this.config.speedtest_history)
-            ? [...this.config.speedtest_history, { ts: Date.now(), download: results.download, upload: results.upload }]
-            : [{ ts: Date.now(), download: results.download, upload: results.upload }]
+            ? [...this.config.speedtest_history, { ts: now, download: results.download, upload: results.upload }]
+            : [{ ts: now, download: results.download, upload: results.upload }]
         while (history.length > HISTORY_MAX) history.shift()
         this.save({
             speedtest_last: {
@@ -320,11 +467,12 @@ export class SpeedtestWidget extends Widget {
                 upload: results.upload,
                 ping: results.ping,
                 demo: this.demo,
-                ts: Date.now()
+                ts: now
             },
             speedtest_history: history
         })
         this.renderHistory()
+        this.finishRun()
 
         if (this.demo) {
             this.setStatus("Demo mode — network test blocked", true)
@@ -332,9 +480,8 @@ export class SpeedtestWidget extends Widget {
             this.setStatus("Test complete")
         }
 
-        this.content.classList.remove("is-running")
-        this.running = false
-        this.runBtn.disabled = false
-        this.runBtn.innerText = "Test again"
+        // continuous mode: start counting down to the next check. scheduleNext
+        // overwrites the transient status with the live countdown.
+        this.scheduleNext(this.intervalMs)
     }
 }

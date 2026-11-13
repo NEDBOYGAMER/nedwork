@@ -42,6 +42,11 @@ export const NEWS_PRESETS = ["classic", "compact", "ticker", "cards", "magazine"
 // task widget ordering (see TaskWidget.js; "position" = the manual order
 // the user set on the /tasks site)
 export const TASK_SORTS = ["position", "deadline", "importance", "newest"]
+// how often the speedtest repeats while the dashboard is open; "Off" keeps
+// the widget manual-only. The default is frequent enough to feel live without
+// turning the dashboard into a bandwidth sink.
+export const SPEEDTEST_INTERVALS = ["1 min", "2 min", "5 min", "10 min", "15 min", "30 min", "60 min", "Off"]
+export const SPEEDTEST_DEFAULT_INTERVAL = "5 min"
 
 export const WIDGET_DEFAULTS = {
     time: {
@@ -178,6 +183,7 @@ export const WIDGET_DEFAULTS = {
         "settings": {
             title: "",
             url: "https://nedwork.ch",
+            open_new_tab: true,
         },
         style: WIDGET_STYLES[0]
     },
@@ -187,7 +193,7 @@ export const WIDGET_DEFAULTS = {
         "id": "-",
         "settings": {
             title: "Speedtest",
-            auto_run: false,
+            interval: SPEEDTEST_DEFAULT_INTERVAL,
         },
         style: WIDGET_STYLES[0]
     },
@@ -349,15 +355,19 @@ export const WIDGET_SETTINGS_SCHEMA = {
     },
 
     link: {
-        title: { type: "input_field" },
-        style: { type: "dropdown", options: WIDGET_STYLES },
-        url:   { type: "input_field" },
+        title:   { type: "input_field" },
+        style:   { type: "dropdown", options: WIDGET_STYLES },
+        url:     { type: "input_field",
+                   desc: "Bare hosts like google.com get https:// automatically" },
+        open_new_tab: { type: "boolean",
+                        desc: "Open the link in a new tab instead of the current one" },
     },
 
     speedtest: {
         title:    { type: "input_field" },
         style:    { type: "dropdown", options: WIDGET_STYLES },
-        auto_run: { type: "boolean" },
+        interval: { type: "dropdown", options: SPEEDTEST_INTERVALS,
+                    desc: "How often to re-test while the dashboard is open" },
     },
 
     news: {

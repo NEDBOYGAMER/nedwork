@@ -1,5 +1,24 @@
 import { Widget } from '../Widget.js'
 
+/* Accepts bare hosts ("google.com"), full URLs and internal paths.
+   A value without a scheme would resolve relative to the dashboard
+   (/dashboard/google.com), so bare hosts get https:// prefixed. */
+function normalizeUrl(raw) {
+    const value = (raw || "").trim()
+    if (!value) return ""
+
+    // protocol-relative URLs ("//host/path") need a scheme, not a path
+    if (value.startsWith("//")) return `https:${value}`
+    // internal paths / anchors / query strings stay relative
+    if (/^[/#?]/.test(value)) return value
+    // explicit schemes (http, https, ftp, ...) are used as typed; mailto
+    // and friends have no // but are still valid absolute URLs
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) return value
+    if (/^(mailto|tel|sms|geo|magnet):/i.test(value)) return value
+
+    return `https://${value}`
+}
+
 function hostOf(raw) {
     try {
         return new URL(raw).hostname
@@ -42,8 +61,16 @@ export class LinkWidget extends Widget {
     constructor(config, ctx) {
         super(config, ctx)
 
-        this.url = config.settings?.url || ""
+        this.url = normalizeUrl(config.settings?.url)
         this.customTitle = (config.settings?.title || "").trim()
+
+        // widgets created before this setting existed always opened in a new
+        // tab; expose that as the actual value so the toggle reflects it
+        const settings = config.settings || (config.settings = {})
+        if (settings.open_new_tab === undefined) {
+            settings.open_new_tab = config.open_new_tab !== false
+        }
+        this.openNewTab = settings.open_new_tab !== false
     }
 
     build() {
@@ -63,8 +90,8 @@ export class LinkWidget extends Widget {
         const inner = document.createElement("a")
         inner.className = "link-widget-link"
         inner.href = this.url
-        inner.target = "_blank"
-        inner.rel = "noopener noreferrer"
+        inner.target = this.openNewTab ? "_blank" : "_self"
+        if (this.openNewTab) inner.rel = "noopener noreferrer"
 
         const icon = document.createElement("span")
         icon.className = "link-widget-icon"
